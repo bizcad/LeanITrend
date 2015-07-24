@@ -48,6 +48,12 @@
     <Compile Include="AverageDirectionalIndex.cs" />
     <Compile Include="DonchianChannel.cs" />
     <Compile Include="IchimokuKinkoHyo.cs" />
+    <Compile Include="MyIndicators\CyberCycle.cs" />
+    <Compile Include="MyIndicators\FisherTransform.cs" />
+    <Compile Include="MyIndicators\HullMovingAverage.cs" />
+    <Compile Include="MyIndicators\InstantaneousTrend.cs" />
+    <Compile Include="MyIndicators\InverseFisherTransform.cs" />
+    <Compile Include="MyIndicators\RelativeVigorIndex.cs" />
     <Compile Include="OnBalanceVolume.cs" />
     <Compile Include="..\Common\Properties\SharedAssemblyInfo.cs">
       <Link>Properties\SharedAssemblyInfo.cs</Link>

@@ -48,6 +48,15 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="BasicTemplateAlgorithm.cs" />
+    <Compile Include="BizcadAlgorithm\CyberCycleAlgorithm.cs" />
+    <Compile Include="BizcadAlgorithm\FisherTransformAlgorithm.cs" />
+    <Compile Include="BizcadAlgorithm\HullMovingAverageAlgorithm.cs" />
+    <Compile Include="BizcadAlgorithm\InstantaneousTrendAlgorithm.cs" />
+    <Compile Include="BizcadAlgorithm\InstantTrendStrategy.cs" />
+    <Compile Include="BizcadAlgorithm\MeanReversionAlgorithm.cs" />
+    <Compile Include="BizcadAlgorithm\OptimalTrackingAlgorithm.cs" />
+    <Compile Include="BizcadAlgorithm\OrderReporter.cs" />
+    <Compile Include="BizcadAlgorithm\RVIAlgorithm.cs" />
     <Compile Include="LimitFillRegressionAlgorithm.cs" />
     <Compile Include="BasicTemplateFillForwardAlgorithm.cs" />
     <Compile Include="BenchmarkAlgorithm.cs" />
@@ -95,6 +104,10 @@
     <ProjectReference Include="..\Interfaces\QuantConnect.Interfaces.csproj">
       <Project>{338f614c-4cd7-418a-bd31-8c6a8690cfbf}</Project>
       <Name>QuantConnect.Interfaces</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\Logging\QuantConnect.Logging.csproj">
+      <Project>{01911409-86BE-4E7D-9947-DF714138610D}</Project>
+      <Name>QuantConnect.Logging</Name>
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
