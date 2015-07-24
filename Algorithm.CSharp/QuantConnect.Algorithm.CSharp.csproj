@@ -57,6 +57,7 @@
     <Compile Include="BizcadAlgorithm\OptimalTrackingAlgorithm.cs" />
     <Compile Include="BizcadAlgorithm\OrderReporter.cs" />
     <Compile Include="BizcadAlgorithm\RVIAlgorithm.cs" />
+    <Compile Include="BizcadAlgorithm\TradeBarReporter.cs" />
     <Compile Include="LimitFillRegressionAlgorithm.cs" />
     <Compile Include="BasicTemplateFillForwardAlgorithm.cs" />
     <Compile Include="BenchmarkAlgorithm.cs" />

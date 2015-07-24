@@ -12,8 +12,8 @@ namespace QuantConnect.Algorithm.Examples
 {
     class InstantaneousTrendAlgorithm : QCAlgorithm
     {
-        private DateTime _startDate = new DateTime(2015, 7, 17);
-        private DateTime _endDate = new DateTime(2015, 7, 17);
+        private DateTime _startDate = new DateTime(2015, 5, 19);
+        private DateTime _endDate = new DateTime(2015, 5, 20);
         private decimal _portfolioAmount = 22000;
         private decimal _transactionSize = 22000;
 
@@ -66,6 +66,7 @@ namespace QuantConnect.Algorithm.Examples
         private int nStatus = 0;
 
         private int orderId = 0;
+        private bool orderCancelled = false;
         private string comment;
         private int tradesize;
         private decimal openprice = 0;
@@ -128,7 +129,7 @@ namespace QuantConnect.Algorithm.Examples
             tradingDate = data.Time;
 
 
-            if (data.Time.Day == 15)
+            if (data.Time.Day == 20)
                 Debug("here");
 
             var time = data.Time;
@@ -220,7 +221,8 @@ namespace QuantConnect.Algorithm.Examples
             comment = string.Empty;
             if (barcount < 20)
                 return;
-
+            if (barcount == 77)
+                comment = "";
             #region "Strategy Execution"
             comment = strategy.ExecuteStrategy(data, tradesize, trend.Current, trendTrigger[0], out orderId);
             //LocalExecuteStrategy(data);
@@ -243,31 +245,39 @@ namespace QuantConnect.Algorithm.Examples
             foreach (var order in orders)
             {
                 if (order.Id == 30)
+                {
                     System.Diagnostics.Debug.Write("here");
-                try
-                {
-                    // if we are flat just cancel the order and wait for the next set up
-                    if (!Securities[symbol].HoldStock)
-                    {
-                        ticket = Transactions.CancelOrder(order.Id);
-                        nStatus = 0; // neither long nor short
-                        orderId = ticket.OrderId;
-                        sharesOwned = Portfolio[symbol].Quantity;
-                        comment = string.Format("Flat Not Filled. Cancelled {0} order {1}", order.Direction, orderId);
-                        retval = true;
-                    }
-                    else
-                    {
-                        ticket = Transactions.CancelOrder(order.Id);
-                        orderId = 0;
-                        sharesOwned = Portfolio[symbol].Quantity;
-                        comment = string.Format("{0} Order Not Filled. Still hold {1}", order.Direction, sharesOwned);
-                        retval = true;
-                    }
+                    var o = Transactions.GetOrderById(order.Id);
                 }
-                catch (Exception e)
+                if (!orderCancelled)
                 {
-                    Console.WriteLine(e);
+                    
+                    try
+                    {
+                        // if we are flat just cancel the order and wait for the next set up
+                        if (!Securities[symbol].HoldStock)
+                        {
+                            ticket = Transactions.CancelOrder(order.Id);
+                            nStatus = 0; // neither long nor short
+                            orderId = ticket.OrderId;
+                            sharesOwned = Portfolio[symbol].Quantity;
+                            comment = string.Format("Flat Not Filled. Cancelled {0} order {1}", order.Direction, orderId);
+                            retval = true;
+                        }
+                        else
+                        {
+                            ticket = Transactions.CancelOrder(order.Id);
+                            Transactions.WaitForOrder(order.Id);
+                            orderId = 0;
+                            sharesOwned = Portfolio[symbol].Quantity;
+                            comment = string.Format("{0} Order Not Filled. Still hold {1}", order.Direction, sharesOwned);
+                            retval = true;
+                        }
+                    }
+                    catch (Exception e)
+                    {
+                        Console.WriteLine(e);
+                    }
                 }
             }
 
@@ -286,9 +296,14 @@ namespace QuantConnect.Algorithm.Examples
             orderId = orderEvent.OrderId;
             if (orderEvent.OrderId == 30)
                 System.Diagnostics.Debug.Write("here");
+            if (orderEvent.Status == OrderStatus.Canceled)
+            {
+                orderCancelled = true;
+                strategy.orderFilled = false;
+            }
             if (orderEvent.Status == OrderStatus.Filled)
             {
-
+                orderCancelled = false;
                 OrderReporter reporter = new OrderReporter((QCAlgorithm)this, transactionlog);
                 reporter.ReportTransaction(orderEvent);
 
