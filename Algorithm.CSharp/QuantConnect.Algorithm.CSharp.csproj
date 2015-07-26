@@ -58,6 +58,8 @@
     <Compile Include="BizcadAlgorithm\OrderReporter.cs" />
     <Compile Include="BizcadAlgorithm\RVIAlgorithm.cs" />
     <Compile Include="BizcadAlgorithm\TradeBarReporter.cs" />
+    <Compile Include="Custom Algos\CyclePeriodHomodyneAlgorithm.cs" />
+    <Compile Include="Custom Algos\TestingAlgo.cs" />
     <Compile Include="LimitFillRegressionAlgorithm.cs" />
     <Compile Include="BasicTemplateFillForwardAlgorithm.cs" />
     <Compile Include="BenchmarkAlgorithm.cs" />

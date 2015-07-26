@@ -9,7 +9,7 @@
     "environment": "backtesting",
 
     // algorithm class selector
-    "algorithm-type-name": "InstantaneousTrendAlgorithm",
+    "algorithm-type-name": "CyclePeriodHomodyneAlgorithm",
 
     // Algorithm language selector - options CSharp, FSharp, VisualBasic, Python, Java
     "algorithm-language": "CSharp", 
