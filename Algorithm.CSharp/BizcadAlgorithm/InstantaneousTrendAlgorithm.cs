@@ -14,8 +14,8 @@ namespace QuantConnect.Algorithm.Examples
 {
     class InstantaneousTrendAlgorithm : QCAlgorithm
     {
-        private DateTime _startDate = new DateTime(2015, 7, 14);
-        private DateTime _endDate = new DateTime(2015, 7, 15);
+        private DateTime _startDate = new DateTime(2015, 7, 9);
+        private DateTime _endDate = new DateTime(2015, 7, 10);
         private decimal _portfolioAmount = 22000;
         private decimal _transactionSize = 22000;
 
@@ -783,6 +783,7 @@ namespace QuantConnect.Algorithm.Examples
                     System.Threading.Thread.Sleep(100);
 
                     sharesOwned = Portfolio[symbol].Quantity;
+                    rocp.Reset();
                     return false;
                 }
             }
