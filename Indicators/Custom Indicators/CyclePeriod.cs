@@ -26,12 +26,30 @@ namespace QuantConnect.Indicators
         // the alpha for the formula
         private readonly decimal _alpha = 0.07m;
 
+        /// <summary>
+        /// 
+        /// </summary>
         public RollingWindow<decimal> _smooth;
+        /// <summary>
+        /// 
+        /// </summary>
         public RollingWindow<decimal> _cycle;
+        /// <summary>
+        /// 
+        /// </summary>
         public RollingWindow<decimal> _quadrature;
+        /// <summary>
+        /// 
+        /// </summary>
         public RollingWindow<decimal> _deltaPhase;
 
+        /// <summary>
+        /// 
+        /// </summary>
         public ExponentialMovingAverage _instPeriod;
+        /// <summary>
+        /// 
+        /// </summary>
         public ExponentialMovingAverage _period;
 
         private readonly decimal pi = (decimal)Math.PI;
@@ -41,6 +59,11 @@ namespace QuantConnect.Indicators
         private decimal _quadCoeffA;
         private decimal _quadCoeffB;
 
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="name"></param>
+        /// <param name="period"></param>
         public CyclePeriod(string name, int period=3)
             : base(name, period)
         {
@@ -69,6 +92,12 @@ namespace QuantConnect.Indicators
             get { return _period.IsReady; }
         }
 
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="window"></param>
+        /// <param name="input"></param>
+        /// <returns></returns>
         protected override decimal ComputeNextValue(IReadOnlyWindow<IndicatorDataPoint> window, IndicatorDataPoint input)
         {
             decimal hfp;

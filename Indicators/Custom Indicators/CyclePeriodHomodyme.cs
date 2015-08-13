@@ -67,7 +67,13 @@ namespace QuantConnect.Indicators
         /// </summary>
         public RollingWindow<double> _Period;
 
+        /// <summary>
+        /// 
+        /// </summary>
         public ExponentialMovingAverage _SmoothPeriod;
+        /// <summary>
+        /// 
+        /// </summary>
         public ExponentialMovingAverage _period;
 
         private readonly decimal pi = (decimal)Math.PI;
@@ -77,6 +83,11 @@ namespace QuantConnect.Indicators
         private decimal _quadCoeffA;
         private decimal _quadCoeffB;
 
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="name"></param>
+        /// <param name="period"></param>
         public CyclePeriodHomodyme(string name, int period = 3)
             : base(name, period)
         {
@@ -112,6 +123,12 @@ namespace QuantConnect.Indicators
             get { return _Period.IsReady; }
         }
 
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="window"></param>
+        /// <param name="input"></param>
+        /// <returns></returns>
         protected override decimal ComputeNextValue(IReadOnlyWindow<IndicatorDataPoint> window, IndicatorDataPoint input)
         {
             decimal hfp;
