@@ -15,7 +15,12 @@ namespace QuantConnect.Algorithm.MyAlgorithms
 {
     internal class CyberCycleAlgorithm : QCAlgorithm
     {
-        private string symbol = "SPY";
+        private DateTime _startDate = new DateTime(2015, 5, 19);
+        private DateTime _endDate = new DateTime(2015, 5, 20);
+        private decimal _portfolioAmount = 22000;
+        private decimal _transactionSize = 22000;
+
+        private string symbol = "AAPL";
 
         // Custom Logging
         private ILogHandler mylog = Composer.Instance.GetExportedValueByTypeName<ILogHandler>("CustomFileLogHandler");
@@ -56,9 +61,9 @@ namespace QuantConnect.Algorithm.MyAlgorithms
             mylog.Debug(ondataheader);
 
             //Initialize dates
-            SetStartDate(2015, 5, 13);
-            SetEndDate(2015, 5, 13);
-            SetCash(25000);
+            SetStartDate(_startDate);
+            SetEndDate(_endDate);
+            SetCash(22000);
 
             //Add as many securities as you like. All the data will be passed into the event handler:
             AddSecurity(SecurityType.Equity, symbol, Resolution.Minute);
@@ -161,15 +166,11 @@ namespace QuantConnect.Algorithm.MyAlgorithms
             {
                 if (fishDirectionHistory[0].Value > 0 && fishDirectionChanged)  // if it started up
                 {
-
                     Buy(symbol, 100);
-
                 }
                 if (fishDirectionHistory[0].Value < 0 && fishDirectionChanged) // if it started going down
                 {
-
                     Sell(symbol, 100);
-
                 }
             }
         }
@@ -180,15 +181,11 @@ namespace QuantConnect.Algorithm.MyAlgorithms
             {
                 if (fishDirectionHistory[0].Value > 0 && fishDirectionChanged)  // if it started up
                 {
-
                     Buy(symbol, 200);
-
                 }
                 if (fishDirectionHistory[0].Value < 0 && fishDirectionChanged) // if it started going down
                 {
-
                     Sell(symbol, 200);
-
                 }
                 //if (Portfolio[symbol].IsShort)
                 //{

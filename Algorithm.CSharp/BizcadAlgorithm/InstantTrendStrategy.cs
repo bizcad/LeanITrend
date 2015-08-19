@@ -72,6 +72,7 @@ namespace QuantConnect.Algorithm.Examples
         /// <param name="orderId">int - the orderId if one is placed, -1 if order has not filled and 0 if no order was placed</param>
         public string ExecuteStrategy(TradeBars data, int tradesize, IndicatorDataPoint trendCurrent, IndicatorDataPoint triggerCurrent, out int orderId)
         {
+
             orderId = 0;
             string comment = string.Empty;
             OrderTicket ticket;
@@ -94,6 +95,8 @@ namespace QuantConnect.Algorithm.Examples
                     var nTrig = 2 * trendHistory[0].Value - trendHistory[2].Value;
                     if (orderFilled)
                     {
+                        
+
                         if (nStatus == 1 && data[_symbol].Close < (nEntryPrice/RevPct))
                         {
                             comment = string.Format("Long Reverse to short. Close < {0} / {1}", nEntryPrice,RevPct);

@@ -56,6 +56,7 @@
     <Compile Include="BizcadAlgorithm\MeanReversionAlgorithm.cs" />
     <Compile Include="BizcadAlgorithm\OptimalTrackingAlgorithm.cs" />
     <Compile Include="BizcadAlgorithm\OrderReporter.cs" />
+    <Compile Include="BizcadAlgorithm\RateOfChangePercentStrategy.cs" />
     <Compile Include="BizcadAlgorithm\RVIAlgorithm.cs" />
     <Compile Include="BizcadAlgorithm\TradeBarReporter.cs" />
     <Compile Include="Custom Algos\CyclePeriodHomodyneAlgorithm.cs" />

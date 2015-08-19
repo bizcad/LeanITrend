@@ -6,6 +6,9 @@ using System.Threading.Tasks;
 
 namespace QuantConnect.Indicators
 {
+    /// <summary>
+    /// 
+    /// </summary>
     public class InstantaneousTrend : WindowIndicator<IndicatorDataPoint>
     {
         // the alpha for the formula
@@ -15,6 +18,11 @@ namespace QuantConnect.Indicators
         private readonly RollingWindow<IndicatorDataPoint> _price;
         private int barcount;
 
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="name"></param>
+        /// <param name="period"></param>
         public InstantaneousTrend(string name, int period)
             : base(name, period)
         {

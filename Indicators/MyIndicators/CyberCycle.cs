@@ -41,6 +41,9 @@ namespace QuantConnect.Indicators
         {
         }
 
+        /// <summary>
+        /// 
+        /// </summary>
         public override bool IsReady
         {
             get { return _smooth.IsReady; }
