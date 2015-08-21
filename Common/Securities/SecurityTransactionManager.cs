@@ -21,7 +21,7 @@ using System.Threading;
 using QuantConnect.Logging;
 using QuantConnect.Orders;
 
-namespace QuantConnect.Securities 
+namespace QuantConnect.Securities
 {
     /// <summary>
     /// Algorithm Transactions Manager - Recording Transactions
@@ -43,7 +43,7 @@ namespace QuantConnect.Securities
         {
             get { return _securities.UtcTime; }
         }
-        
+
         /// <summary>
         /// Initialise the transaction manager for holding and processing orders.
         /// </summary>
@@ -75,9 +75,9 @@ namespace QuantConnect.Securities
         /// Configurable minimum order value to ignore bad orders, or orders with unrealistic sizes
         /// </summary>
         /// <remarks>Default minimum order size is $0 value</remarks>
-        public decimal MinimumOrderSize 
+        public decimal MinimumOrderSize
         {
-            get 
+            get
             {
                 return _minimumOrderSize;
             }
@@ -87,9 +87,9 @@ namespace QuantConnect.Securities
         /// Configurable minimum order size to ignore bad orders, or orders with unrealistic sizes
         /// </summary>
         /// <remarks>Default minimum order size is 0 shares</remarks>
-        public int MinimumOrderQuantity 
+        public int MinimumOrderQuantity
         {
-            get 
+            get
             {
                 return _minimumOrderQuantity;
             }
@@ -160,13 +160,23 @@ namespace QuantConnect.Securities
         }
 
         /// <summary>
+        /// Gets and enumerable of <see cref="OrderTicket"/> matching the specified <paramref name="filter"/>
+        /// </summary>
+        /// <param name="filter">The filter predicate used to find the required order tickets</param>
+        /// <returns>An enumerable of <see cref="OrderTicket"/> matching the specified <paramref name="filter"/></returns>
+        public IEnumerable<OrderTicket> GetOrderTickets(Func<OrderTicket, bool> filter = null)
+        {
+            return _orderProcessor.GetOrderTickets(filter ?? (x => true));
+        }
+
+        /// <summary>
         /// Wait for a specific order to be either Filled, Invalid or Canceled
         /// </summary>
         /// <param name="orderId">The id of the order to wait for</param>
         public void WaitForOrder(int orderId)
         {
             // wait for the processor to finish processing his orders
-            while(true)
+            while (true)
             {
                 var order = GetOrderById(orderId);
                 if (order == null || !Completed(order))
@@ -244,7 +254,7 @@ namespace QuantConnect.Securities
         public bool GetSufficientCapitalForOrder(SecurityPortfolioManager portfolio, Order order)
         {
             var security = _securities[order.Symbol];
-            
+
             var freeMargin = security.MarginModel.GetMarginRemaining(portfolio, security, order.Direction);
             var initialMarginRequiredForOrder = security.MarginModel.GetInitialMarginRequiredForOrder(security, order);
             if (Math.Abs(initialMarginRequiredForOrder) > freeMargin)

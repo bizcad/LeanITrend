@@ -20,12 +20,12 @@ namespace QuantConnect.Algorithm.Examples
 
         private bool bReverseTrade = false;
         private string _symbol { get; set; }
-        private decimal RevPct = 1.015m;
+        private decimal RevPct = 1.0015m;
         private decimal RngFac = .35m;
         private decimal nLimitPrice = 0;
         private int nStatus = 0;
         private int xOver = 0;
-
+        private SimpleMovingAverage smaUnrealizedProfits;
         /// <summary>
         /// Flag to determine if the algo should go flat overnight.
         /// </summary>
@@ -40,6 +40,8 @@ namespace QuantConnect.Algorithm.Examples
         /// The flag as to whether the order has been filled.
         /// </summary>
         public Boolean orderFilled { get; set; }
+
+        private InverseFisherTransform ifishTrigger;
 
 
         /// <summary>
@@ -58,6 +60,8 @@ namespace QuantConnect.Algorithm.Examples
         {
             _symbol = symbol;
             trendHistory = new RollingWindow<IndicatorDataPoint>(period);
+            smaUnrealizedProfits = new SimpleMovingAverage(3);
+            ifishTrigger = new InverseFisherTransform(period);
             _algorithm = algorithm;
             orderFilled = true;
 
@@ -78,6 +82,9 @@ namespace QuantConnect.Algorithm.Examples
             string comment = string.Empty;
             OrderTicket ticket;
             trendHistory.Add(trendCurrent);
+            
+            nStatus = 0;
+            smaUnrealizedProfits.Update(new IndicatorDataPoint(data.Time, _algorithm.Portfolio[_symbol].UnrealizedProfit));
             if (_algorithm.Portfolio[_symbol].IsLong) nStatus = 1;
             if (_algorithm.Portfolio[_symbol].IsShort) nStatus = -1;
             if (!trendHistory.IsReady) return "Trend Not Ready";
@@ -87,7 +94,7 @@ namespace QuantConnect.Algorithm.Examples
                 #region "Strategy Execution"
 
                 bReverseTrade = false;
-                
+
 
                 try
                 {
@@ -95,71 +102,91 @@ namespace QuantConnect.Algorithm.Examples
                     //if (_algorithm.Portfolio[_symbol].IsShort) nStatus = -1;
 
                     var nTrig = 2 * trendHistory[0].Value - trendHistory[2].Value;
-                    if (orderFilled)
+                    ifishTrigger.Update(new IndicatorDataPoint(data.Time, triggerCurrent));
+                    if (nStatus == 1 && nTrig < (nEntryPrice / RevPct))
                     {
-                        
-
-                        if (nStatus == 1 && data[_symbol].Close < (nEntryPrice/RevPct))
+                        comment = string.Format("Long Reverse to short. Close < {0} / {1}", nEntryPrice, RevPct);
+                        ticket = ReverseToShort();
+                        orderFilled = ticket.OrderId > 0;
+                        orderId = ticket.OrderId;
+                        bReverseTrade = true;
+                    }
+                    else
+                    {
+                        if (nStatus == -1 && nTrig > (nEntryPrice * RevPct))
                         {
-                            comment = string.Format("Long Reverse to short. Close < {0} / {1}", nEntryPrice,RevPct);
-                            ticket = ReverseToShort();
+                            comment = string.Format("Short Reverse to Long. Close > {0} * {1}", nEntryPrice, RevPct);
+                            ticket = ReverseToLong();
                             orderFilled = ticket.OrderId > 0;
                             orderId = ticket.OrderId;
                             bReverseTrade = true;
                         }
-                        else
+                    }
+                    if (!bReverseTrade)
+                    {
+                        if (nTrig > trendHistory[0].Value)
                         {
-                            if (nStatus == -1 && data[_symbol].Close > (nEntryPrice*RevPct))
+                            if (xOver == -1 && nStatus != 1)
                             {
-                                comment = string.Format("Short Reverse to Long. Close > {0} * {1}", nEntryPrice, RevPct);
-                                ticket = ReverseToLong();
-                                orderFilled = ticket.OrderId > 0;
-                                orderId = ticket.OrderId;
-                                bReverseTrade = true;
-                            }
-                        }
-                        if (!bReverseTrade)
-                        {
-                            if (nTrig > trendHistory[0].Value)
-                            {
-                                if (xOver == -1 && nStatus != 1)
+                                if (!orderFilled)
                                 {
-
-                                    nLimitPrice = Math.Max(data[_symbol].Low, (data[_symbol].Close - (data[_symbol].High - data[_symbol].Low)*RngFac));
+                                    ticket = _algorithm.Buy(_symbol, tradesize);
+                                    comment = string.Format("Enter Long after cancel trig xover price up");
+                                }
+                                else
+                                {
+                                    nLimitPrice = Math.Max(data[_symbol].Low,
+                                        (data[_symbol].Close - (data[_symbol].High - data[_symbol].Low)*RngFac));
+                                    //                                  if (nStatus != 0 && (!orderFilled || _algorithm.Portfolio[_symbol].UnrealizedProfit < smaUnrealizedProfits.Current.Value))
+                                    
                                     ticket = _algorithm.LimitOrder(_symbol, tradesize, nLimitPrice, "Long Limit");
                                     //ticket = _algorithm.Buy(_symbol, tradesize);
-                                    orderFilled = ticket.OrderId > 0;
-                                    orderId = ticket.OrderId;
-                                    comment = string.Format("Enter Long Limit at {0} trig xover price up", nLimitPrice);
-                                    //comment = "Enter Long Market";
-                                    
+                                    //ticket = ReverseToLong();
+                                     comment = string.Format("Enter Long Limit trig xover price up", nLimitPrice);
                                 }
-                                if (comment.Length == 0)
-                                    comment = "Trigger over Trend";
-                                xOver = 1;
+                                orderFilled = ticket.OrderId > 0;
+                                orderId = ticket.OrderId;
+                               
+                                //comment = "Enter Long Market";
+
                             }
-                            else
+                            if (comment.Length == 0)
+                                comment = "Trigger over Trend";
+                            xOver = 1;
+                        }
+                        else
+                        {
+                            if (nTrig < trendHistory[0].Value)
                             {
-                                if (nTrig < trendHistory[0].Value)
+                                if (xOver == 1 && nStatus != -1)
                                 {
-                                    if (xOver == 1 && nStatus != -1)
+                                    if (!orderFilled)
                                     {
-                                        nLimitPrice = Math.Min(data[_symbol].High, (data[_symbol].Close + (data[_symbol].High - data[_symbol].Low)*RngFac));
-                                        //ticket = _algorithm.LimitOrder(_symbol, -tradesize, nLimitPrice, "Short Limit");
                                         ticket = _algorithm.Sell(_symbol, tradesize);
+                                        comment = string.Format("Enter Short after cancel trig xunder price down");
+                                    }
+                                    else
+                                    {
+                                        nLimitPrice = Math.Min(data[_symbol].High,
+                                            (data[_symbol].Close + (data[_symbol].High - data[_symbol].Low)*RngFac));
+                                        //if (nStatus != 0 && (!orderFilled || _algorithm.Portfolio[_symbol].UnrealizedProfit < smaUnrealizedProfits.Current.Value))
+                                        
+                                        ticket = _algorithm.LimitOrder(_symbol, -tradesize, nLimitPrice, "Short Limit");
+
                                         orderFilled = ticket.OrderId > 0;
                                         orderId = ticket.OrderId;
-                                        //comment = string.Format("Enter Short Limit at {0} trig xover price down", nLimitPrice);
-                                        comment = string.Format("Enter Short Market");
-                                    
+                                        comment = string.Format("Enter Short Limit at {0} trig xover price down", nLimitPrice);
                                     }
-                                    if (comment.Length == 0)
-                                        comment = "Trigger under trend";
-                                    xOver = -1;
+                                    
+
                                 }
+                                if (comment.Length == 0)
+                                    comment = "Trigger under trend";
+                                xOver = -1;
                             }
                         }
                     }
+
                 }
                 catch (Exception ex)
                 {
@@ -198,7 +225,7 @@ namespace QuantConnect.Algorithm.Examples
                     }
 
                     System.Threading.Thread.Sleep(100);
-                    
+
                     return true;
                 }
             }
