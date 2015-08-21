@@ -7,7 +7,7 @@ using QuantConnect.Orders;
 namespace QuantConnect.Algorithm.Examples
 {
     /// <summary>
-    /// 
+    /// From Ehlers Cybernetics page 27 on Trading the trend
     /// </summary>
     public class InstantTrendStrategy
     {
@@ -16,7 +16,7 @@ namespace QuantConnect.Algorithm.Examples
         /// </summary>
         public decimal nEntryPrice { get; set; }
         public decimal nExitPrice { get; set; }
-
+        public int barcount { get; set; }
 
         private bool bReverseTrade = false;
         private string _symbol { get; set; }
@@ -25,6 +25,7 @@ namespace QuantConnect.Algorithm.Examples
         private decimal nLimitPrice = 0;
         private int nStatus = 0;
         private int xOver = 0;
+
         /// <summary>
         /// Flag to determine if the algo should go flat overnight.
         /// </summary>
@@ -86,6 +87,7 @@ namespace QuantConnect.Algorithm.Examples
                 #region "Strategy Execution"
 
                 bReverseTrade = false;
+                
 
                 try
                 {
@@ -130,7 +132,10 @@ namespace QuantConnect.Algorithm.Examples
                                     orderId = ticket.OrderId;
                                     comment = string.Format("Enter Long Limit at {0} trig xover price up", nLimitPrice);
                                     //comment = "Enter Long Market";
+                                    
                                 }
+                                if (comment.Length == 0)
+                                    comment = "Trigger over Trend";
                                 xOver = 1;
                             }
                             else
@@ -140,13 +145,16 @@ namespace QuantConnect.Algorithm.Examples
                                     if (xOver == 1 && nStatus != -1)
                                     {
                                         nLimitPrice = Math.Min(data[_symbol].High, (data[_symbol].Close + (data[_symbol].High - data[_symbol].Low)*RngFac));
-                                        ticket = _algorithm.LimitOrder(_symbol, -tradesize, nLimitPrice, "Short Limit");
-                                        //ticket = _algorithm.Sell(_symbol, tradesize);
+                                        //ticket = _algorithm.LimitOrder(_symbol, -tradesize, nLimitPrice, "Short Limit");
+                                        ticket = _algorithm.Sell(_symbol, tradesize);
                                         orderFilled = ticket.OrderId > 0;
                                         orderId = ticket.OrderId;
-                                        comment = string.Format("Enter Short Limit at {0} trig xover price down", nLimitPrice);
-                                        //comment = "Enter Short Market";
+                                        //comment = string.Format("Enter Short Limit at {0} trig xover price down", nLimitPrice);
+                                        comment = string.Format("Enter Short Market");
+                                    
                                     }
+                                    if (comment.Length == 0)
+                                        comment = "Trigger under trend";
                                     xOver = -1;
                                 }
                             }

@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Data;
+using System.Linq;
+using System.Runtime.InteropServices.WindowsRuntime;
 using System.Security.Cryptography.X509Certificates;
 //using MathNet.Numerics.RootFinding;
 using QuantConnect.Data.Market;
@@ -14,8 +16,8 @@ namespace QuantConnect.Algorithm.Examples
 {
     class InstantaneousTrendAlgorithm : QCAlgorithm
     {
-        private DateTime _startDate = new DateTime(2015, 7, 9);
-        private DateTime _endDate = new DateTime(2015, 7, 10);
+        private DateTime _startDate = new DateTime(2015, 5, 19);
+        private DateTime _endDate = new DateTime(2015, 5, 20);
         private decimal _portfolioAmount = 22000;
         private decimal _transactionSize = 22000;
 
@@ -194,7 +196,7 @@ namespace QuantConnect.Algorithm.Examples
             // the ROCP Strategy
             iRateOfChangePercentStrategy = new RateOfChangePercentStrategy(symbol, 14, this);
             iRateOfChangePercentStrategy.shouldSellOutAtEod = shouldSellOutAtEod;
-            sma20 = new SimpleMovingAverage(20);
+            sma20 = new SimpleMovingAverage(10);
             //hull = new HullMovingAverage(14);
 
 
@@ -214,7 +216,7 @@ namespace QuantConnect.Algorithm.Examples
 
             // Add the history for the bar
             var time = data.Time;
-            Price.Add(idp(time, (data[symbol].Close + data[symbol].Open)/2));
+            Price.Add(idp(time, (data[symbol].Close + data[symbol].Open) / 2));
             barHistory.Add(data[symbol]);
 
             // Get the high and low for the bar and accumulate into the HL for today
@@ -238,6 +240,10 @@ namespace QuantConnect.Algorithm.Examples
                     yesterdayLow[symbol] = todayLow[symbol];
                     todayHigh[symbol] = decimal.MinValue;
                     todayLow[symbol] = decimal.MaxValue;
+                    //trend.Reset();
+                    //trendHistory.Reset();
+                    //barcount = 1;
+                    sma20.Reset();
                 }
             }
             CalculateDailyDirection(data[symbol]);      // direction for the day
@@ -295,9 +301,9 @@ namespace QuantConnect.Algorithm.Examples
 
             // Compute the slope since the start of the day
             slope = CalculateSlope(Price[0]);
-            if (barcount == 390)
-                Debug("here");
-
+            if (barcount == 35)
+                comment = "";
+            #region "commented"
             /*
                         if (!CanceledUnfilledLimitOrder())
                         {
@@ -405,9 +411,9 @@ namespace QuantConnect.Algorithm.Examples
  
                         }
              **/
+            #endregion
+
             Strategy(data);
-
-
             sharesOwned = Portfolio[symbol].Quantity;
 
             if (barcount == 77)
@@ -464,6 +470,7 @@ namespace QuantConnect.Algorithm.Examples
                     );
             mylog.Debug(logmsg);
             #endregion
+
             tradeprofit = 0;
             tradefees = 0;
             tradenet = 0;
@@ -489,7 +496,7 @@ namespace QuantConnect.Algorithm.Examples
             {
                 if (PricePassedAPeak() && Portfolio[symbol].IsLong)
                 {
-                    var ticket = Sell(symbol, tradesize*2);
+                    var ticket = Sell(symbol, tradesize * 2);
                     if (ticket.OrderId != 0)
                     {
                         comment = "sld Long position ppMAX";
@@ -498,7 +505,7 @@ namespace QuantConnect.Algorithm.Examples
                 }
                 if (PricePassedAValley() && Portfolio[symbol].IsShort)
                 {
-                    var ticket = Buy(symbol, tradesize*2);
+                    var ticket = Buy(symbol, tradesize * 2);
                     if (ticket.OrderId != 0)
                     {
                         comment = "sld Short position ppMin";
@@ -506,7 +513,7 @@ namespace QuantConnect.Algorithm.Examples
                     }
                 }
             }
-            
+
         }
 
         private bool StartingNewDay(TradeBars data)
@@ -591,19 +598,27 @@ namespace QuantConnect.Algorithm.Examples
             comment = string.Empty;
             if (barcount < 20)
                 return;
-            if (barcount == 100)
+            if (barcount == 34)
                 comment = "";
             if (barcount == 110)
                 comment = "";
             #region "Strategy Execution"
-            //comment = iTrendStrategy.ExecuteStrategy(data, tradesize, trend.Current, trendTrigger[0], out orderId);
+
             if (SellOutEndOfDay(data))
             {
-               
+                iTrendStrategy.barcount = barcount;
                 //RocpInline();
-                comment = iRateOfChangePercentStrategy.ExecuteStrategy(data, tradesize, maximum.Current, minimum.Current, rocp, out orderId);
+                var opens = Transactions.GetOpenOrders();
+                if (!CanceledUnfilledLimitOrder())
+                    comment = iTrendStrategy.ExecuteStrategy(data, tradesize, trend.Current, trendTrigger[0], out orderId);
+                //comment = iRateOfChangePercentStrategy.ExecuteStrategy(data, tradesize, maximum.Current, minimum.Current, rocp, ref sma20, out orderId);
+                else
+                {
+                    var p = Transactions.GetOrderById(19);
+                    var here = true;
+                }
             }
-            
+
 
             #endregion
             if (data.Time.Hour == 16)
@@ -617,50 +632,67 @@ namespace QuantConnect.Algorithm.Examples
         private bool CanceledUnfilledLimitOrder()
         {
             #region "Unfilled Limit Orders"
-
-            OrderTicket ticket;
             bool retval = false;
-            var orders = Transactions.GetOpenOrders();
-            foreach (var order in orders)
+            //OrderTicket ticket;
+            if (barcount == 185)
             {
-                if (order.Id == 30)
+                comment = "bar 185";
+            }
+            
+            var orders = Transactions.GetOrders(x => x.Status != OrderStatus.Filled);
+            if (orders.Any())
+            {
+                foreach (var order in orders)
                 {
-                    System.Diagnostics.Debug.Write("here");
-                    var o = Transactions.GetOrderById(order.Id);
-                }
-                if (!orderCancelled)
-                {
-
-                    try
+                    if (!OrderExtensions.IsClosed(order.Status))
                     {
-                        // if we are flat just cancel the order and wait for the next set up
-                        if (!Securities[symbol].HoldStock)
-                        {
-                            ticket = Transactions.CancelOrder(order.Id);
-
-                            nStatus = 0; // neither long nor short
-                            orderId = ticket.OrderId;
-                            sharesOwned = Portfolio[symbol].Quantity;
-                            comment = string.Format("Flat Not Filled. Cancelled {0} order {1}", order.Direction, orderId);
-                            retval = true;
-                        }
-                        else
-                        {
-                            ticket = Transactions.CancelOrder(order.Id);
-
-                            orderId = ticket.OrderId;
-                            nStatus = 0; // neither long nor short
-                            sharesOwned = Portfolio[symbol].Quantity;
-                            comment = string.Format("{0} Order Not Filled. Still hold {1}", order.Direction, sharesOwned);
-                            retval = true;
-                        }
-                    }
-                    catch (Exception e)
-                    {
-                        Console.WriteLine(e);
+                        var o = Transactions.CancelOrder(order.Id);
+                        
+                        retval = true;
                     }
                 }
             }
+            var count = Transactions.OrdersCount;
+
+            //foreach (var order in orders)
+            //{
+            //    if (order.Id == 30)
+            //    {
+            //        System.Diagnostics.Debug.Write("here");
+            //        var o = Transactions.GetOrderById(order.Id);
+            //    }
+            //    if (!orderCancelled)
+            //    {
+            //        try
+            //        {
+            //            // if we are flat just cancel the order and wait for the next set up
+            //            if (!Securities[symbol].HoldStock)
+            //            {
+            //                ticket = Transactions.CancelOrder(order.Id);
+
+            //                nStatus = 0; // neither long nor short
+            //                orderId = ticket.OrderId;
+            //                sharesOwned = Portfolio[symbol].Quantity;
+            //                comment = string.Format("Flat Not Filled. Cancelled {0} order {1}", order.Direction, orderId);
+            //                retval = true;
+            //            }
+            //            else
+            //            {
+            //                ticket = Transactions.CancelOrder(order.Id);
+
+            //                orderId = ticket.OrderId;
+            //                nStatus = 0; // neither long nor short
+            //                sharesOwned = Portfolio[symbol].Quantity;
+            //                comment = string.Format("{0} Order Not Filled. Still hold {1}", order.Direction, sharesOwned);
+            //                retval = true;
+            //            }
+            //        }
+            //        catch (Exception e)
+            //        {
+            //            Console.WriteLine(e);
+            //        }
+            //    }
+            //}
 
             #endregion
 
@@ -675,8 +707,8 @@ namespace QuantConnect.Algorithm.Examples
         {
             base.OnOrderEvent(orderEvent);
             orderId = orderEvent.OrderId;
-            if (orderEvent.OrderId == 30)
-                System.Diagnostics.Debug.Write("here");
+            if (orderEvent.OrderId == 18)
+                comment = "order 18";
             if (orderEvent.Status == OrderStatus.Canceled)
             {
                 orderCancelled = true;
@@ -688,6 +720,7 @@ namespace QuantConnect.Algorithm.Examples
             }
             if (orderEvent.Status == OrderStatus.Filled)
             {
+                this.iTrendStrategy.orderFilled = true;
                 orderCancelled = false;
                 OrderReporter reporter = new OrderReporter((QCAlgorithm)this, transactionlog);
                 reporter.ReportTransaction(orderEvent);
@@ -721,7 +754,7 @@ namespace QuantConnect.Algorithm.Examples
             tradefees = Securities[symbol].Holdings.TotalFees - lasttradefees;
             tradenet = tradeprofit - tradefees;
             lasttradefees = Securities[symbol].Holdings.TotalFees;
-            
+
         }
         /// <summary>
         /// Calculates and reports profits or losses after the last trade of the day
