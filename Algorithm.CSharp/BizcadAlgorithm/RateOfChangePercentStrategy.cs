@@ -50,7 +50,7 @@ namespace QuantConnect.Algorithm.Examples
         /// </summary>
         private IndicatorDataPoint maximum, minimum;
 
-        private SimpleMovingAverage sma20;
+        //private SimpleMovingAverage sma20;
 
         /// <summary>
         /// Empty Consturctor
@@ -66,7 +66,7 @@ namespace QuantConnect.Algorithm.Examples
         /// <param name="algorithm"></param>
         public RateOfChangePercentStrategy(string symbol, int period, QCAlgorithm algorithm)
         {
-            sma20 = new SimpleMovingAverage(20);
+            //sma20 = new SimpleMovingAverage(20);
             _symbol = symbol;
             Price = new RollingWindow<IndicatorDataPoint>(period);
             _algorithm = algorithm;
@@ -82,14 +82,14 @@ namespace QuantConnect.Algorithm.Examples
         /// <param name="tradesize"></param>
         /// <param name="trendCurrent">IndicatorDataPoint - the current trend value trend</param>
         /// <param name="orderId">int - the orderId if one is placed, -1 if order has not filled and 0 if no order was placed</param>
-        public string ExecuteStrategy(TradeBars data, int tradesize, IndicatorDataPoint max, IndicatorDataPoint min, RateOfChangePercent rocp, out int orderId)
+        public string ExecuteStrategy(TradeBars data, int tradesize, IndicatorDataPoint max, IndicatorDataPoint min, RateOfChangePercent rocp, ref SimpleMovingAverage sma20, out int orderId)
         {
             maximum = max;
             minimum = min;
             Price.Add(idp(data[_symbol].EndTime, (data[_symbol].Close + data[_symbol].Open) / 2));
             orderId = 0;
             comment = string.Empty;
-            sma20.Update(idp(data.Time, data[_symbol].Close));
+            //sma20.Update(idp(data.Time, data[_symbol].Close));
 
 
 
@@ -103,6 +103,10 @@ namespace QuantConnect.Algorithm.Examples
 
             try
             {
+                //7/9/2015 9:39
+                if (Price[0].EndTime.Day == 9 && Price[0].EndTime.Hour == 9 && Price[0].EndTime.Minute == 39)
+                    System.Threading.Thread.Sleep(100);
+
 
                 if (!_algorithm.Portfolio.Invested)
                 {
@@ -121,18 +125,18 @@ namespace QuantConnect.Algorithm.Examples
                 }
                 else
                 {
-                    if (PricePassedAValley() && _algorithm.Portfolio[_symbol].IsShort && rocp.Current.Value > 0 )
+                    if (PricePassedAValley() && _algorithm.Portfolio[_symbol].IsShort)
                     {
-                        if (Price[0].Value > sma20.Current.Value)
+                        if (Price[0].Value > sma20.Current.Value && (Math.Abs(sma20.Current.Value - Price[0].Value) / Price[0].Value) > .001m)
                         {
                             ticket = ReverseToLong();
                             comment = "Rev2Long Passed a Valley";
                         }
                     }
 
-                    if (PricePassedAPeak() && _algorithm.Portfolio[_symbol].IsLong && rocp.Current.Value < 0)
+                    if (PricePassedAPeak() && _algorithm.Portfolio[_symbol].IsLong)
                     {
-                        if (Price[0].Value < sma20.Current.Value)
+                        if (Price[0].Value < sma20.Current.Value && (Math.Abs(sma20.Current.Value - Price[0].Value) / Price[0].Value) > .001m)
                         {
                             ticket = ReverseToShort();
                             comment = "Rev2Short Passed a Peak";
@@ -213,7 +217,7 @@ namespace QuantConnect.Algorithm.Examples
                     comment = "Price history not ready";
                     return false;
                 }
-                if (maximum >= Price[0].Value && maximum == Price[1].Value)
+                if (maximum >= Price[0].Value && Price[0].Value <= Price[1].Value)
                     return true;
                 return false;
             }
@@ -230,7 +234,7 @@ namespace QuantConnect.Algorithm.Examples
                 return false;
             }
 
-            if (minimum <= Price[0].Value && minimum == Price[1].Value)
+            if (minimum <= Price[0].Value && Price[0].Value >= Price[1].Value)
                 return true;
             return false;
         }
