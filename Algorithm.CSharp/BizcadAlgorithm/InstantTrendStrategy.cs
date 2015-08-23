@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics;
 using System.Runtime;
 using QuantConnect.Data.Market;
 using QuantConnect.Indicators;
@@ -75,19 +76,23 @@ namespace QuantConnect.Algorithm.Examples
         /// <param name="tradesize"></param>
         /// <param name="trendCurrent">IndicatorDataPoint - the current trend value trend</param>
         /// <param name="orderId">int - the orderId if one is placed, -1 if order has not filled and 0 if no order was placed</param>
-        public string ExecuteStrategy(TradeBars data, int tradesize, IndicatorDataPoint trendCurrent, IndicatorDataPoint triggerCurrent, out int orderId)
+        public string ExecuteStrategy(TradeBars data, int tradesize, IndicatorDataPoint trendCurrent, IndicatorDataPoint triggerCurrent)
         {
-
-            orderId = 0;
-            string comment = string.Empty;
             OrderTicket ticket;
+            int orderId = 0;
+            string comment = string.Empty;
+            
             trendHistory.Add(trendCurrent);
             
             nStatus = 0;
             smaUnrealizedProfits.Update(new IndicatorDataPoint(data.Time, _algorithm.Portfolio[_symbol].UnrealizedProfit));
             if (_algorithm.Portfolio[_symbol].IsLong) nStatus = 1;
             if (_algorithm.Portfolio[_symbol].IsShort) nStatus = -1;
-            if (!trendHistory.IsReady) return "Trend Not Ready";
+            if (!trendHistory.IsReady)
+            {
+               // ticket = null;
+                return "Trend Not Ready";
+            }
 
             if (!SellOutEndOfDay(data))
             {

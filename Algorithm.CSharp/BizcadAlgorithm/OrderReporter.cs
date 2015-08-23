@@ -22,17 +22,17 @@ namespace QuantConnect.Algorithm.Examples
         /// Logs the OrderEvent Transaction
         /// </summary>
         /// <param name="orderEvent">the OrderEvent being logged</param>
-        public void ReportTransaction(OrderEvent orderEvent)
+        public void ReportTransaction(OrderEvent orderEvent, OrderTicket ticket)
         {
             #region Scottrade
 
             string transmsg = string.Format("Order {0} on not found", orderEvent.OrderId);
             Order order = _algorithm.Transactions.GetOrderById(orderEvent.OrderId);
-            decimal orderValue = orderEvent.FillQuantity * orderEvent.FillPrice;
+            decimal orderValue = ticket.QuantityFilled * ticket.AverageFillPrice;
+            
 
             if (order != null)
             {
-
                 var orderDateTime = order.Time;
                 var orderFees = _algorithm.Securities[order.Symbol].TransactionModel.GetOrderFee(_algorithm.Securities[order.Symbol], order);
                 int actionid = orderEvent.Direction.ToString() == "Buy" ? 1 : 13;
@@ -44,9 +44,9 @@ namespace QuantConnect.Algorithm.Examples
                     orderEvent.Direction.ToString(),
                     order.Time,
                     order.Time.AddDays(4),
-                    order.Value,
+                    orderValue,
                     orderFees,
-                    order.Value + orderFees,
+                    orderValue + orderFees,
                     "",
                     orderEvent.Direction + " share of " + orderEvent.Symbol + "at $" + order.Price.ToString(),
                     actionid,

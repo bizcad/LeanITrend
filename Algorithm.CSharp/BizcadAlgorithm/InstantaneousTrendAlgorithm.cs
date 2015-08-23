@@ -18,7 +18,7 @@ namespace QuantConnect.Algorithm.Examples
     class InstantaneousTrendAlgorithm : QCAlgorithm
     {
         private DateTime _startDate = new DateTime(2015, 5, 19);
-        private DateTime _endDate = new DateTime(2015, 8, 18);
+        private DateTime _endDate = new DateTime(2015, 8, 21);
         private decimal _portfolioAmount = 22000;
         private decimal _transactionSize = 22000;
 
@@ -612,7 +612,7 @@ namespace QuantConnect.Algorithm.Examples
                 var opens = Transactions.GetOpenOrders();
                 if (!CanceledUnfilledLimitOrder())
                     
-                        comment = iTrendStrategy.ExecuteStrategy(data, tradesize, trend.Current, trendTrigger[0], out orderId);
+                        comment = iTrendStrategy.ExecuteStrategy(data, tradesize, trend.Current, trendTrigger[0]);
                     //comment = iRateOfChangePercentStrategy.ExecuteStrategy(data, tradesize, maximum.Current, minimum.Current, rocp, ref sma20, out orderId);
                     else
                     {
@@ -663,51 +663,56 @@ namespace QuantConnect.Algorithm.Examples
         {
             base.OnOrderEvent(orderEvent);
             orderId = orderEvent.OrderId;
-            if (orderEvent.OrderId == 18)
-                comment = "order 18";
-            if (orderEvent.Status == OrderStatus.Canceled)
+            var tickets = Transactions.GetOrderTickets(t => t.OrderId == orderId);
+            if (tickets.Any())
             {
-                iTrendOrderCancelled = true;
-
-                iTrendStrategy.orderFilled = false;
-
-
-
-            }
-            if (orderEvent.Status == OrderStatus.Filled)
-            {
-                this.iTrendStrategy.orderFilled = true;
-                iTrendOrderCancelled = false;
-                OrderReporter reporter = new OrderReporter((QCAlgorithm)this, transactionlog);
-                reporter.ReportTransaction(orderEvent);
-                iTrendStrategy.orderFilled = true;
-                tradecount++;
-
-                if (Portfolio[orderEvent.Symbol].Invested)
+                foreach (OrderTicket ticket in tickets)
                 {
-                    iTrendStrategy.orderFilled = true;
-                    nEntryPrice = orderEvent.FillPrice;
-                    iTrendStrategy.nEntryPrice = nEntryPrice;
-                    CalculateTradeProfit();
-                }
-                else
-                {
-                    iTrendStrategy.orderFilled = true;
-                    nExitPrice = orderEvent.FillPrice;
-                    iTrendStrategy.nExitPrice = nEntryPrice;
-                    CalculateTradeProfit();
+                    var status = ticket.Status;
+                    if (ticket.Status == OrderStatus.Canceled)
+                    {
+                        iTrendOrderCancelled = true;
+                        iTrendStrategy.orderFilled = false;
+                    }
+                    if (ticket.Status == OrderStatus.Filled)
+                    {
+                        iTrendStrategy.orderFilled = true;
+                        iTrendOrderCancelled = false;
+                        OrderReporter reporter = new OrderReporter((QCAlgorithm)this, transactionlog);
+                        reporter.ReportTransaction(orderEvent, ticket);
+                        //iTrendStrategy.orderFilled = true;
+                        tradecount++;
+
+                        if (Portfolio[orderEvent.Symbol].Invested)
+                        {
+                            iTrendStrategy.orderFilled = true;
+                            nEntryPrice = orderEvent.FillPrice;
+                            iTrendStrategy.nEntryPrice = nEntryPrice;
+                            tradefees = Securities[symbol].Holdings.TotalFees - lasttradefees;
+                            
+                        }
+                        else
+                        {
+                            iTrendStrategy.orderFilled = true;
+                            nExitPrice = orderEvent.FillPrice;
+                            iTrendStrategy.nExitPrice = nExitPrice;
+                            tradefees += Securities[symbol].Holdings.TotalFees - lasttradefees;
+                            CalculateTradeProfit(ticket);
+                        }
+                    }
                 }
             }
+
+            
         }
 
         private void ExecuteMarketOrder()
         {
 
         }
-        private void CalculateTradeProfit()
+        private void CalculateTradeProfit(OrderTicket ticket)
         {
             tradeprofit = Securities[symbol].Holdings.LastTradeProfit;
-            tradefees = Securities[symbol].Holdings.TotalFees - lasttradefees;
             tradenet = tradeprofit - tradefees;
             lasttradefees = Securities[symbol].Holdings.TotalFees;
 
