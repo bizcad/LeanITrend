@@ -59,8 +59,13 @@
     <Compile Include="BizcadAlgorithm\RateOfChangePercentStrategy.cs" />
     <Compile Include="BizcadAlgorithm\RVIAlgorithm.cs" />
     <Compile Include="BizcadAlgorithm\TradeBarReporter.cs" />
-    <Compile Include="Custom Algos\CyclePeriodHomodyneAlgorithm.cs" />
-    <Compile Include="Custom Algos\TestingAlgo.cs" />
+    <Compile Include="ITrendAlgorithm\ITrendAlgorithm.cs" />
+    <Compile Include="ITrendAlgorithm\ITrendStrategy.cs" />
+    <Compile Include="JJAlgorithms\CyclePeriodHomodyneAlgorithm.cs" />
+    <Compile Include="JJAlgorithms\Laguerre.cs" />
+    <Compile Include="JJAlgorithms\LaguerreBasic.cs" />
+    <Compile Include="JJAlgorithms\LaguerreEMA.cs" />
+    <Compile Include="JJAlgorithms\TestingAlgo.cs" />
     <Compile Include="LimitFillRegressionAlgorithm.cs" />
     <Compile Include="BasicTemplateFillForwardAlgorithm.cs" />
     <Compile Include="BenchmarkAlgorithm.cs" />
