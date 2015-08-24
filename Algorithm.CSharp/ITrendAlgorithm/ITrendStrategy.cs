@@ -3,13 +3,19 @@ using System;
 
 namespace QuantConnect.Algorithm.CSharp.ITrendAlgorithm
 {
-    internal enum StockStatus { shortPosition, longPosition, noInvested };
+    internal enum StockStatus
+    {
+        shortPosition,  // The Portfolio has short position in this bar.
+        longPosition,   // The Portfolio has short position in this bar.
+        noInvested,     // The Portfolio hasn't any position in this bar.
+        orderSent       // An order has been sent in this same bar, skip analysis.
+    };
 
     internal enum OrderSignal
     {
-        goShort, goLong,
-        closeShort, closeLong,
-        revertToShort, revertToLong,
+        goShort, goLong,                // Entry to the market orders.
+        closeShort, closeLong,          // Exit from the market orders.
+        revertToShort, revertToLong,    // Reverse a position when in the wrong side of the trade.
         doNothing
     };
 

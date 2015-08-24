@@ -31,7 +31,7 @@ namespace QuantConnect.Algorithm.CSharp.ITrendAlgorithm
         // Dictionary used to store the portfolio sharesize for each symbol.
         private Dictionary<string, decimal> ShareSize;
 
-        // Dictionary used to store the las operation for each symbol
+        // Dictionary used to store the las operation for each symbol.
         private Dictionary<string, OrderSignal> LastOrderSent;
 
         #endregion Fields
@@ -64,8 +64,8 @@ namespace QuantConnect.Algorithm.CSharp.ITrendAlgorithm
 
             foreach (string symbol in Symbols)
             {
-                // First check if there are some orders not filled yet.
-                if (LastOrderSent[symbol] != OrderSignal.doNothing)
+                // First check if there are some limit orders not filled yet.
+                if (LastOrderSent[symbol] == OrderSignal.goLong || LastOrderSent[symbol] == OrderSignal.goShort)
                 {
                     CheckOrderStatus(symbol, LastOrderSent[symbol]);
                 }
@@ -97,10 +97,28 @@ namespace QuantConnect.Algorithm.CSharp.ITrendAlgorithm
 
                     case OrderSignal.closeLong:
                     case OrderSignal.closeShort:
+                        // Define the operation size.
+                        shares = PositionShares(symbol, actualOrder);
+                        // Send the order.
+                        Tickets[symbol].Add(MarketOrder(symbol, shares));
+                        // Beacuse the order is an synchronously market order, they'll fill
+                        // inmediatlly. So, update the ITrend strategy and the LastOrder Dictionary.
+                        Strategy[symbol].Position = StockStatus.noInvested;
+                        Strategy[symbol].EntryPrice = null;
+                        LastOrderSent[symbol] = OrderSignal.doNothing;
+                        break;
+
                     case OrderSignal.revertToLong:
                     case OrderSignal.revertToShort:
+                        // Define the operation size.
                         shares = PositionShares(symbol, actualOrder);
+                        // Send the order.
                         Tickets[symbol].Add(MarketOrder(symbol, shares));
+                        // Beacuse the order is an synchronously market order, they'll fill
+                        // inmediatlly. So, update the ITrend strategy and the LastOrder Dictionary.
+                        if (actualOrder == OrderSignal.revertToLong) Strategy[symbol].Position = StockStatus.longPosition;
+                        else if (actualOrder == OrderSignal.revertToShort) Strategy[symbol].Position = StockStatus.shortPosition;
+                        Strategy[symbol].EntryPrice = Tickets[symbol].Last().AverageFillPrice;
                         LastOrderSent[symbol] = actualOrder;
                         break;
 
@@ -113,39 +131,47 @@ namespace QuantConnect.Algorithm.CSharp.ITrendAlgorithm
 
         #region Methods
 
-        private void CheckOrderStatus(string symbol, OrderSignal order)
+        /// <summary>
+        /// Checks if the limits order are filled, and updates the ITrenStrategy object and the
+        /// LastOrderSent dictionary.
+        /// If the limit order aren't filled, then cancels the order and send a market order.
+        /// </summary>
+        /// <param name="symbol">The symbol.</param>
+        /// <param name="lastOrder">The last order.</param>
+        private void CheckOrderStatus(string symbol, OrderSignal lastOrder)
         {
-            OrderTicket actualOrder = Tickets[symbol].Last();
-            // If the order is filled, update the ITrenStrategy object for the symbol.
-            if (actualOrder.Status == OrderStatus.Filled)
+            int shares;
+
+            // If the ticket isn't filled...
+            if (Tickets[symbol].Last().Status != OrderStatus.Filled)
             {
-                if (order == OrderSignal.closeLong || order == OrderSignal.closeShort)
-                {
-                    Strategy[symbol].Position = StockStatus.noInvested;
-                    Strategy[symbol].EntryPrice = null;
-                }
-                else
-                {
-                    if (order == OrderSignal.goLong || order == OrderSignal.revertToLong)
-                    {
-                        Strategy[symbol].Position = StockStatus.longPosition;
-                    }
-                    else if (order == OrderSignal.goShort || order == OrderSignal.revertToShort)
-                    {
-                        Strategy[symbol].Position = StockStatus.shortPosition;
-                    }
-                    Strategy[symbol].EntryPrice = actualOrder.AverageFillPrice;
-                }
-                // Update the LastOrderSent dictionary, to avoid check filled orders many times.
-                LastOrderSent[symbol] = OrderSignal.doNothing;
+                shares = Tickets[symbol].Last().Quantity;
+                // cancel the limit order and send a new market order.
+                Tickets[symbol].Last().Cancel();
+                Tickets[symbol].Add(MarketOrder(symbol, shares));
             }
-            // TODO: If the order isn't filled yet.
-            else
+            // Once the ticket is filled, update the ITrenStrategy object for the symbol.
+            if (lastOrder == OrderSignal.goLong)
             {
-                throw new NotImplementedException();
+                Strategy[symbol].Position = StockStatus.longPosition;
             }
+            else if (lastOrder == OrderSignal.goShort)
+            {
+                Strategy[symbol].Position = StockStatus.shortPosition;
+            }
+            Strategy[symbol].EntryPrice = Tickets[symbol].Last().AverageFillPrice;
+            // Update the LastOrderSent dictionary, to avoid check filled orders many times.
+            LastOrderSent[symbol] = OrderSignal.doNothing;
+
+            // TODO: If the ticket is partially filled.
         }
 
+        /// <summary>
+        /// Estimate number of shares, given a kind of operation.
+        /// </summary>
+        /// <param name="symbol">The symbol to operate.</param>
+        /// <param name="order">The kind of order.</param>
+        /// <returns>The signed number of shares given the operation.</returns>
         public int PositionShares(string symbol, OrderSignal order)
         {
             int quantity;
