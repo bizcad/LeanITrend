@@ -11,9 +11,11 @@ namespace QuantConnect.Algorithm.CSharp.ITrendAlgorithm
     internal class ITrendAlgorithm : QCAlgorithm
     {
         #region Fields
+        private DateTime _startDate = new DateTime(2015, 5, 19);
+        private DateTime _endDate = new DateTime(2015, 8, 21);
 
         private static int ITrendPeriod = 7;
-        private static string[] Symbols = { "AIG", "BAC", "IBM", "SPY" };
+        private static string[] Symbols = { "AAPL" };
 
         private static decimal maxLeverage = 3m;
         private decimal leverageBuffer = 0.25m;
@@ -47,9 +49,9 @@ namespace QuantConnect.Algorithm.CSharp.ITrendAlgorithm
 
         public override void Initialize()
         {
-            SetStartDate(2013, 10, 7);   //Set Start Date
-            SetEndDate(2013, 10, 11);    //Set End Date
-            SetCash(100000);             //Set Strategy Cash
+            SetStartDate(_startDate);   //Set Start Date
+            SetEndDate(_endDate);    //Set End Date
+            SetCash(22000);             //Set Strategy Cash
 
             int i = 0;
             foreach (string symbol in Symbols)
@@ -64,7 +66,7 @@ namespace QuantConnect.Algorithm.CSharp.ITrendAlgorithm
                 #region Logging stuff - Initializing
 
                 stockLogging.Add(new StringBuilder());
-                stockLogging[i].AppendLine("Counter, Time, Close, ITrend, Momentum, Trigger, Signal, limitPrice, FillPrice, State, LastState, ShareSize, IsShort, IsLong, QuantityHold");
+                stockLogging[i].AppendLine("Counter, Time, Close, ITrend, Momentum, Trigger,Portfolio Value, Signal, limitPrice, FillPrice, State, LastState, ShareSize, IsShort, IsLong, QuantityHold");
                 i++;
 
                 #endregion Logging stuff - Initializing
@@ -146,11 +148,12 @@ namespace QuantConnect.Algorithm.CSharp.ITrendAlgorithm
 
                 #region Logging stuff - Filling the data
 
-                string newLine = string.Format("{0},{1},{2},{3},{4},{5}",
+                string newLine = string.Format("{0},{1},{2},{3},{4},{5},{6}",
                                                barCounter, Time, data[symbol].Close,
                                                Strategy[symbol].ITrend.Current.Value,
                                                Strategy[symbol].ITrendMomentum.Current.Value,
-                                               Strategy[symbol].ITrend.Current.Value + Strategy[symbol].ITrendMomentum.Current.Value
+                                               Strategy[symbol].ITrend.Current.Value + Strategy[symbol].ITrendMomentum.Current.Value,
+                                               Portfolio.TotalPortfolioValue
                                                );
                 stockLogging[i].AppendLine(newLine);
                 i++;
@@ -166,7 +169,7 @@ namespace QuantConnect.Algorithm.CSharp.ITrendAlgorithm
             foreach (string symbol in Symbols)
             {
                 string filename = string.Format("ITrendDebug_{0}.csv", symbol);
-                string filePath = @"C:\Users\JJ\Desktop\MA y señales\ITrend Debug\" + filename;
+                string filePath = @"C:\Users\Nick\Documents\Visual Studio 2013\Projects\LeanITrend\Engine\bin\Debug\" + filename;
 
                 if (File.Exists(filePath)) File.Delete(filePath);
 
