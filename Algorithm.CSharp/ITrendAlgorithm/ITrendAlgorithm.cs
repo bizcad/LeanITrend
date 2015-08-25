@@ -2,7 +2,9 @@
 using QuantConnect.Orders;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
+using System.Text;
 
 namespace QuantConnect.Algorithm.CSharp.ITrendAlgorithm
 {
@@ -20,21 +22,26 @@ namespace QuantConnect.Algorithm.CSharp.ITrendAlgorithm
         private decimal RngFac = 0.35m;
 
         // Dictionary used to store the ITrendStrategy object for each symbol.
-        private Dictionary<string, ITrendStrategy> Strategy;
+        private Dictionary<string, ITrendStrategy> Strategy = new Dictionary<string, ITrendStrategy>();
 
         // Dictionary used to store the Lists of OrderTickets object for each symbol.
-        private Dictionary<string, List<OrderTicket>> Tickets;
-
-        // Dictionary used to store the Litts of orderTickets object for each symbol.
-        private Dictionary<string, int> OrderN; // hmm capaz que lo saco.
+        private Dictionary<string, List<OrderTicket>> Tickets = new Dictionary<string, List<OrderTicket>>();
 
         // Dictionary used to store the portfolio sharesize for each symbol.
-        private Dictionary<string, decimal> ShareSize;
+        private Dictionary<string, decimal> ShareSize = new Dictionary<string, decimal>();
 
         // Dictionary used to store the las operation for each symbol.
-        private Dictionary<string, OrderSignal> LastOrderSent;
+        private Dictionary<string, OrderSignal> LastOrderSent = new Dictionary<string, OrderSignal>();
 
         #endregion Fields
+
+        #region Logging stuff - Defining
+
+        public List<StringBuilder> stockLogging = new List<StringBuilder>();
+        public StringBuilder portfolioLogging = new StringBuilder();
+        private int barCounter = 0;
+
+        #endregion Logging stuff - Defining
 
         #region QCAlgorithm methods
 
@@ -44,24 +51,33 @@ namespace QuantConnect.Algorithm.CSharp.ITrendAlgorithm
             SetEndDate(2013, 10, 11);    //Set End Date
             SetCash(100000);             //Set Strategy Cash
 
+            int i = 0;
             foreach (string symbol in Symbols)
             {
                 AddSecurity(SecurityType.Equity, symbol, Resolution.Minute);
                 Strategy.Add(symbol, new ITrendStrategy(ITrendPeriod));
                 Tickets.Add(symbol, new List<OrderTicket>());
-                OrderN.Add(symbol, 0);
                 // Equal porfolio shares for every stock.
                 ShareSize.Add(symbol, (maxLeverage * (1 - leverageBuffer)) / Symbols.Count());
                 LastOrderSent.Add(symbol, OrderSignal.doNothing);
+
+                #region Logging stuff - Initializing
+
+                stockLogging.Add(new StringBuilder());
+                stockLogging[i].AppendLine("Counter, Time, Close, ITrend, Momentum, Trigger, Signal, limitPrice, FillPrice, State, LastState, ShareSize, IsShort, IsLong, QuantityHold");
+                i++;
+
+                #endregion Logging stuff - Initializing
             }
         }
 
         public void OnData(TradeBars data)
         {
             int shares;
-            OrderSignal actualOrder;
-            decimal limitPrice = 1m;
+            OrderSignal actualOrder = OrderSignal.doNothing;
+            decimal limitPrice;
 
+            int i = 0;
             foreach (string symbol in Symbols)
             {
                 // First check if there are some limit orders not filled yet.
@@ -70,6 +86,7 @@ namespace QuantConnect.Algorithm.CSharp.ITrendAlgorithm
                     CheckOrderStatus(symbol, LastOrderSent[symbol]);
                 }
 
+                limitPrice = -1m; // for debug
                 // Now check if there is some signal.
                 actualOrder = Strategy[symbol].CheckSignal();
                 switch (actualOrder)
@@ -103,7 +120,7 @@ namespace QuantConnect.Algorithm.CSharp.ITrendAlgorithm
                         Tickets[symbol].Add(MarketOrder(symbol, shares));
                         // Beacuse the order is an synchronously market order, they'll fill
                         // inmediatlly. So, update the ITrend strategy and the LastOrder Dictionary.
-                        Strategy[symbol].Position = StockStatus.noInvested;
+                        Strategy[symbol].Position = StockState.noInvested;
                         Strategy[symbol].EntryPrice = null;
                         LastOrderSent[symbol] = OrderSignal.doNothing;
                         break;
@@ -116,14 +133,42 @@ namespace QuantConnect.Algorithm.CSharp.ITrendAlgorithm
                         Tickets[symbol].Add(MarketOrder(symbol, shares));
                         // Beacuse the order is an synchronously market order, they'll fill
                         // inmediatlly. So, update the ITrend strategy and the LastOrder Dictionary.
-                        if (actualOrder == OrderSignal.revertToLong) Strategy[symbol].Position = StockStatus.longPosition;
-                        else if (actualOrder == OrderSignal.revertToShort) Strategy[symbol].Position = StockStatus.shortPosition;
+                        if (actualOrder == OrderSignal.revertToLong) Strategy[symbol].Position = StockState.longPosition;
+                        else if (actualOrder == OrderSignal.revertToShort) Strategy[symbol].Position = StockState.shortPosition;
                         Strategy[symbol].EntryPrice = Tickets[symbol].Last().AverageFillPrice;
                         LastOrderSent[symbol] = actualOrder;
                         break;
 
                     default: break;
                 }
+
+                #region Logging stuff - Filling the data
+
+                string newLine = string.Format("{0},{1},{2},{3},{4},{5}",
+                                               barCounter, Time, data[symbol].Close,
+                                               Strategy[symbol].ITrend.Current.Value,
+                                               Strategy[symbol].ITrendMomentum.Current.Value,
+                                               Strategy[symbol].ITrend.Current.Value + Strategy[symbol].ITrendMomentum.Current.Value
+                                               );
+                stockLogging[i].AppendLine(newLine);
+                i++;
+
+                #endregion Logging stuff - Filling the data
+            }
+            barCounter++; // just for debug
+        }
+
+        public override void OnEndOfAlgorithm()
+        {
+            int i = 0;
+            foreach (string symbol in Symbols)
+            {
+                string filename = string.Format("ITrendDebug_{0}.csv", symbol);
+                string filePath = @"C:\Users\JJ\Desktop\MA y señales\ITrend Debug\" + filename;
+
+                if (File.Exists(filePath)) File.Delete(filePath);
+
+                File.AppendAllText(filePath, stockLogging[i].ToString());
             }
         }
 
@@ -153,11 +198,11 @@ namespace QuantConnect.Algorithm.CSharp.ITrendAlgorithm
             // Once the ticket is filled, update the ITrenStrategy object for the symbol.
             if (lastOrder == OrderSignal.goLong)
             {
-                Strategy[symbol].Position = StockStatus.longPosition;
+                Strategy[symbol].Position = StockState.longPosition;
             }
             else if (lastOrder == OrderSignal.goShort)
             {
-                Strategy[symbol].Position = StockStatus.shortPosition;
+                Strategy[symbol].Position = StockState.shortPosition;
             }
             Strategy[symbol].EntryPrice = Tickets[symbol].Last().AverageFillPrice;
             // Update the LastOrderSent dictionary, to avoid check filled orders many times.

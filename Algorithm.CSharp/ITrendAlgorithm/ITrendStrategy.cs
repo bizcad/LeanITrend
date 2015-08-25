@@ -3,7 +3,7 @@ using System;
 
 namespace QuantConnect.Algorithm.CSharp.ITrendAlgorithm
 {
-    internal enum StockStatus
+    public enum StockState
     {
         shortPosition,  // The Portfolio has short position in this bar.
         longPosition,   // The Portfolio has short position in this bar.
@@ -11,7 +11,7 @@ namespace QuantConnect.Algorithm.CSharp.ITrendAlgorithm
         orderSent       // An order has been sent in this same bar, skip analysis.
     };
 
-    internal enum OrderSignal
+    public enum OrderSignal
     {
         goShort, goLong,                // Entry to the market orders.
         closeShort, closeLong,          // Exit from the market orders.
@@ -19,19 +19,19 @@ namespace QuantConnect.Algorithm.CSharp.ITrendAlgorithm
         doNothing
     };
 
-    public class ITrendStrategy
+    public class ITrendStrategy 
     {
         #region Fields
 
-        private InstantaneousTrend ITrend;
-        private Momentum ITrendMomentum;
-        private RollingWindow<Momentum> Trigger;
+        public InstantaneousTrend ITrend;
+        public Momentum ITrendMomentum;
+        public RollingWindow<Momentum> Trigger;
 
         private decimal _tolerance = 0.001m;
         private decimal _revertPCT = 1.0015m;
 
-        private Nullable<decimal> _entryPrice;
-        private StockStatus _position;
+        private Nullable<decimal> _entryPrice = null;
+        private StockState _position = StockState.noInvested;
 
         public Nullable<decimal> EntryPrice
         {
@@ -39,7 +39,7 @@ namespace QuantConnect.Algorithm.CSharp.ITrendAlgorithm
             set { _entryPrice = value; }
         }
 
-        public StockStatus Position
+        public StockState Position
         {
             get { return _position; }
             set { _position = value; }
@@ -96,19 +96,19 @@ namespace QuantConnect.Algorithm.CSharp.ITrendAlgorithm
 
             switch (Position)
             {
-                case StockStatus.noInvested:
+                case StockState.noInvested:
                     if (TriggerCrossITrendFromBelow) order = OrderSignal.goLong;
                     else if (TriggerCrossITrendFromAbove) order = OrderSignal.goShort;
                     else order = OrderSignal.doNothing;
                     break;
 
-                case StockStatus.longPosition:
+                case StockState.longPosition:
                     if (TriggerCrossITrendFromAbove) order = OrderSignal.closeLong;
                     else if (ExitFromLong) order = OrderSignal.revertToShort;
                     else order = OrderSignal.doNothing;
                     break;
 
-                case StockStatus.shortPosition:
+                case StockState.shortPosition:
                     if (TriggerCrossITrendFromBelow) order = OrderSignal.closeShort;
                     else if (ExitFromShort) order = OrderSignal.revertToLong;
                     else order = OrderSignal.doNothing;
