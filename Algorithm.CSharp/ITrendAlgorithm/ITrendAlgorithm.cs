@@ -80,6 +80,8 @@ namespace QuantConnect.Algorithm.CSharp.ITrendAlgorithm
             int i = 0;
             foreach (string symbol in Symbols)
             {
+                // Ugly, so ugly way
+                Strategy[symbol].ITrend.Update(new Indicators.IndicatorDataPoint(Time, data[symbol].Close));
                 // First check if there are some limit orders not filled yet.
                 if (LastOrderSent[symbol] == OrderSignal.goLong || LastOrderSent[symbol] == OrderSignal.goShort)
                 {
