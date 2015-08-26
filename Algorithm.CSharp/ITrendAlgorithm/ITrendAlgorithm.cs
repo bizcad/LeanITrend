@@ -21,15 +21,15 @@ namespace QuantConnect.Algorithm.CSharp.ITrendAlgorithm
      * +-------------------------------------------------+*/
         private static int ITrendPeriod = 7;            // Instantaneous Trend period.
         private static decimal Tolerance = 0.005m;      // Trigger - Trend crossing tolerance.
-        private static decimal RevertPCT = 1.0015m;     // Pocentage tolerance before rever position.
+        private static decimal RevertPCT = 1.0015m;     // Percentage tolerance before revert position.
         
-        private static decimal maxLeverage = 3m;        // Maximun Leverage.
+        private static decimal maxLeverage = 3m;        // Maximum Leverage.
         private decimal leverageBuffer = 0.25m;         // Percentage of Leverage left unused.
-        private int maxOperationQuantity = 250;         // Maximun shares per operation.
+        private int maxOperationQuantity = 250;         // Maximum shares per operation.
 
         private decimal RngFac = 0.35m;                 // Percentage of the bar range used to estimate limit prices.
 
-        private bool resetAtEndOfDay = false;           // Reset the strategies at EOD.
+        private bool resetAtEndOfDay = true;           // Reset the strategies at EOD.
         private bool noOvernight = true;                // Close all positions before market close.
     /* +-------------------------------------------------+*/
         
@@ -44,7 +44,7 @@ namespace QuantConnect.Algorithm.CSharp.ITrendAlgorithm
         // Dictionary used to store the portfolio sharesize for each symbol.
         private Dictionary<string, decimal> ShareSize = new Dictionary<string, decimal>();
 
-        // Dictionary used to store the las operation for each symbol.
+        // Dictionary used to store the last operation for each symbol.
         private Dictionary<string, OrderSignal> LastOrderSent = new Dictionary<string, OrderSignal>();
 
         EquityExchange theMarket = new EquityExchange();
@@ -73,7 +73,7 @@ namespace QuantConnect.Algorithm.CSharp.ITrendAlgorithm
                 AddSecurity(SecurityType.Equity, symbol, Resolution.Minute);
                 Strategy.Add(symbol, new ITrendStrategy(ITrendPeriod, Tolerance, RevertPCT));
                 Tickets.Add(symbol, new List<OrderTicket>());
-                // Equal porfolio shares for every stock.
+                // Equal portfolio shares for every stock.
                 ShareSize.Add(symbol, (maxLeverage * (1 - leverageBuffer)) / Symbols.Count());
                 LastOrderSent.Add(symbol, OrderSignal.doNothing);
 
@@ -303,8 +303,8 @@ namespace QuantConnect.Algorithm.CSharp.ITrendAlgorithm
                     shares = PositionShares(symbol, actualOrder);
                     // Send the order.
                     Tickets[symbol].Add(MarketOrder(symbol, shares));
-                    // Beacuse the order is an synchronously market order, they'll fill
-                    // inmediatlly. So, update the ITrend strategy and the LastOrder Dictionary.
+                    // Because the order is an synchronously market order, they'll fill
+                    // inmediatelly. So, update the ITrend strategy and the LastOrder Dictionary.
                     Strategy[symbol].Position = StockState.noInvested;
                     Strategy[symbol].EntryPrice = null;
                     LastOrderSent[symbol] = OrderSignal.doNothing;
