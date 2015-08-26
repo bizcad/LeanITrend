@@ -195,8 +195,6 @@ namespace QuantConnect.Algorithm.Examples
                         _algorithm.Buy(_symbol, _algorithm.Portfolio[_symbol].AbsoluteQuantity);
                     }
 
-                    //System.Threading.Thread.Sleep(100);
-
                     return true;
                 }
             }

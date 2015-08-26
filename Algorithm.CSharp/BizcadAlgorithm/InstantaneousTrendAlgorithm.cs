@@ -2,7 +2,7 @@
 using System.Linq;
 using QuantConnect.Data.Market;
 using QuantConnect.Indicators;
-using QuantConnect.Logging;
+//using QuantConnect.Logging;
 using QuantConnect.Orders;
 using QuantConnect.Securities;
 using QuantConnect.Util;
@@ -18,18 +18,18 @@ namespace QuantConnect.Algorithm.Examples
 
         private string symbol = "AAPL";
 
-        #region "Custom Logging"
-        private ILogHandler mylog = Composer.Instance.GetExportedValueByTypeName<ILogHandler>("CustomFileLogHandler");
-        private ILogHandler dailylog = Composer.Instance.GetExportedValueByTypeName<ILogHandler>("DailyFileLogHandler");
-        private ILogHandler transactionlog = Composer.Instance.GetExportedValueByTypeName<ILogHandler>("TransactionFileLogHandler");
-        private readonly OrderReporter _orderReporter;
+        //#region "Custom Logging"
+        //private ILogHandler mylog = Composer.Instance.GetExportedValueByTypeName<ILogHandler>("CustomFileLogHandler");
+        //private ILogHandler dailylog = Composer.Instance.GetExportedValueByTypeName<ILogHandler>("DailyFileLogHandler");
+        //private ILogHandler transactionlog = Composer.Instance.GetExportedValueByTypeName<ILogHandler>("TransactionFileLogHandler");
+        //private readonly OrderReporter _orderReporter;
 
-        private string ondataheader = @"Time,BarCount,trade size,Open,High,Low,Close,Time,Price,Trend,Trigger,ZeroLag,SMA20, iFishTrend,CyberCycle,iFishCyberCycle,maximum, minimum,pricePassedMax,pricePassedMin,ROC,RSI High,RSI Low, iFishRSIHigh, iFishRSILow, direction,slope, comment, Entry Price, Exit Price,orderId , unrealized, shares owned,trade profit, trade fees, trade net,last trade fees, profit, fees, net, day profit, day fees, day net, Portfolio Value";
-        private string dailyheader = @"Trading Date,Daily Profit, Daily Fees, Daily Net, Cum profit, Cum Fees, Cum Net, Trades/day, Portfolio Value, Shares Owned";
-        private string transactionheader = @"Symbol,Quantity,Price,Direction,Order Date,Settlement Date, Amount,Commission,Net,Nothing,Description,Action Id,Order Id,RecordType,TaxLotNumber";
-        private string comment;
+        //private string ondataheader = @"Time,BarCount,trade size,Open,High,Low,Close,Time,Price,Trend,Trigger,ZeroLag,SMA20, iFishTrend,CyberCycle,iFishCyberCycle,maximum, minimum,pricePassedMax,pricePassedMin,ROC,RSI High,RSI Low, iFishRSIHigh, iFishRSILow, direction,slope, comment, Entry Price, Exit Price,orderId , unrealized, shares owned,trade profit, trade fees, trade net,last trade fees, profit, fees, net, day profit, day fees, day net, Portfolio Value";
+        //private string dailyheader = @"Trading Date,Daily Profit, Daily Fees, Daily Net, Cum profit, Cum Fees, Cum Net, Trades/day, Portfolio Value, Shares Owned";
+        //private string transactionheader = @"Symbol,Quantity,Price,Direction,Order Date,Settlement Date, Amount,Commission,Net,Nothing,Description,Action Id,Order Id,RecordType,TaxLotNumber";
+        //private string comment;
 
-        #endregion
+        //#endregion
 
         private int barcount = 0;
 
@@ -38,31 +38,28 @@ namespace QuantConnect.Algorithm.Examples
         private RollingWindow<IndicatorDataPoint> trendHistory;
         private RollingWindow<IndicatorDataPoint> trendTrigger;
 
-        #region logging
-        // P & L
-        private int sharesOwned = 0;
-        decimal tradeprofit = 0m;
-        decimal tradefees = 0m;
-        decimal tradenet = 0m;
-        private decimal lasttradefees = 0;
-        decimal profit = 0m;
-        decimal fees = 0m;
-        private decimal netprofit = 0;
-        private decimal dayprofit = 0;
-        private decimal dayfees = 0;
-        private decimal daynet = 0;
-        private decimal lastprofit = 0;
-        private decimal lastfees = 0;
-        private int tradecount;
-        private int lasttradecount;
+        //#region logging
+        //// P & L
+        //private int sharesOwned = 0;
+        //decimal tradeprofit = 0m;
+        //decimal tradefees = 0m;
+        //decimal tradenet = 0m;
+        //private decimal lasttradefees = 0;
+        //decimal profit = 0m;
+        //decimal fees = 0m;
+        //private decimal netprofit = 0;
+        //private decimal dayprofit = 0;
+        //private decimal dayfees = 0;
+        //private decimal daynet = 0;
+        //private decimal lastprofit = 0;
+        //private decimal lastfees = 0;
+        //private int tradecount;
+        //private int lasttradecount;
+        //#endregion
 
         private decimal nEntryPrice = 0;
         private decimal nExitPrice = 0;
-        private DateTime tradingDate;
 
-
-
-        #endregion
 
         // Strategy
         private InstantTrendStrategy iTrendStrategy;
@@ -78,14 +75,14 @@ namespace QuantConnect.Algorithm.Examples
         /// <seealso cref="QCAlgorithm.SetCash(decimal)"/>
         public override void Initialize()
         {
-            #region logging
-            var algoname = this.GetType().Name;
-            mylog.Debug(algoname);
-            mylog.Debug(ondataheader);
-            dailylog.Debug(algoname);
-            dailylog.Debug(dailyheader);
-            transactionlog.Debug(transactionheader);
-            #endregion
+            //#region logging
+            //var algoname = this.GetType().Name;
+            //mylog.Debug(algoname);
+            //mylog.Debug(ondataheader);
+            //dailylog.Debug(algoname);
+            //dailylog.Debug(dailyheader);
+            //transactionlog.Debug(transactionheader);
+            //#endregion
 
             //Initialize dates
             SetStartDate(_startDate);
@@ -114,10 +111,11 @@ namespace QuantConnect.Algorithm.Examples
         /// <param name="data">TradeBars IDictionary object with your stock data</param>
         public void OnData(TradeBars data)
         {
-            comment = string.Empty;
+            //#region logging
+            //comment = string.Empty;
+            //tradingDate = data.Time;
+            //#endregion
             barcount++;
-            tradingDate = data.Time;
-            decimal slope = 0;
 
             // Add the history for the bar
             var time = data.Time;
@@ -132,7 +130,7 @@ namespace QuantConnect.Algorithm.Examples
                 tradesize = (int)(Portfolio.Cash / Convert.ToInt32(Price[0].Value + 1));
             }
 
-            // Logging and iTrendStrategy start on bar 3 because it uses trendHistory[0] - trendHistory[3]
+            // iTrendStrategy starts on bar 3 because it uses trendHistory[0] - trendHistory[3]
             if (barcount < 7 && barcount > 2)
             {
                 trendHistory[0].Value = (Price[0].Value + 2 * Price[1].Value + Price[2].Value) / 4;
@@ -144,44 +142,44 @@ namespace QuantConnect.Algorithm.Examples
             }
 
             Strategy(data);
-            sharesOwned = Portfolio[symbol].Quantity;
 
-            #region logging
-            string logmsg =
-                string.Format(
-                    "{0},{1},{2},{3},{4},{5},{6},{7},{8},{9},{10},{11},{12},{13},{14},{15},{16},{17},{18},{19},{20},{21},{22},{23}",
-                    data.Time,
-                    barcount,
-                    tradesize,
-                    data[symbol].Open,
-                    data[symbol].High,
-                    data[symbol].Low,
-                    data[symbol].Close,
-                    data.Time.ToShortTimeString(),
-                    Price[0].Value,
-                    trend.Current.Value,
-                    trendTrigger[0].Value,
-                    comment,
-                    nEntryPrice,
-                    nExitPrice,
-                    orderId,
-                    Portfolio.TotalUnrealisedProfit,
-                    sharesOwned,
-                    tradeprofit,
-                    tradefees,
-                    tradenet,
-                    Portfolio.TotalPortfolioValue,
-                    "",
-                    "",
-                    ""
-                    );
-            mylog.Debug(logmsg);
+            //#region logging
+            //sharesOwned = Portfolio[symbol].Quantity;
+            //string logmsg =
+            //    string.Format(
+            //        "{0},{1},{2},{3},{4},{5},{6},{7},{8},{9},{10},{11},{12},{13},{14},{15},{16},{17},{18},{19},{20},{21},{22},{23}",
+            //        data.Time,
+            //        barcount,
+            //        tradesize,
+            //        data[symbol].Open,
+            //        data[symbol].High,
+            //        data[symbol].Low,
+            //        data[symbol].Close,
+            //        data.Time.ToShortTimeString(),
+            //        Price[0].Value,
+            //        trend.Current.Value,
+            //        trendTrigger[0].Value,
+            //        comment,
+            //        nEntryPrice,
+            //        nExitPrice,
+            //        orderId,
+            //        Portfolio.TotalUnrealisedProfit,
+            //        sharesOwned,
+            //        tradeprofit,
+            //        tradefees,
+            //        tradenet,
+            //        Portfolio.TotalPortfolioValue,
+            //        "",
+            //        "",
+            //        ""
+            //        );
+            //mylog.Debug(logmsg);
 
-            // reset the trade profit for logging
-            tradeprofit = 0;
-            tradefees = 0;
-            tradenet = 0;
-            #endregion
+            //// reset the trade profit
+            //tradeprofit = 0;
+            //tradefees = 0;
+            //tradenet = 0;
+            //#endregion
 
             if (data.Time.Hour == 16)
             {
@@ -200,7 +198,7 @@ namespace QuantConnect.Algorithm.Examples
         /// <param name="data">TradeBars - the data received by the OnData event</param>
         private void Strategy(TradeBars data)
         {
-            comment = string.Empty;
+            string comment = string.Empty;
             #region "Strategy Execution"
 
             if (SellOutEndOfDay(data))
@@ -268,73 +266,79 @@ namespace QuantConnect.Algorithm.Examples
                     {
                         iTrendStrategy.orderFilled = true;
 
-                        #region logging
-                        OrderReporter reporter = new OrderReporter((QCAlgorithm)this, transactionlog);
-                        #endregion
-                        reporter.ReportTransaction(orderEvent, ticket);
+                        //#region logging
+                        //OrderReporter reporter = new OrderReporter((QCAlgorithm)this, transactionlog);
+                        //reporter.ReportTransaction(orderEvent, ticket);
+                        //tradecount++;
+                        //#endregion
 
-                        tradecount++;
 
                         if (Portfolio[orderEvent.Symbol].Invested)
                         {
-                            iTrendStrategy.nEntryPrice = orderEvent.FillPrice; ;
-                            tradefees = Securities[symbol].Holdings.TotalFees - lasttradefees;
+                            iTrendStrategy.nEntryPrice = orderEvent.FillPrice; 
+                            //#region logging
+                            //tradefees = Securities[symbol].Holdings.TotalFees - lasttradefees;
+                            //#endregion
+
+
                         }
+                        //#region logging
                         else
                         {
-                            tradefees += Securities[symbol].Holdings.TotalFees - lasttradefees;
-                            CalculateTradeProfit(ticket);
+                            //tradefees += Securities[symbol].Holdings.TotalFees - lasttradefees;
+                            //CalculateTradeProfit(ticket);
                         }
+                        //#endregion
                     }
                 }
             }
         }
-
+        //#region logging
         /// <summary>
         /// Calculates the net profit on the last trade and updates the last trade fees
         /// </summary>
         /// <param name="ticket">OrderTicket - the ticket for the trade</param>
-        private void CalculateTradeProfit(OrderTicket ticket)
-        {
-            tradeprofit = Securities[symbol].Holdings.LastTradeProfit;
-            tradenet = tradeprofit - tradefees;
-            lasttradefees = Securities[symbol].Holdings.TotalFees;
-        }
+        //private void CalculateTradeProfit(OrderTicket ticket)
+        //{
+        //    tradeprofit = Securities[symbol].Holdings.LastTradeProfit;
+        //    tradenet = tradeprofit - tradefees;
+        //    lasttradefees = Securities[symbol].Holdings.TotalFees;
+        //}
         /// <summary>
         /// Calculates and reports profits or losses after the last trade of the day
         /// </summary>
-        private void CalculateDailyProfits()
-        {
-            foreach (SecurityHolding holding in Portfolio.Values)
-            {
-                dayprofit = holding.Profit - lastprofit;
-                dayfees = holding.TotalFees - lastfees;
-                daynet = dayprofit - dayfees;
-                lastprofit = holding.Profit;
-                lastfees = holding.TotalFees;
-                #region logging
-                string msg = String.Format("{0},{1},{2},{3},{4},{5},{6},{7},{8},{9},{10}",
-                    tradingDate.ToShortDateString(),
-                    dayprofit,
-                    dayfees,
-                    daynet,
-                    holding.Profit,
-                    holding.TotalFees,
-                    holding.Profit - holding.TotalFees,
-                    tradecount - lasttradecount,
-                    Portfolio.TotalPortfolioValue,
-                    sharesOwned,
-                    ""
-                    );
-                dailylog.Debug(msg);
-                #endregion
-                lasttradecount = tradecount;
-                dayprofit = 0;
-                dayfees = 0;
-                daynet = 0;
-            }
-        }
-
+        //private void CalculateDailyProfits()
+        //{
+        //    foreach (SecurityHolding holding in Portfolio.Values)
+        //    {
+                //#region logging
+                //dayprofit = holding.Profit - lastprofit;
+                //dayfees = holding.TotalFees - lastfees;
+                //daynet = dayprofit - dayfees;
+                //lastprofit = holding.Profit;
+                //lastfees = holding.TotalFees;
+                //string msg = String.Format("{0},{1},{2},{3},{4},{5},{6},{7},{8},{9},{10}",
+                //    tradingDate.ToShortDateString(),
+                //    dayprofit,
+                //    dayfees,
+                //    daynet,
+                //    holding.Profit,
+                //    holding.TotalFees,
+                //    holding.Profit - holding.TotalFees,
+                //    tradecount - lasttradecount,
+                //    Portfolio.TotalPortfolioValue,
+                //    sharesOwned,
+                //    ""
+                //    );
+                //dailylog.Debug(msg);
+                //lasttradecount = tradecount;
+                //dayprofit = 0;
+                //dayfees = 0;
+                //daynet = 0;
+                //#endregion
+        //    }
+        //}
+        //#endregion
         public bool SellOutEndOfDay(TradeBars data)
         {
             if (shouldSellOutAtEod)
@@ -351,11 +355,13 @@ namespace QuantConnect.Algorithm.Examples
                     }
 
                     // Daily Profit
-                    if (data.Time.Hour == 16)
-                    {
-                        CalculateDailyProfits();
-                        sharesOwned = Portfolio[symbol].Quantity;
-                    }
+                    //#region logging
+                    //if (data.Time.Hour == 16)
+                    //{
+                    //    CalculateDailyProfits();
+                    //    sharesOwned = Portfolio[symbol].Quantity;
+                    //}
+                    //#endregion
 
                     return false;
                 }
