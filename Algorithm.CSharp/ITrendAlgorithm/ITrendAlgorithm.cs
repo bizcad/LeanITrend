@@ -1,10 +1,14 @@
-﻿using QuantConnect.Data.Market;
-using QuantConnect.Orders;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
+
+using QuantConnect.Data.Market;
+using QuantConnect.Orders;
+using QuantConnect.Securities.Equity;
+using QuantConnect.Securities;
+using QuantConnect.Indicators;
 
 namespace QuantConnect.Algorithm.CSharp.ITrendAlgorithm
 {
@@ -43,6 +47,8 @@ namespace QuantConnect.Algorithm.CSharp.ITrendAlgorithm
         // Dictionary used to store the las operation for each symbol.
         private Dictionary<string, OrderSignal> LastOrderSent = new Dictionary<string, OrderSignal>();
 
+        EquityExchange theMarket = new EquityExchange();
+        
         #endregion Fields
 
         #region Logging stuff - Defining
@@ -87,78 +93,41 @@ namespace QuantConnect.Algorithm.CSharp.ITrendAlgorithm
 
         public void OnData(TradeBars data)
         {
-            int shares;
             OrderSignal actualOrder = OrderSignal.doNothing;
-            decimal limitPrice = 0m;
+            bool isMarketAboutToClose;
 
             int i = 0;
             foreach (string symbol in Symbols)
             {
-                // Ugly, so ugly way
-                Strategy[symbol].ITrend.Update(new Indicators.IndicatorDataPoint(Time, data[symbol].Close));
-                // First check if there are some limit orders not filled yet.
-                if (LastOrderSent[symbol] == OrderSignal.goLong || LastOrderSent[symbol] == OrderSignal.goShort)
-                {
-                    CheckOrderStatus(symbol, LastOrderSent[symbol]);
-                }
-
+                // Update the ITrend indicator in the strategy object.
+                Strategy[symbol].ITrend.Update(new IndicatorDataPoint(Time, data[symbol].Close));
                 
+                isMarketAboutToClose = !theMarket.DateTimeIsOpen(Time.AddMinutes(10));
 
-                // Now check if there is some signal.
-                actualOrder = Strategy[symbol].CheckSignal();
-                switch (actualOrder)
+                // Operate only if the market is open 
+                if (theMarket.DateTimeIsOpen(Time))
                 {
-                    case OrderSignal.goLong:
-                    case OrderSignal.goShort:
-                        // Define the operation size.
-                        shares = PositionShares(symbol, actualOrder);
-                        // Define the limit price.
-                        if (actualOrder == OrderSignal.goLong)
-                        {
-                            limitPrice = Math.Max(data[symbol].Low,
-                                        (data[symbol].Close - (data[symbol].High - data[symbol].Low) * RngFac));
-                        }
-                        else if (actualOrder == OrderSignal.goShort)
-                        {
-                            limitPrice = Math.Min(data[symbol].High,
-                                        (data[symbol].Close + (data[symbol].High - data[symbol].Low) * RngFac));
-                        }
-                        // Send the order.
-                        Tickets[symbol].Add(LimitOrder(symbol, shares, limitPrice));
-                        // Update the LastOrderSent dictionary.
-                        LastOrderSent[symbol] = actualOrder;
-                        break;
-
-                    case OrderSignal.closeLong:
-                    case OrderSignal.closeShort:
-                        // Define the operation size.
-                        shares = PositionShares(symbol, actualOrder);
-                        // Send the order.
-                        Tickets[symbol].Add(MarketOrder(symbol, shares));
-                        // Beacuse the order is an synchronously market order, they'll fill
-                        // inmediatlly. So, update the ITrend strategy and the LastOrder Dictionary.
-                        Strategy[symbol].Position = StockState.noInvested;
-                        Strategy[symbol].EntryPrice = null;
-                        LastOrderSent[symbol] = OrderSignal.doNothing;
-                        break;
-
-                    case OrderSignal.revertToLong:
-                    case OrderSignal.revertToShort:
-                        // Define the operation size.
-                        shares = PositionShares(symbol, actualOrder);
-                        // Send the order.
-                        Tickets[symbol].Add(MarketOrder(symbol, shares));
-                        // Beacuse the order is an synchronously market order, they'll fill
-                        // inmediatlly. So, update the ITrend strategy and the LastOrder Dictionary.
-                        if (actualOrder == OrderSignal.revertToLong) Strategy[symbol].Position = StockState.longPosition;
-                        else if (actualOrder == OrderSignal.revertToShort) Strategy[symbol].Position = StockState.shortPosition;
-                        Strategy[symbol].EntryPrice = Tickets[symbol].Last().AverageFillPrice;
-                        LastOrderSent[symbol] = actualOrder;
-                        break;
-
-                    default: break;
+                    // First check if there are some limit orders not filled yet.
+                    if (LastOrderSent[symbol] == OrderSignal.goLong || LastOrderSent[symbol] == OrderSignal.goShort)
+                    {
+                        CheckOrderStatus(symbol, LastOrderSent[symbol]);
+                    }
+                    
+                    // Check if the market is about to close and noOvernight is true.
+                    if(noOvernight && isMarketAboutToClose)
+                    {
+                        if (Strategy[symbol].Position == StockState.longPosition) actualOrder = OrderSignal.closeLong;
+                        else if (Strategy[symbol].Position == StockState.shortPosition) actualOrder = OrderSignal.closeShort;
+                        else actualOrder = OrderSignal.doNothing;
+                    }
+                    else
+                    {
+                        // Now check if there is some signal and execute the strategy.
+                        actualOrder = Strategy[symbol].CheckSignal();
+                    }
+                    ExecuteStrategy(symbol, actualOrder, data);
                 }
-
+                
                 #region Logging stuff - Filling the data
 
                 //    "Counter, Time, Close, ITrend, Momentum, Trigger, Signal,"+
@@ -189,6 +158,8 @@ namespace QuantConnect.Algorithm.CSharp.ITrendAlgorithm
             }
             barCounter++; // just for debug
         }
+
+        
 
         public override void OnEndOfDay()
         {
@@ -296,6 +267,65 @@ namespace QuantConnect.Algorithm.CSharp.ITrendAlgorithm
                     break;
             }
             return quantity;
+        }
+
+        private void ExecuteStrategy(string symbol, OrderSignal actualOrder, TradeBars data)
+        {
+            int shares;
+            decimal limitPrice = 0m;
+
+            switch (actualOrder)
+            {
+                case OrderSignal.goLong:
+                case OrderSignal.goShort:
+                    // Define the operation size.
+                    shares = PositionShares(symbol, actualOrder);
+                    // Define the limit price.
+                    if (actualOrder == OrderSignal.goLong)
+                    {
+                        limitPrice = Math.Max(data[symbol].Low,
+                                    (data[symbol].Close - (data[symbol].High - data[symbol].Low) * RngFac));
+                    }
+                    else if (actualOrder == OrderSignal.goShort)
+                    {
+                        limitPrice = Math.Min(data[symbol].High,
+                                    (data[symbol].Close + (data[symbol].High - data[symbol].Low) * RngFac));
+                    }
+                    // Send the order.
+                    Tickets[symbol].Add(LimitOrder(symbol, shares, limitPrice));
+                    // Update the LastOrderSent dictionary.
+                    LastOrderSent[symbol] = actualOrder;
+                    break;
+
+                case OrderSignal.closeLong:
+                case OrderSignal.closeShort:
+                    // Define the operation size.
+                    shares = PositionShares(symbol, actualOrder);
+                    // Send the order.
+                    Tickets[symbol].Add(MarketOrder(symbol, shares));
+                    // Beacuse the order is an synchronously market order, they'll fill
+                    // inmediatlly. So, update the ITrend strategy and the LastOrder Dictionary.
+                    Strategy[symbol].Position = StockState.noInvested;
+                    Strategy[symbol].EntryPrice = null;
+                    LastOrderSent[symbol] = OrderSignal.doNothing;
+                    break;
+
+                case OrderSignal.revertToLong:
+                case OrderSignal.revertToShort:
+                    // Define the operation size.
+                    shares = PositionShares(symbol, actualOrder);
+                    // Send the order.
+                    Tickets[symbol].Add(MarketOrder(symbol, shares));
+                    // Beacuse the order is an synchronously market order, they'll fill
+                    // inmediatlly. So, update the ITrend strategy and the LastOrder Dictionary.
+                    if (actualOrder == OrderSignal.revertToLong) Strategy[symbol].Position = StockState.longPosition;
+                    else if (actualOrder == OrderSignal.revertToShort) Strategy[symbol].Position = StockState.shortPosition;
+                    Strategy[symbol].EntryPrice = Tickets[symbol].Last().AverageFillPrice;
+                    LastOrderSent[symbol] = actualOrder;
+                    break;
+
+                default: break;
+            }
         }
 
         #endregion Methods
