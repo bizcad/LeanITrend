@@ -19,17 +19,18 @@ namespace QuantConnect.Algorithm.CSharp.ITrendAlgorithm
         doNothing
     };
 
-    public class ITrendStrategy 
+    public class ITrendStrategy
     {
         #region Fields
 
-        private decimal _tolerance = 0.0005m;
+        private decimal _tolerance = 0.005m;
         private decimal _revertPCT = 1.0015m;
 
         private Nullable<decimal> _entryPrice = null;
         private StockState _position = StockState.noInvested;
 
         #region made public for debug
+
         public bool TriggerCrossOverITrend = false;
         public bool TriggerCrossUnderITrend = false;
         public bool ExitFromLong = false;
@@ -37,8 +38,9 @@ namespace QuantConnect.Algorithm.CSharp.ITrendAlgorithm
 
         public InstantaneousTrend ITrend;
         public Momentum ITrendMomentum;
-        public RollingWindow<Momentum> MomentumWindow;
-        #endregion
+        public RollingWindow<decimal> MomentumWindow;
+
+        #endregion made public for debug
 
         public Nullable<decimal> EntryPrice
         {
@@ -64,7 +66,7 @@ namespace QuantConnect.Algorithm.CSharp.ITrendAlgorithm
         {
             ITrend = new InstantaneousTrend(period);
             ITrendMomentum = new Momentum(2).Of(ITrend);
-            MomentumWindow = new RollingWindow<Momentum>(2);
+            MomentumWindow = new RollingWindow<decimal>(2);
         }
 
         /// <summary>
@@ -90,14 +92,14 @@ namespace QuantConnect.Algorithm.CSharp.ITrendAlgorithm
         /// <returns>An enum OrderSignal with the proper order to operate.</returns>
         public OrderSignal CheckSignal()
         {
-            MomentumWindow.Add(ITrendMomentum);
+            MomentumWindow.Add(ITrendMomentum.Current.Value);
             if (!MomentumWindow.IsReady) return OrderSignal.doNothing;
 
-            TriggerCrossOverITrend = MomentumWindow[1] < 0 && MomentumWindow[0] > 0;
-            TriggerCrossUnderITrend = MomentumWindow[1] > 0 && MomentumWindow[0] < 0;
+            TriggerCrossOverITrend = MomentumWindow[1] + _tolerance < 0 && MomentumWindow[0] - _tolerance > 0;
+            TriggerCrossUnderITrend = MomentumWindow[1] - _tolerance > 0 && MomentumWindow[0] + _tolerance < 0;
 
-            ExitFromLong = (_entryPrice != null) ? ITrendMomentum + ITrend < _entryPrice / _revertPCT : false;
-            ExitFromShort = (_entryPrice != null) ? ITrendMomentum + ITrend > _entryPrice * _revertPCT : false;
+            ExitFromLong = (_entryPrice != null) ? ITrend + ITrendMomentum < _entryPrice / _revertPCT : false;
+            ExitFromShort = (_entryPrice != null) ? ITrend + ITrendMomentum > _entryPrice * _revertPCT : false;
 
             OrderSignal order;
 
@@ -125,6 +127,13 @@ namespace QuantConnect.Algorithm.CSharp.ITrendAlgorithm
                     break;
             }
             return order;
+        }
+
+        public void Reset()
+        {
+            ITrend.Reset();
+            ITrendMomentum.Reset();
+            MomentumWindow.Reset();
         }
 
         #endregion Methods
