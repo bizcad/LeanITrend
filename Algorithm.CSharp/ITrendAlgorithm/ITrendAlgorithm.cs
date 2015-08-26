@@ -64,7 +64,11 @@ namespace QuantConnect.Algorithm.CSharp.ITrendAlgorithm
                 #region Logging stuff - Initializing
 
                 stockLogging.Add(new StringBuilder());
-                stockLogging[i].AppendLine("Counter, Time, Close, ITrend, Momentum, Trigger, Signal, limitPrice, FillPrice, State, LastState, ShareSize, IsShort, IsLong, QuantityHold");
+                stockLogging[i].AppendLine("Counter, Time, Close, ITrend, Momentum, Trigger, Signal,"+
+                    "MomentumWindow[1], MomentumWindow[0]," +
+                    "TriggerCrossOverITrend, TriggerCrossUnderITrend, ExitFromLong, ExitFromShort,"+
+                    "StateFromStrategy, StateFromPorfolio,");
+                    //"Counter, Time, Close, ITrend, Momentum, MomentumWindow, Signal, limitPrice, FillPrice, State, LastState, ShareSize, IsShort, IsLong, QuantityHold");
                 i++;
 
                 #endregion Logging stuff - Initializing
@@ -145,12 +149,24 @@ namespace QuantConnect.Algorithm.CSharp.ITrendAlgorithm
                 }
 
                 #region Logging stuff - Filling the data
-
-                string newLine = string.Format("{0},{1},{2},{3},{4},{5}",
+                //    "Counter, Time, Close, ITrend, Momentum, Trigger, Signal,"+
+                //    "MomentumWindow[1], MomentumWindow[0]," +
+                //    "TriggerCrossOverITrend, TriggerCrossUnderITrend, ExitFromLong, ExitFromShort,"+
+                //    "StateFromStrategy, StateFromPorfolio,"
+                string newLine = string.Format("{0},{1},{2},{3},{4},{5},{6},{7},{8},{9},{10},{11},{12},{13},{14}",
                                                barCounter, Time, data[symbol].Close,
                                                Strategy[symbol].ITrend.Current.Value,
                                                Strategy[symbol].ITrendMomentum.Current.Value,
-                                               Strategy[symbol].ITrend.Current.Value + Strategy[symbol].ITrendMomentum.Current.Value
+                                               actualOrder,
+                                               (Strategy[symbol].MomentumWindow.IsReady) ? Strategy[symbol].MomentumWindow[1].Current.Value : 0,
+                                               (Strategy[symbol].MomentumWindow.IsReady) ? Strategy[symbol].MomentumWindow[0].Current.Value : 0,
+                                               Strategy[symbol].ITrend.Current.Value + Strategy[symbol].ITrendMomentum.Current.Value,
+                                               Strategy[symbol].TriggerCrossOverITrend.ToString(),
+                                               Strategy[symbol].TriggerCrossUnderITrend.ToString(),
+                                               Strategy[symbol].ExitFromLong.ToString(),
+                                               Strategy[symbol].ExitFromShort.ToString(),
+                                               Strategy[symbol].Position.ToString(),
+                                               Portfolio[symbol].Quantity.ToString()
                                                );
                 stockLogging[i].AppendLine(newLine);
                 i++;
