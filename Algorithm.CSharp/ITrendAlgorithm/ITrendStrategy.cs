@@ -90,7 +90,7 @@ namespace QuantConnect.Algorithm.CSharp.ITrendAlgorithm
         /// Checks If the strategy throws a operation signal.
         /// </summary>
         /// <returns>An enum OrderSignal with the proper order to operate.</returns>
-        public OrderSignal CheckSignal()
+        public OrderSignal CheckSignal(decimal close)
         {
             MomentumWindow.Add(ITrendMomentum.Current.Value);
             if (!MomentumWindow.IsReady) return OrderSignal.doNothing;
@@ -98,8 +98,12 @@ namespace QuantConnect.Algorithm.CSharp.ITrendAlgorithm
             TriggerCrossOverITrend = MomentumWindow[1] + _tolerance < 0 && MomentumWindow[0] - _tolerance > 0;
             TriggerCrossUnderITrend = MomentumWindow[1] - _tolerance > 0 && MomentumWindow[0] + _tolerance < 0;
 
-            ExitFromLong = (_entryPrice != null) ? ITrend + ITrendMomentum < _entryPrice / _revertPCT : false;
-            ExitFromShort = (_entryPrice != null) ? ITrend + ITrendMomentum > _entryPrice * _revertPCT : false;
+            //ExitFromLong = (_entryPrice != null) ? ITrend + ITrendMomentum < _entryPrice / _revertPCT : false;
+            //ExitFromShort = (_entryPrice != null) ? ITrend + ITrendMomentum > _entryPrice * _revertPCT : false;
+
+            ExitFromLong = (_entryPrice != null) ? close < _entryPrice / _revertPCT : false;
+            ExitFromShort = (_entryPrice != null) ? close > _entryPrice * _revertPCT : false;
+
 
             OrderSignal order;
 

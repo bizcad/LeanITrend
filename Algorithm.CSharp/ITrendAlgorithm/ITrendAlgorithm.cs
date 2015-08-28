@@ -20,7 +20,7 @@ namespace QuantConnect.Algorithm.CSharp.ITrendAlgorithm
      * |Algorithm Control Panel                          |
      * +-------------------------------------------------+*/
         private static int ITrendPeriod = 7;            // Instantaneous Trend period.
-        private static decimal Tolerance = 0.005m;      // Trigger - Trend crossing tolerance.
+        private static decimal Tolerance = 0.005m;       // Trigger - Trend crossing tolerance.
         private static decimal RevertPCT = 1.0015m;     // Percentage tolerance before revert position.
         
         private static decimal maxLeverage = 3m;        // Maximum Leverage.
@@ -29,10 +29,10 @@ namespace QuantConnect.Algorithm.CSharp.ITrendAlgorithm
 
         private decimal RngFac = 0.35m;                 // Percentage of the bar range used to estimate limit prices.
 
-        private bool resetAtEndOfDay = true;           // Reset the strategies at EOD.
+        private bool resetAtEndOfDay = false;           // Reset the strategies at EOD.
         private bool noOvernight = true;                // Close all positions before market close.
     /* +-------------------------------------------------+*/
-        
+
         private static string[] Symbols = { "AIG", "BAC", "IBM", "SPY" };
         
         // Dictionary used to store the ITrendStrategy object for each symbol.
@@ -54,7 +54,7 @@ namespace QuantConnect.Algorithm.CSharp.ITrendAlgorithm
         #region Logging stuff - Defining
 
         public List<StringBuilder> stockLogging = new List<StringBuilder>();
-        public StringBuilder portfolioLogging = new StringBuilder();
+        public StringBuilder orderLogging = new StringBuilder();
         private int barCounter = 0;
 
         #endregion Logging stuff - Defining
@@ -65,9 +65,9 @@ namespace QuantConnect.Algorithm.CSharp.ITrendAlgorithm
         {
             SetStartDate(2013, 10, 7);   //Set Start Date
             SetEndDate(2013, 10, 11);    //Set End Date
-            SetCash(100000);             //Set Strategy Cash
+            SetCash(100000);             //Set Strategy Cash            
 
-            int i = 0;
+            int i = 0;  // Only used for logging.
             foreach (string symbol in Symbols)
             {
                 AddSecurity(SecurityType.Equity, symbol, Resolution.Minute);
@@ -80,11 +80,10 @@ namespace QuantConnect.Algorithm.CSharp.ITrendAlgorithm
                 #region Logging stuff - Initializing
 
                 stockLogging.Add(new StringBuilder());
-                stockLogging[i].AppendLine("Counter, Time, Close, ITrend, Momentum, Trigger, Signal," +
-                    "MomentumWindow[1], MomentumWindow[0]," +
+                stockLogging[i].AppendLine("Counter, Time, Close, ITrend, Trigger," +
+                    "Momentum, EntryPrice, Signal," +
                     "TriggerCrossOverITrend, TriggerCrossUnderITrend, ExitFromLong, ExitFromShort," +
                     "StateFromStrategy, StateFromPorfolio,");
-                //"Counter, Time, Close, ITrend, Momentum, MomentumWindow, Signal, limitPrice, FillPrice, State, LastState, ShareSize, IsShort, IsLong, QuantityHold");
                 i++;
 
                 #endregion Logging stuff - Initializing
@@ -123,27 +122,26 @@ namespace QuantConnect.Algorithm.CSharp.ITrendAlgorithm
                     else
                     {
                         // Now check if there is some signal and execute the strategy.
-                        actualOrder = Strategy[symbol].CheckSignal();
+                        actualOrder = Strategy[symbol].CheckSignal(data[symbol].Close);
                     }
                     ExecuteStrategy(symbol, actualOrder, data);
                 }
                 
                 #region Logging stuff - Filling the data
 
-                //    "Counter, Time, Close, ITrend, Momentum, Trigger, Signal,"+
-                //    "MomentumWindow[1], MomentumWindow[0]," +
-                //    "TriggerCrossOverITrend, TriggerCrossUnderITrend, ExitFromLong, ExitFromShort,"+
-                //    "StateFromStrategy, StateFromPorfolio,"
-                string newLine = string.Format("{0},{1},{2},{3},{4},{5},{6},{7},{8},{9},{10},{11},{12},{13},{14}",
+                //"Counter, Time, Close, ITrend, Trigger," +
+                //"Momentum, EntryPrice, Signal," +
+                //"TriggerCrossOverITrend, TriggerCrossUnderITrend, ExitFromLong, ExitFromShort," +
+                //"StateFromStrategy, StateFromPorfolio,"
+                string newLine = string.Format("{0},{1},{2},{3},{4},{5},{6},{7},{8},{9},{10},{11},{12},{13}",
                                                barCounter,
                                                Time,
                                                data[symbol].Close,
                                                Strategy[symbol].ITrend.Current.Value,
-                                               Strategy[symbol].ITrendMomentum.Current.Value,
                                                Strategy[symbol].ITrend.Current.Value + Strategy[symbol].ITrendMomentum.Current.Value,
+                                               Strategy[symbol].ITrendMomentum.Current.Value,
+                                               (Strategy[symbol].EntryPrice == null) ? 0 : Strategy[symbol].EntryPrice,
                                                actualOrder,
-                                               (Strategy[symbol].MomentumWindow.IsReady) ? Strategy[symbol].MomentumWindow[1] : 0,
-                                               (Strategy[symbol].MomentumWindow.IsReady) ? Strategy[symbol].MomentumWindow[0] : 0,
                                                Strategy[symbol].TriggerCrossOverITrend.ToString(),
                                                Strategy[symbol].TriggerCrossUnderITrend.ToString(),
                                                Strategy[symbol].ExitFromLong.ToString(),
@@ -192,7 +190,7 @@ namespace QuantConnect.Algorithm.CSharp.ITrendAlgorithm
 
         #endregion QCAlgorithm methods
 
-        #region Methods
+        #region Algorithm Methods
 
         /// <summary>
         /// Checks if the limits order are filled, and updates the ITrenStrategy object and the
@@ -269,6 +267,12 @@ namespace QuantConnect.Algorithm.CSharp.ITrendAlgorithm
             return quantity;
         }
 
+        /// <summary>
+        /// Executes the ITrend strategy orders.
+        /// </summary>
+        /// <param name="symbol">The symbol to be traded.</param>
+        /// <param name="actualOrder">The actual arder to be execute.</param>
+        /// <param name="data">The actual TradeBar data.</param>
         private void ExecuteStrategy(string symbol, OrderSignal actualOrder, TradeBars data)
         {
             int shares;
@@ -328,6 +332,6 @@ namespace QuantConnect.Algorithm.CSharp.ITrendAlgorithm
             }
         }
 
-        #endregion Methods
+        #endregion Algorithm Methods
     }
 }
