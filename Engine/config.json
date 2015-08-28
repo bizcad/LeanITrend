@@ -9,7 +9,7 @@
     "environment": "backtesting",
 
     // algorithm class selector 
-    //"algorithm-type-name": "CyberCycleAlgorithm",
+    //"algorithm-type-name": "InstantaneousTrendAlgorithm",
     "algorithm-type-name": "ITrendAlgorithm",
 
     // Algorithm language selector - options CSharp, FSharp, VisualBasic, Python, Java
