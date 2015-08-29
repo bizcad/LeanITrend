@@ -92,8 +92,8 @@ namespace QuantConnect.Algorithm.CSharp.ITrendAlgorithm
 
         public void OnData(TradeBars data)
         {
-            OrderSignal actualOrder = OrderSignal.doNothing;
             bool isMarketAboutToClose;
+            OrderSignal actualOrder = OrderSignal.doNothing;
 
             int i = 0;
             foreach (string symbol in Symbols)
@@ -111,7 +111,6 @@ namespace QuantConnect.Algorithm.CSharp.ITrendAlgorithm
                     {
                         CheckOrderStatus(symbol, LastOrderSent[symbol]);
                     }
-                    
                     // Check if the market is about to close and noOvernight is true.
                     if(noOvernight && isMarketAboutToClose)
                     {
