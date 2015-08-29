@@ -31,7 +31,7 @@ namespace QuantConnect.Algorithm.CSharp.ITrendAlgorithm
 
         private decimal _tolerance;
         private decimal _revertPCT;
-        RevertPositionCheck _checkRevertPosition;
+        private RevertPositionCheck _checkRevertPosition;
 
         private Nullable<decimal> _entryPrice = null;
         private StockState _position = StockState.noInvested;
@@ -108,7 +108,7 @@ namespace QuantConnect.Algorithm.CSharp.ITrendAlgorithm
                 ExitFromLong = (_entryPrice != null) ? close < _entryPrice / _revertPCT : false;
                 ExitFromShort = (_entryPrice != null) ? close > _entryPrice * _revertPCT : false;
             }
-            
+
             OrderSignal order;
 
             switch (Position)
