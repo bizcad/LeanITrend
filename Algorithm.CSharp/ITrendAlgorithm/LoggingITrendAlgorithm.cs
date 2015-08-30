@@ -298,6 +298,9 @@ namespace QuantConnect.Algorithm.CSharp.ITrendAlgorithm
             {
                 string filename = string.Format("ITrendDebug_{0}.csv", symbol);
                 string filePath = @"C:\Users\Nick\Documents\Visual Studio 2013\Projects\LeanITrend\Engine\bin\Debug\" + filename;
+                // JJ do not delete this line it locates my engine\bin\debug folder
+                //  I just uncomment it when I run on my local machine
+                filePath = AssemblyLocator.ExecutingDirectory() + filename;
 
                 if (File.Exists(filePath)) File.Delete(filePath);
 

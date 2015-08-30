@@ -48,6 +48,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="BasicTemplateAlgorithm.cs" />
+    <Compile Include="BizcadAlgorithm\AssemblyLocator.cs" />
     <Compile Include="BizcadAlgorithm\ConsolidatorAlgorithm.cs" />
     <Compile Include="BizcadAlgorithm\CyberCycleAlgorithm.cs" />
     <Compile Include="BizcadAlgorithm\FisherTransformAlgorithm.cs" />
