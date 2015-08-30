@@ -1,6 +1,4 @@
 using System;
-using System.Diagnostics;
-using System.Runtime;
 using QuantConnect.Data.Market;
 using QuantConnect.Indicators;
 using QuantConnect.Orders;
@@ -20,7 +18,7 @@ namespace QuantConnect.Algorithm.Examples
 
         private bool bReverseTrade = false;
         private string _symbol { get; set; }
-        private decimal RevPct = 1.0025m;
+        private decimal RevPct = 1.0015m;
         private decimal RngFac = .35m;
         private decimal nLimitPrice = 0;
         private int nStatus = 0;
@@ -42,7 +40,7 @@ namespace QuantConnect.Algorithm.Examples
         /// </summary>
         public Boolean orderFilled { get; set; }
 
-        
+
 
         /// <summary>
         /// Empty Consturctor
@@ -95,7 +93,8 @@ namespace QuantConnect.Algorithm.Examples
                 try
                 {
                     var nTrig = 2 * trendHistory[0].Value - trendHistory[2].Value;
-                    if (nStatus == 1 && nTrig < (nEntryPrice / RevPct)){
+                    if (nStatus == 1 && nTrig < (nEntryPrice / RevPct))
+                    {
                         comment = string.Format("Long Reverse to short. Close < {0} / {1}", nEntryPrice, RevPct);
                         ticket = ReverseToShort();
                         orderFilled = ticket.OrderId > 0;
@@ -124,7 +123,7 @@ namespace QuantConnect.Algorithm.Examples
                                 }
                                 else
                                 {
-                                    nLimitPrice = Math.Max(data[_symbol].Low, (data[_symbol].Close - (data[_symbol].High - data[_symbol].Low) * RngFac));
+                                    nLimitPrice = Math.Round(Math.Max(data[_symbol].Low, (data[_symbol].Close - (data[_symbol].High - data[_symbol].Low) * RngFac)), 2, MidpointRounding.ToEven);
                                     ticket = _algorithm.LimitOrder(_symbol, tradesize, nLimitPrice, "Long Limit");
                                     comment = string.Format("Enter Long Limit trig xover price up", nLimitPrice);
                                 }
@@ -146,9 +145,10 @@ namespace QuantConnect.Algorithm.Examples
                                     }
                                     else
                                     {
-                                        nLimitPrice = Math.Min(data[_symbol].High, (data[_symbol].Close + (data[_symbol].High - data[_symbol].Low) * RngFac));
+                                        nLimitPrice = Math.Round(Math.Min(data[_symbol].High, (data[_symbol].Close + (data[_symbol].High - data[_symbol].Low) * RngFac)), 2, MidpointRounding.ToEven);
                                         ticket = _algorithm.LimitOrder(_symbol, -tradesize, nLimitPrice, "Short Limit");
-                                        comment = string.Format("Enter Short Limit at {0} trig xover price down", nLimitPrice);
+                                        //ticket = _algorithm.Sell(_symbol, tradesize);
+                                        comment = string.Format("Enter Short at market trig xover price down");
                                     }
                                 }
                                 if (comment.Length == 0)

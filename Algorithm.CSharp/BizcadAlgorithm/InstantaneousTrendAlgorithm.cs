@@ -12,7 +12,7 @@ namespace QuantConnect.Algorithm.Examples
     class InstantaneousTrendAlgorithm : QCAlgorithm
     {
         private DateTime _startDate = new DateTime(2015, 8, 19);
-        private DateTime _endDate = new DateTime(2015, 8, 25);
+        private DateTime _endDate = new DateTime(2015, 8, 16);
         private decimal _portfolioAmount = 22000;
         private decimal _transactionSize = 22000;
 
@@ -24,7 +24,7 @@ namespace QuantConnect.Algorithm.Examples
         private ILogHandler transactionlog = Composer.Instance.GetExportedValueByTypeName<ILogHandler>("TransactionFileLogHandler");
         private readonly OrderReporter _orderReporter;
 
-        private string ondataheader = @"Time,BarCount,trade size,Open,High,Low,Close,Time,Price,Trend,Trigger,ZeroLag,SMA20, iFishTrend,CyberCycle,iFishCyberCycle,maximum, minimum,pricePassedMax,pricePassedMin,ROC,RSI High,RSI Low, iFishRSIHigh, iFishRSILow, direction,slope, comment, Entry Price, Exit Price,orderId , unrealized, shares owned,trade profit, trade fees, trade net,last trade fees, profit, fees, net, day profit, day fees, day net, Portfolio Value";
+        private string ondataheader = @"Time,BarCount,trade size,Open,High,Low,Close,Time,Price,Trend,Trigger,comment, Entry Price, Exit Price,orderId , unrealized, shares owned,trade profit, trade fees, trade net,last trade fees, profit, fees, net, day profit, day fees, day net, Portfolio Value";
         private string dailyheader = @"Trading Date,Daily Profit, Daily Fees, Daily Net, Cum profit, Cum Fees, Cum Net, Trades/day, Portfolio Value, Shares Owned";
         private string transactionheader = @"Symbol,Quantity,Price,Direction,Order Date,Settlement Date, Amount,Commission,Net,Nothing,Description,Action Id,Order Id,RecordType,TaxLotNumber";
         private string comment;
@@ -55,10 +55,10 @@ namespace QuantConnect.Algorithm.Examples
         private int tradecount;
         private int lasttradecount;
         private DateTime tradingDate;
-        #endregion
-
         private decimal nEntryPrice = 0;
         private decimal nExitPrice = 0;
+
+        #endregion
 
 
         // Strategy
@@ -127,7 +127,7 @@ namespace QuantConnect.Algorithm.Examples
             trendTrigger.Add(idp(time, trend.Current.Value));
             if (barcount == 1)
             {
-                tradesize = (int)(Portfolio.Cash / Convert.ToInt32(Price[0].Value + 1));
+                tradesize = (int)(_transactionSize / Convert.ToInt32(Price[0].Value + 1));
             }
 
             // iTrendStrategy starts on bar 3 because it uses trendHistory[0] - trendHistory[3]
