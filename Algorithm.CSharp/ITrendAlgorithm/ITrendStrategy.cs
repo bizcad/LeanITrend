@@ -19,12 +19,19 @@ namespace QuantConnect.Algorithm.CSharp.ITrendAlgorithm
         doNothing
     };
 
+    public enum RevertPositionCheck
+    {
+        vsTrigger,
+        vsClosePrice,
+    }
+
     public class ITrendStrategy
     {
         #region Fields
 
-        private decimal _tolerance = 0.005m;
-        private decimal _revertPCT = 1.0015m;
+        private decimal _tolerance;
+        private decimal _revertPCT;
+        private RevertPositionCheck _checkRevertPosition;
 
         private Nullable<decimal> _entryPrice = null;
         private StockState _position = StockState.noInvested;
@@ -62,24 +69,15 @@ namespace QuantConnect.Algorithm.CSharp.ITrendAlgorithm
         /// Initializes a new instance of the <see cref="ITrendStrategy"/> class.
         /// </summary>
         /// <param name="period">The period of the Instantaneous trend.</param>
-        public ITrendStrategy(int period)
+        public ITrendStrategy(int period, decimal tolerance = 0.001m, decimal revetPct = 1.0015m,
+            RevertPositionCheck checkRevertPosition = RevertPositionCheck.vsTrigger)
         {
             ITrend = new InstantaneousTrend(period);
             ITrendMomentum = new Momentum(2).Of(ITrend);
             MomentumWindow = new RollingWindow<decimal>(2);
-        }
-
-        /// <summary>
-        /// Initializes a new instance of the <see cref="ITrendStrategy"/> class.
-        /// </summary>
-        /// <param name="period">The period of the Instantaneous trend.</param>
-        /// <param name="tolerance">The tolerance coefficient.</param>
-        /// <param name="revetPct">TODO: nice description.</param>
-        public ITrendStrategy(int period, decimal tolerance, decimal revetPct)
-            : this(period)
-        {
             _tolerance = tolerance;
             _revertPCT = revetPct;
+            _checkRevertPosition = checkRevertPosition;
         }
 
         #endregion Constructors
@@ -90,16 +88,26 @@ namespace QuantConnect.Algorithm.CSharp.ITrendAlgorithm
         /// Checks If the strategy throws a operation signal.
         /// </summary>
         /// <returns>An enum OrderSignal with the proper order to operate.</returns>
-        public OrderSignal CheckSignal()
+        public OrderSignal CheckSignal(decimal close)
         {
             MomentumWindow.Add(ITrendMomentum.Current.Value);
             if (!MomentumWindow.IsReady) return OrderSignal.doNothing;
 
-            TriggerCrossOverITrend = MomentumWindow[1] + _tolerance < 0 && MomentumWindow[0] - _tolerance > 0;
-            TriggerCrossUnderITrend = MomentumWindow[1] - _tolerance > 0 && MomentumWindow[0] + _tolerance < 0;
+            TriggerCrossOverITrend = MomentumWindow[1] < 0 && MomentumWindow[0] > 0 &&
+                Math.Abs(MomentumWindow[0] - MomentumWindow[1]) >= _tolerance;
+            TriggerCrossUnderITrend = MomentumWindow[1] > 0 && MomentumWindow[0] < 0 &&
+                Math.Abs(MomentumWindow[0] - MomentumWindow[1]) >= _tolerance;
 
-            ExitFromLong = (_entryPrice != null) ? ITrend + ITrendMomentum < _entryPrice / _revertPCT : false;
-            ExitFromShort = (_entryPrice != null) ? ITrend + ITrendMomentum > _entryPrice * _revertPCT : false;
+            if (_checkRevertPosition == RevertPositionCheck.vsTrigger)
+            {
+                ExitFromLong = (_entryPrice != null) ? ITrend + ITrendMomentum < _entryPrice / _revertPCT : false;
+                ExitFromShort = (_entryPrice != null) ? ITrend + ITrendMomentum > _entryPrice * _revertPCT : false;
+            }
+            else if (_checkRevertPosition == RevertPositionCheck.vsClosePrice)
+            {
+                ExitFromLong = (_entryPrice != null) ? close < _entryPrice / _revertPCT : false;
+                ExitFromShort = (_entryPrice != null) ? close > _entryPrice * _revertPCT : false;
+            }
 
             OrderSignal order;
 

@@ -191,7 +191,7 @@ namespace QuantConnect.Algorithm.CSharp.ITrendAlgorithm
                     else
                     {
                         // Now check if there is some signal and execute the strategy.
-                        actualOrder = Strategy[symbol].CheckSignal();
+                        actualOrder = Strategy[symbol].CheckSignal(data[symbol].Close);
                     }
                     ExecuteStrategy(symbol, actualOrder, data);
                 }
