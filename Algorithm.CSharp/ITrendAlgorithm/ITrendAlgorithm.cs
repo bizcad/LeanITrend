@@ -140,7 +140,7 @@ namespace QuantConnect.Algorithm.CSharp.ITrendAlgorithm
                 string newLine = string.Format("{0},{1},{2},{3},{4},{5},{6},{7},{8},{9},{10},{11},{12},{13},{14}",
                                                barCounter,
                                                Time,
-                                               data[symbol].Close,
+                                               (data[symbol].Close + data[symbol].Open)/2,
                                                Strategy[symbol].ITrend.Current.Value,
                                                Strategy[symbol].ITrend.Current.Value + Strategy[symbol].ITrendMomentum.Current.Value,
                                                Strategy[symbol].ITrendMomentum.Current.Value,
@@ -332,6 +332,11 @@ namespace QuantConnect.Algorithm.CSharp.ITrendAlgorithm
 
                 default: break;
             }
+        }
+
+        public override void OnOrderEvent(OrderEvent orderEvent)
+        {
+            base.OnOrderEvent(orderEvent);
         }
 
         #endregion Algorithm Methods

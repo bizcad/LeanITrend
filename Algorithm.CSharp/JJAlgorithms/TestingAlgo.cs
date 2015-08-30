@@ -16,13 +16,17 @@ namespace QuantConnect
 {
     public partial class TestingAlgo : QCAlgorithm
     {
-        string symbol = "IBM";
+        #region Fields
+        private static string[] Symbols = { "AIG", "BAC", "IBM", "SPY" };
         int counter;
+        int onOrderCounter;
         
         CyclePeriod cyclePeriod;
                 
         StringBuilder toFile = new StringBuilder();
+        #endregion
 
+        #region QCAlgorithm Methods
         public override void Initialize()
         {
             SetStartDate(2013, 10, 7);
@@ -30,38 +34,93 @@ namespace QuantConnect
 
             SetCash(25000);
 
-            AddSecurity(SecurityType.Equity, symbol, Resolution.Minute);
+            foreach (var symbol in Symbols)
+            {
+                AddSecurity(SecurityType.Equity, symbol, Resolution.Minute); 
+            }
+
             cyclePeriod = new CyclePeriod("Period");
             counter = 0;
-            
-            // String to write the csv file
-            toFile.AppendLine("Time, Counter, Signal, smooth, cycle, quadrature, deltaPhase, period, instPeriod, Wavelength, Period");
+            onOrderCounter = 0;
             
         }
 
         public void OnData(TradeBars data)
         {
-            decimal signal = (decimal)sinewave(counter, WaveLength(counter), 50, 1, 0, 1);
-
-            if (cyclePeriod.Update(idp(Time, signal)))
+            if (counter % 30 == 0)
             {
-
-                string newLine = string.Format("{0}, {1}, {2}, {3},{4},{5},{6},{7},{8},{9},{10},{11}",
-                    Time, counter, signal,
-                    cyclePeriod._smooth[0],
-                    cyclePeriod._cycle[0],
-                    cyclePeriod._quadrature[0],
-                    cyclePeriod._deltaPhase[0],
-                    cyclePeriod._period,
-                    cyclePeriod._instPeriod,
-                    WaveLength(counter), 
-                    cyclePeriod.Current.Value
-                    ,"");
-                toFile.AppendLine(newLine); 
+                foreach (var symbol in Symbols)
+                {
+                    Buy(symbol, 10);
+                    //LimitOrder(symbol, 10, data[symbol].High * 1.01m);
+                }
             }
             counter++;
         }
 
+        public override void OnOrderEvent(OrderEvent orderEvent)
+        {
+            #region Logging stuff
+            string orderStatusLog;
+
+            switch (orderEvent.Status)
+            {
+                case OrderStatus.New:
+                    orderStatusLog = " was created.";
+                    break;
+                case OrderStatus.Submitted:
+                    orderStatusLog = " was submitted.";
+                    break;
+                case OrderStatus.PartiallyFilled:
+                    orderStatusLog = string.Format(" was partially filled with {0} shares of {1}, at ${2}.",
+                        orderEvent.FillQuantity,
+                        Transactions.GetOrderById(orderEvent.OrderId).Quantity,
+                        orderEvent.FillPrice
+                        );
+                    break;
+                case OrderStatus.Filled:
+                    orderStatusLog = string.Format(" was filled at ${0}.",
+                        orderEvent.FillPrice
+                        );
+                    break;
+                case OrderStatus.Canceled:
+                    orderStatusLog = " was canceled.";
+                    break;
+                case OrderStatus.None:
+                    orderStatusLog = " doesn't give a #$@!";
+                    break;
+                case OrderStatus.Invalid:
+                    orderStatusLog = " is invalid.";
+                    break;
+                default:
+                    orderStatusLog = "!";
+                    break;
+            }
+
+
+            string newLine = string.Format("{0} : {1} {2} Order Id {3} of {4}",
+                Time,
+                orderEvent.Direction,
+                Transactions.GetOrderById(orderEvent.OrderId).Type,
+                orderEvent.OrderId,
+                orderEvent.Symbol
+                ) + orderStatusLog;
+            toFile.AppendLine(newLine);
+
+            #endregion
+        }
+
+        public override void OnEndOfAlgorithm()
+        {
+            string filePath = @"C:\Users\JJ\Desktop\MA y señales\ITrend Debug\onOrder.txt";
+            //File.Create(filePath);
+            if (File.Exists(filePath))
+                File.Delete(filePath);
+            File.AppendAllText(filePath, toFile.ToString());
+        }
+        #endregion
+
+        #region Methods
         private int WaveLength(int counter)
         {
             int waveLength = 30;
@@ -84,15 +143,7 @@ namespace QuantConnect
         {
             return new IndicatorDataPoint(time, value);
         }
-
-        public override void OnEndOfAlgorithm()
-        {
-            string filePath = @"C:\Users\Nick\Documents\Visual Studio 2013\Projects\LeanITrend\Engine\bin\Debug\CyclePeriodResults.csv";
-            //File.Create(filePath);
-            if (File.Exists(filePath))
-                File.Delete(filePath);
-            File.AppendAllText(filePath, toFile.ToString());
-        }
+        # endregion
 
     }
 }
