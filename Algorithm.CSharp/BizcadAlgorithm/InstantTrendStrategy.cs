@@ -89,6 +89,7 @@ namespace QuantConnect.Algorithm.Examples
             {
                 #region "Strategy Execution"
 
+
                 bReverseTrade = false;
                 try
                 {

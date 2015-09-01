@@ -13,8 +13,8 @@ namespace QuantConnect.Algorithm.Examples
     {
         private DateTime _startDate = new DateTime(2015, 8, 19);
         private DateTime _endDate = new DateTime(2015, 8, 25);
-        private decimal _portfolioAmount = 22000;
-        private decimal _transactionSize = 22000;
+        private decimal _portfolioAmount = 10000;
+        private decimal _transactionSize = 10000;
 
         private string symbol = "AAPL";
 
@@ -125,7 +125,11 @@ namespace QuantConnect.Algorithm.Examples
             trend.Update(idp(time, Price[0].Value));
             trendHistory.Add(idp(time, trend.Current.Value)); //add last iteration value for the cycle
             trendTrigger.Add(idp(time, trend.Current.Value));
-            if (barcount == 1)
+            if (Portfolio[symbol].Invested)
+            {
+                tradesize = Math.Abs(Portfolio[symbol].Quantity);
+            }
+            else
             {
                 tradesize = (int)(_transactionSize / Convert.ToInt32(Price[0].Value + 1));
             }
