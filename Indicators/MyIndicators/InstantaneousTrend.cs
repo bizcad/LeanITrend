@@ -12,7 +12,9 @@ namespace QuantConnect.Indicators
     public class InstantaneousTrend : WindowIndicator<IndicatorDataPoint>
     {
         // the alpha for the formula
-        private readonly decimal a = 0.5m;
+        private decimal _alpha;
+        private decimal _a;
+        private decimal _b;
         private readonly int _period;
         private readonly RollingWindow<IndicatorDataPoint> _trend;
         private readonly RollingWindow<IndicatorDataPoint> _price;
@@ -31,6 +33,9 @@ namespace QuantConnect.Indicators
             _trend = new RollingWindow<IndicatorDataPoint>(period);
             _price = new RollingWindow<IndicatorDataPoint>(period);
             _period = period;
+            _alpha = 2 / (_period + 1);
+            _a = (_alpha / 2) * (_alpha / 2);
+            _b = (1 - _alpha);
             barcount = 0;
         }
         /// <summary>
@@ -48,6 +53,16 @@ namespace QuantConnect.Indicators
         public override bool IsReady
         {
             get { return _trend.IsReady; }
+        }
+
+        /// <summary>
+        ///     Resets this indicator to its initial state
+        /// </summary>
+        public override void Reset()
+        {
+            base.Reset();
+            _trend.Reset();
+            _price.Reset();
         }
 
         /// <summary>
@@ -69,9 +84,8 @@ namespace QuantConnect.Indicators
             else
             {
                 // Calc the low pass filter _trend value and add it to the _trend
-                var lfp = (a - ((a / 2) * (a / 2))) * input.Value + ((a * a) / 2) * _price[1].Value
-                     - (a - (3 * (a * a) / 4)) * _price[2].Value + 2 * (1 - a) * _trend[0].Value
-                     - ((1 - a) * (1 - a)) * _trend[1].Value;
+                decimal lfp = (_alpha - _a) * _price[0] + 2 * _a * _price[1] - (_alpha - 3 * _a) * _price[2] 
+                    + 2 * _b * _trend[1] - _b * _b * _trend[2];
                 _trend.Add(idp(time, lfp));
             }
 
