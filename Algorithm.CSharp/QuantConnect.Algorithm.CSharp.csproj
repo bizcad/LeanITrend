@@ -53,8 +53,6 @@
     <Compile Include="BizcadAlgorithm\CyberCycleAlgorithm.cs" />
     <Compile Include="BizcadAlgorithm\FisherTransformAlgorithm.cs" />
     <Compile Include="BizcadAlgorithm\HullMovingAverageAlgorithm.cs" />
-    <Compile Include="BizcadAlgorithm\InstantaneousTrendAlgorithm.cs" />
-    <Compile Include="BizcadAlgorithm\InstantTrendStrategy.cs" />
     <Compile Include="BizcadAlgorithm\MeanReversionAlgorithm.cs" />
     <Compile Include="BizcadAlgorithm\OptimalTrackingAlgorithm.cs" />
     <Compile Include="BizcadAlgorithm\OrderReporter.cs" />
