@@ -38,7 +38,7 @@ namespace QuantConnect.Orders
         private decimal _averageFillPrice;
 
         private readonly int _orderId;
-        private readonly List<OrderEvent> _orderEvents;
+        private readonly List<OrderEvent> _orderEvents; 
         private readonly SubmitOrderRequest _submitRequest;
         private readonly List<UpdateOrderRequest> _updateRequests;
 
@@ -126,7 +126,7 @@ namespace QuantConnect.Orders
         /// <summary>
         /// Gets the order's current tag
         /// </summary>
-        public string Tag
+        public string Tag 
         {
             get { return _order == null ? _submitRequest.Tag : _order.Tag; }
         }
@@ -293,8 +293,8 @@ namespace QuantConnect.Orders
                     // keep running totals of quantity filled and the average fill price so we
                     // don't need to compute these on demand
                     _quantityFilled += orderEvent.FillQuantity;
-                    var quantityWeightedFillPrice = _orderEvents.Where(x => x.Status.IsFill()).Sum(x => x.FillQuantity * x.FillPrice);
-                    _averageFillPrice = quantityWeightedFillPrice / _quantityFilled;
+                    var quantityWeightedFillPrice = _orderEvents.Where(x => x.Status.IsFill()).Sum(x => x.FillQuantity*x.FillPrice);
+                    _averageFillPrice = quantityWeightedFillPrice/_quantityFilled;
                 }
             }
         }
@@ -411,7 +411,7 @@ namespace QuantConnect.Orders
 
         private int ResponseCount()
         {
-            return (_submitRequest.Response == OrderResponse.Unprocessed ? 0 : 1)
+            return (_submitRequest.Response == OrderResponse.Unprocessed ? 0 : 1) 
                  + (_cancelRequest == null || _cancelRequest.Response == OrderResponse.Unprocessed ? 0 : 1)
                  + _updateRequests.Count(x => x.Response != OrderResponse.Unprocessed);
         }
@@ -431,7 +431,7 @@ namespace QuantConnect.Orders
             var response = ticket.GetMostRecentOrderResponse();
             if (response != null && response.IsError)
             {
-                return (int)response.ErrorCode;
+                return (int) response.ErrorCode;
             }
             return ticket.OrderId;
         }

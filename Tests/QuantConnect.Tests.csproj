@@ -80,6 +80,9 @@
     <Compile Include="Common\Data\Market\TickTests.cs" />
     <Compile Include="Common\Data\SliceTests.cs" />
     <Compile Include="Common\Data\SubscriptionDataSourceTests.cs" />
+    <Compile Include="Common\Scheduling\DateRulesTests.cs" />
+    <Compile Include="Common\Scheduling\ScheduledEventTests.cs" />
+    <Compile Include="Common\Scheduling\TimeRulesTests.cs" />
     <Compile Include="Common\Securities\CashBookTests.cs" />
     <Compile Include="Common\Securities\CashTests.cs" />
     <Compile Include="Common\Securities\Equity\EquityTransactionModelTests.cs" />
@@ -93,6 +96,7 @@
     <Compile Include="Common\TimeKeeperTests.cs" />
     <Compile Include="Common\TimeZoneOffsetProviderTests.cs" />
     <Compile Include="Common\TimeZonesTest.cs" />
+    <Compile Include="Common\Util\BusyBlockingCollectionTests.cs" />
     <Compile Include="Common\Util\ObjectActivatorTests.cs" />
     <Compile Include="Common\Util\ObjectToListJsonConverterTests.cs" />
     <Compile Include="Common\Util\VersionHelperTests.cs" />
@@ -101,16 +105,15 @@
     <Compile Include="Configuration\ConfigTests.cs" />
     <Compile Include="Engine\DataFeeds\FillForwardEnumeratorTest.cs" />
     <Compile Include="Engine\FactorFileTests.cs" />
+    <Compile Include="Engine\RealTime\ScheduledEventTests.cs" />
     <Compile Include="Indicators\AverageDirectionalIndexTests.cs" />
     <Compile Include="Indicators\DonchianChannelTest.cs" />
     <Compile Include="Indicators\IchimokuKinkoHyoTests.cs" />
-    <Compile Include="Indicators\InstantaneousTrendTest.cs" />
     <Compile Include="Indicators\OnBalanceVolumeTest.cs" />
     <Compile Include="Indicators\WilliamsPercentRTests.cs" />
     <Compile Include="Indicators\RateOfChangePercentTests.cs" />
     <Compile Include="Indicators\RateOfChangeTests.cs" />
     <Compile Include="Indicators\StochasticTests.cs" />
-    <Compile Include="ITrendAlgorithm\ItrendStrategyTest.cs" />
     <Compile Include="RegressionTests.cs" />
     <Compile Include="TestExtensions.cs" />
     <Compile Include="Indicators\LinearWeightedMovingAverageTests.cs" />

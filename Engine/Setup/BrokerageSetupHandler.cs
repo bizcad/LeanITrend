@@ -21,6 +21,7 @@ using QuantConnect.Brokerages;
 using QuantConnect.Configuration;
 using QuantConnect.Data.Market;
 using QuantConnect.Interfaces;
+using QuantConnect.Lean.Engine.RealTime;
 using QuantConnect.Lean.Engine.Results;
 using QuantConnect.Lean.Engine.TransactionHandlers;
 using QuantConnect.Logging;
@@ -112,8 +113,9 @@ namespace QuantConnect.Lean.Engine.Setup
         /// <param name="job">Algorithm job task</param>
         /// <param name="resultHandler">The configured result handler</param>
         /// <param name="transactionHandler">The configurated transaction handler</param>
+        /// <param name="realTimeHandler">The configured real time handler</param>
         /// <returns>True on successfully setting up the algorithm state, or false on error.</returns>
-        public bool Setup(IAlgorithm algorithm, out IBrokerage brokerage, AlgorithmNodePacket job, IResultHandler resultHandler, ITransactionHandler transactionHandler)
+        public bool Setup(IAlgorithm algorithm, out IBrokerage brokerage, AlgorithmNodePacket job, IResultHandler resultHandler, ITransactionHandler transactionHandler, IRealTimeHandler realTimeHandler)
         {
             _algorithm = algorithm;
             brokerage = default(IBrokerage);
@@ -172,7 +174,10 @@ namespace QuantConnect.Lean.Engine.Setup
 
                         //Algorithm is live, not backtesting:
                         algorithm.SetLiveMode(true);
-
+                        //Initialize the algorithm's starting date
+                        algorithm.SetDateTime(DateTime.UtcNow);
+                        //Set the source impl for the event scheduling
+                        algorithm.Schedule.SetEventSchedule(realTimeHandler);
                         //Initialise the algorithm, get the required data:
                         algorithm.Initialize();
                     }
@@ -215,6 +220,7 @@ namespace QuantConnect.Lean.Engine.Setup
                 // set the transaction models base on the brokerage properties
                 SetupHandler.UpdateTransactionModels(algorithm, algorithm.BrokerageModel);
                 algorithm.Transactions.SetOrderProcessor(transactionHandler);
+                algorithm.PostInitialize();
 
                 try
                 {
@@ -224,7 +230,8 @@ namespace QuantConnect.Lean.Engine.Setup
                 catch (Exception err)
                 {
                     Log.Error(err);
-                    AddInitializationError("Error connecting to brokerage: " + err.Message);
+                    AddInitializationError(string.Format("Error connecting to brokerage: {0}. " +
+                        "This may be caused by incorrect login credentials or an unsupported account type.", err.Message));
                     return false;
                 }
 

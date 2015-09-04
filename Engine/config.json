@@ -8,11 +8,11 @@
 
     "environment": "backtesting",
 
-    // algorithm class selector LoggingITrendAlgorithm
-    "algorithm-type-name": "InstantaneousTrendAlgorithm",
-    //"algorithm-type-name": "ITrendAlgorithm",
-    //"algorithm-type-name": "LoggingITrendAlgorithm",ConsolidatorAlgorithm
-    //"algorithm-type-name": "ConsolidatorAlgorithm",
+    // algorithm class selector
+    //"algorithm-type-name": "BasicTemplateAlgorithm",
+    //"algorithm-type-name": "LoggingITrendAlgorithm",     
+    //"algorithm-type-name": "InstantaneousTrendAlgorithm",
+    "algorithm-type-name": "ITrendAlgorithm",
 
     // Algorithm language selector - options CSharp, FSharp, VisualBasic, Python, Java
     "algorithm-language": "CSharp",
@@ -51,12 +51,6 @@
     "tradier-refresh-token": "",
     "tradier-issued-at": "",
     "trader-lifespan": "",
-
-    //Database Datafeed Connection:
-    "database-address": "localhost",
-    "database-user": "root",
-    "database-password": "",
-    "database-name": "lean",
 
     "environments": {
 

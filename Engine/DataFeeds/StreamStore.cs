@@ -124,8 +124,16 @@ namespace QuantConnect.Lean.Engine.DataFeeds
             {
                 //If the second has ticked over, and we have data not processed yet, wait for it to be stored:
                 // we're waiting for the trigger archive to enqueue and set _data to null
+                var timeout = DateTime.UtcNow.AddMilliseconds(50);
                 while (_data != null && _data.Time < ComputeBarStartTime())
-                { Thread.Sleep(1); }
+                {
+                    if (DateTime.UtcNow > timeout)
+                    {
+                        Log.Error("StreamStore.Update(BaseData): Timeout reached.");
+                        break;
+                    }
+                    Thread.Sleep(1);
+                }
             }
             catch (NullReferenceException)
             {
@@ -157,8 +165,16 @@ namespace QuantConnect.Lean.Engine.DataFeeds
             {
                 //If the second has ticked over, and we have data not processed yet, wait for it to be stored:
                 // we're waiting for the trigger archive to enqueue and set _data to null
+                var timeout = DateTime.UtcNow.AddMilliseconds(50);
                 while (_data != null && _data.Time < barStartTime)
-                { Thread.Sleep(1); }
+                {
+                    if (DateTime.UtcNow > timeout)
+                    {
+                        Log.Error("StreamStore.Update(Tick): Timeout reached.");
+                        break;
+                    }
+                    Thread.Sleep(1);
+                }
             }
             catch (NullReferenceException)
             {
@@ -187,7 +203,7 @@ namespace QuantConnect.Lean.Engine.DataFeeds
         /// <param name="fillForward">Data stream is a fillforward type</param>
         public void TriggerArchive(DateTime utcTriggerTime, bool fillForward)
         {
-            var localTriggerTime = utcTriggerTime.ConvertTo(TimeZones.Utc, _config.TimeZone);
+            var localTriggerTime = utcTriggerTime.ConvertFromUtc(_config.TimeZone);
             lock (_lock)
             {
                 try
@@ -237,8 +253,7 @@ namespace QuantConnect.Lean.Engine.DataFeeds
         /// </summary>
         private DateTime ComputeBarStartTime()
         {
-            // for live data feeds compute a bar start time base on wall clock time, this prevents splitting of data into the algorithm
-            return DateTime.UtcNow.RoundDown(_increment).ConvertToUtc(_config.TimeZone);
+            return DateTime.UtcNow.RoundDown(_increment).ConvertFromUtc(_config.TimeZone);
         }
     }
 }

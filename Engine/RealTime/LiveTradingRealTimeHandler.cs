@@ -15,14 +15,14 @@
 */
 
 using System;
-using System.Collections.Generic;
+using System.Collections.Concurrent;
 using System.Linq;
 using System.Threading;
 using QuantConnect.Interfaces;
-using QuantConnect.Lean.Engine.DataFeeds;
 using QuantConnect.Lean.Engine.Results;
 using QuantConnect.Logging;
 using QuantConnect.Packets;
+using QuantConnect.Scheduling;
 
 namespace QuantConnect.Lean.Engine.RealTime
 {
@@ -31,74 +31,69 @@ namespace QuantConnect.Lean.Engine.RealTime
     /// </summary>
     public class LiveTradingRealTimeHandler : IRealTimeHandler
     {
-        private DateTime _time;
-        private bool _exitTriggered;
         private bool _isActive = true;
-        private List<RealTimeEvent> _events;
-        private Dictionary<SecurityType, MarketToday> _today;
-        private IDataFeed _feed;
-        private TimeSpan _endOfDayDelta = TimeSpan.FromMinutes(10);
+        private CancellationTokenSource _cancellationTokenSource = new CancellationTokenSource();
+        // initialize this immediately since the Initialzie method gets called after IAlgorithm.Initialize,
+        // so we want to be ready to accept events as soon as possible
+        private readonly ConcurrentDictionary<string, ScheduledEvent> _scheduledEvents = new ConcurrentDictionary<string, ScheduledEvent>();
 
         //Algorithm and Handlers:
+        private IApi _api;
         private IAlgorithm _algorithm;
         private IResultHandler _resultHandler;
-        private IApi _api;
-
-        /// <summary>
-        /// Current time.
-        /// </summary>
-        public DateTime Time
-        {
-            get
-            {
-                return _time;
-            }
-        }
 
         /// <summary>
         /// Boolean flag indicating thread state.
         /// </summary>
         public bool IsActive
         {
-            get
-            {
-                return _isActive;
-            }
-        }
-
-        /// <summary>
-        /// List of the events to trigger.
-        /// </summary>
-        public List<RealTimeEvent> Events
-        {
-            get
-            {
-                return _events;
-            }
-        }
-
-        /// <summary>
-        /// Market hours for today for each security type in the algorithm
-        /// </summary>
-        public Dictionary<SecurityType, MarketToday> MarketToday
-        {
-            get
-            {
-                return _today;
-            }
+            get { return _isActive; }
         }
 
         /// <summary>
         /// Intializes the real time handler for the specified algorithm and job
         /// </summary>
-        public void Initialize(IAlgorithm algorithm, AlgorithmNodePacket job, IResultHandler resultHandler, IApi api)
+        public void Setup(IAlgorithm algorithm, AlgorithmNodePacket job, IResultHandler resultHandler, IApi api)
         {
             //Initialize:
-            _algorithm = algorithm;
-            _events = new List<RealTimeEvent>();
-            _today = new Dictionary<SecurityType, MarketToday>();
-            _resultHandler = resultHandler;
             _api = api;
+            _algorithm = algorithm;
+            _resultHandler = resultHandler;
+            _cancellationTokenSource = new CancellationTokenSource();
+
+            var todayInAlgorithmTimeZone = DateTime.UtcNow.ConvertFromUtc(_algorithm.TimeZone).Date;
+
+            // refresh the market hours for today explicitly, and then set up an event to refresh them each day at midnight
+            RefreshMarketHoursToday(todayInAlgorithmTimeZone);
+
+            // every day at midnight from tomorrow until the end of time
+            var times =
+                from date in Time.EachDay(todayInAlgorithmTimeZone.AddDays(1), Time.EndOfTime)
+                select date.ConvertToUtc(_algorithm.TimeZone);
+
+            Add(new ScheduledEvent("RefreshMarketHours", times, (name, triggerTime) =>
+            {
+                // refresh market hours from api every day
+                RefreshMarketHoursToday(triggerTime.ConvertFromUtc(_algorithm.TimeZone).Date);
+            }));
+
+            // add end of day events for each tradeable day
+            Add(ScheduledEventFactory.EveryAlgorithmEndOfDay(_algorithm, _resultHandler, todayInAlgorithmTimeZone, Time.EndOfTime, ScheduledEvent.AlgorithmEndOfDayDelta, DateTime.UtcNow));
+
+            // add end of trading day events for each security
+            foreach (var security in _algorithm.Securities.Values)
+            {
+                // assumes security.Exchange has been updated with today's hours via RefreshMarketHoursToday
+                Add(ScheduledEventFactory.EverySecurityEndOfDay(_algorithm, _resultHandler, security, todayInAlgorithmTimeZone, Time.EndOfTime, ScheduledEvent.SecurityEndOfDayDelta, DateTime.UtcNow));
+            }
+
+            foreach (var scheduledEvent in _scheduledEvents)
+            {
+                // zoom past old events
+                scheduledEvent.Value.SkipEventsUntil(algorithm.UtcTime);
+                // set logging accordingly
+                scheduledEvent.Value.IsLoggingEnabled = Log.DebuggingEnabled;
+            }
         }
 
         /// <summary>
@@ -107,130 +102,34 @@ namespace QuantConnect.Lean.Engine.RealTime
         /// </summary>
         public void Run()
         {
-            //Initialize to today time:
             _isActive = true;
-            _time = DateTime.Now;
 
-            //Continue looping until exit triggered:
-            while (!_exitTriggered)
+            // continue thread until cancellation is requested
+            while (!_cancellationTokenSource.IsCancellationRequested)
             {
-                //Trigger as close to second as reasonable. 1.00, 2.00 etc.
-                var nextSecond = DateTime.Now.RoundUp(TimeSpan.FromSeconds(1));
-                var delay = Convert.ToInt32((nextSecond - DateTime.Now).TotalMilliseconds);
-                Thread.Sleep(delay < 0 ? 1 : delay);
+                try
+                {
+                    var time = DateTime.UtcNow;
 
-                //Refresh event processing:
-                ScanEvents();
+                    // pause until the next second
+                    var nextSecond = time.RoundUp(TimeSpan.FromSeconds(1));
+                    var delay = Convert.ToInt32((nextSecond - time).TotalMilliseconds);
+                    Thread.Sleep(delay < 0 ? 1 : delay);
+
+                    // poke each event to see if it should fire
+                    foreach (var scheduledEvent in _scheduledEvents)
+                    {
+                        scheduledEvent.Value.Scan(time);
+                    }
+                }
+                catch (Exception err)
+                {
+                    Log.Error(err);
+                }
             }
 
             _isActive = false;
-        }
-
-        /// <summary>
-        /// Set up the realtime event handlers for today.
-        /// </summary>
-        /// <remarks>
-        ///     We setup events for:to 
-        ///     - Refreshing of the brokerage session tokens.
-        ///     - Getting the new daily market open close times.
-        ///     - Setting up the "OnEndOfDay" events which close -10min before closing.
-        /// </remarks>
-        /// <param name="date">Datetime today</param>
-        public void SetupEvents(DateTime date)
-        {
-            try
-            {
-                //Clear the previous days events to reset with today:
-                ClearEvents();
-                
-                //Refresh the market hours store:
-                RefreshMarketHoursToday(date);
-
-                // END OF DAY REAL TIME EVENT:
-                SetupEndOfDayEvent();
-            }
-            catch (Exception err)
-            {
-                Log.Error("LiveTradingRealTimeHandler.SetupEvents(): " + err.Message);
-            }
-        }
-
-        /// <summary>
-        /// Setup the end of day event handler for all symbols in the users algorithm. 
-        /// End of market hours are determined by the market hours today property.
-        /// </summary>
-        private void SetupEndOfDayEvent()
-        {
-            // Load Today variables based on security type:
-            foreach (var security in _algorithm.Securities.Values)
-            {
-                DateTime? endOfDayEventTime = null;
-
-                if (!security.IsDynamicallyLoadedData)
-                {
-                    //If the market is open, set the end of day event time:
-                    if (_today[security.Type].Status == "open")
-                    {
-                        endOfDayEventTime = _today[security.Type].Open.End.Subtract(_endOfDayDelta);
-                    }
-                }
-                else
-                {
-                    //If custom/dynamic data get close time from user defined security object.
-                    endOfDayEventTime = DateTime.Now.Date + security.Exchange.MarketClose.Subtract(_endOfDayDelta);
-                }
-
-                //2. Set this time as the handler for EOD event:
-                if (endOfDayEventTime.HasValue)
-                {
-
-                    if (DateTime.Now < endOfDayEventTime.Value)
-                    {
-
-                        Log.Trace(string.Format("LiveTradingRealTimeHandler.SetupEvents(): Setup EOD Event for {0}", endOfDayEventTime.Value.ToString("u")));
-                    }
-                    else
-                    {
-
-                        Log.Trace(string.Format("LiveTradingRealTimeHandler.SetupEvents(): Skipping Setup of EOD Event for {0} because time has passed.", security.Symbol));
-                        continue;
-                    }
-
-                    var symbol = security.Symbol;
-                    AddEvent(new RealTimeEvent(endOfDayEventTime.Value, () =>
-                    {
-                        try
-                        {
-                            _algorithm.OnEndOfDay(symbol);
-                            Log.Trace(string.Format("LiveTradingRealTimeHandler: Fired On End of Day Event({0}) for Day({1})", symbol, _time.ToShortDateString()));
-                        }
-                        catch (Exception err)
-                        {
-                            _resultHandler.RuntimeError("Runtime error in OnEndOfDay event: " + err.Message, err.StackTrace);
-                            Log.Error("LiveTradingRealTimeHandler.SetupEvents.Trigger OnEndOfDay(): " + err.Message);
-                        }
-                    }, true));
-                }
-            }
-
-            // fire just before the day rolls over, 11:58pm
-            var endOfDay = DateTime.Today.AddHours(23.967);
-            if (DateTime.Now < endOfDay) 
-            { 
-                AddEvent(new RealTimeEvent(endOfDay, () =>
-                {
-                    try
-                    {
-                        _algorithm.OnEndOfDay();
-                        Log.Trace(string.Format("LiveTradingRealTimeHandler: Fired On End of Day Event() for Day({0})", _time.ToShortDateString()));
-                    }
-                    catch (Exception err)
-                    {
-                        _resultHandler.RuntimeError("Runtime error in OnEndOfDay event: " + err.Message, err.StackTrace);
-                        Log.Error("LiveTradingRealTimeHandler.SetupEvents.Trigger OnEndOfDay(): " + err.Message);
-                    }
-                }, true));
-            }
+            Log.Trace("LiveTradingRealTimeHandler.Run(): Exiting thread... Exit triggered: " + _cancellationTokenSource.IsCancellationRequested);
         }
 
         /// <summary>
@@ -238,95 +137,66 @@ namespace QuantConnect.Lean.Engine.RealTime
         /// </summary>
         private void RefreshMarketHoursToday(DateTime date)
         {
-            _today.Clear();
+            date = date.Date;
 
-            //Setup the Security Open Close Market Hours:
-            foreach (var sub in _algorithm.SubscriptionManager.Subscriptions)
+            // group securities by security type to make calls to api one security type at a time
+            foreach (var securityTypeGrouping in _algorithm.Securities.GroupBy(x => x.Value.Type))
             {
-                var security = _algorithm.Securities[sub.Symbol];
+                var securityType = securityTypeGrouping.Key;
+                var marketToday = _api.MarketToday(date, securityType);
 
-                //Get the data for this asset from the QC API.
-                if (!_today.ContainsKey(security.Type))
+                Log.Trace(string.Format("LiveTradingRealTimeHandler.SetupEvents(): Daily Market Hours Setup for Security Type: {0} Start: {1} Stop: {2}",
+                    securityType, marketToday.Open.Start, marketToday.Open.End
+                    ));
+
+                // foreach security in this security type grouping
+                foreach (var kvp in securityTypeGrouping)
                 {
-                    //Setup storage
-                    _today.Add(security.Type, new MarketToday());
-                    //Refresh the market information
-                    _today[security.Type] = _api.MarketToday(date, security.Type);
-                    Log.Trace(
-                        string.Format(
-                            "LiveTradingRealTimeHandler.SetupEvents(): Daily Market Hours Setup for Security Type: {0} Start: {1} Stop: {2}",
-                            security.Type, _today[security.Type].Open.Start, _today[security.Type].Open.End));
-                }
+                    var symbol = kvp.Key;
+                    var security = kvp.Value;
 
-                //Based on the type of security, set the market hours information for the exchange class.
-                switch (security.Type)
-                {
-                    case SecurityType.Equity:
-                        var equityMarketHours = _today[SecurityType.Equity];
-                        if (equityMarketHours.Status != "open")
-                        {
-                            _algorithm.Securities[sub.Symbol].Exchange.SetMarketHours(TimeSpan.Zero, TimeSpan.Zero, date.DayOfWeek);
-                        }
-                        else
-                        {
-                            var extendedMarketOpen = equityMarketHours.PreMarket.Start.TimeOfDay;
-                            var marketOpen = equityMarketHours.Open.Start.TimeOfDay;
-                            var marketClose = equityMarketHours.Open.End.TimeOfDay;
-                            var extendedMarketClose = equityMarketHours.PostMarket.End.TimeOfDay;
-                            _algorithm.Securities[sub.Symbol].Exchange.SetMarketHours(extendedMarketOpen, marketOpen, marketClose, extendedMarketClose, date.DayOfWeek);
-                            Log.Trace(string.Format("LiveTradingRealTimeHandler.SetupEvents(Equity): Market hours set: Symbol: {0} Extended Start: {1} Start: {2} End: {3} Extended End: {4}",
-                                    sub.Symbol, extendedMarketOpen, marketOpen, marketClose, extendedMarketClose));
-                        }
-                        break;
-
-                    case SecurityType.Forex:
-                        var forexMarketHours = _today[SecurityType.Forex].Open;
-                        _algorithm.Securities[sub.Symbol].Exchange.SetMarketHours(forexMarketHours.Start.TimeOfDay, forexMarketHours.End.TimeOfDay, date.DayOfWeek);
-                        Log.Trace(string.Format("LiveTradingRealTimeHandler.SetupEvents(Forex): Normal market hours set: Symbol: {0} Start: {1} End: {2}",
-                                sub.Symbol, forexMarketHours.Start, forexMarketHours.End));
-                        break;
+                    // if the market is not open today, set it as closed all day
+                    if (marketToday.Status != "open")
+                    {
+                        security.Exchange.SetMarketHours(TimeSpan.Zero, TimeSpan.Zero, date.DayOfWeek);
+                    }
+                    else
+                    {
+                        // set the market hours using data returned from the api
+                        var extendedMarketOpen = marketToday.PreMarket.Start.TimeOfDay;
+                        var marketOpen = marketToday.Open.Start.TimeOfDay;
+                        var marketClose = marketToday.Open.End.TimeOfDay;
+                        var extendedMarketClose = marketToday.PostMarket.End.TimeOfDay;
+                        security.Exchange.SetMarketHours(extendedMarketOpen, marketOpen, marketClose, extendedMarketClose, date.DayOfWeek);
+                        Log.Trace(string.Format("LiveTradingRealTimeHandler.SetupEvents({0}): Market hours set: Symbol: {1} Extended Start: {2} Start: {3} End: {4} Extended End: {5}",
+                                securityType, symbol, extendedMarketOpen, marketOpen, marketClose, extendedMarketClose));
+                    }
                 }
             }
         }
 
         /// <summary>
-        /// Container for all time based events.
+        /// Adds the specified event to the schedule
         /// </summary>
-        public void ScanEvents()
+        /// <param name="scheduledEvent">The event to be scheduled, including the date/times the event fires and the callback</param>
+        public void Add(ScheduledEvent scheduledEvent)
         {
-            for (var i = 0; i < _events.Count; i++)
+            if (_algorithm != null)
             {
-                _events[i].Scan(_time);
+                scheduledEvent.SkipEventsUntil(_algorithm.UtcTime);
             }
+
+            _scheduledEvents.AddOrUpdate(scheduledEvent.Name, scheduledEvent);
         }
 
         /// <summary>
-        /// Add this new event to our list.
+        /// Removes the specified event from the schedule
         /// </summary>
-        /// <param name="newEvent">New event we'd like processed.</param>
-        public void AddEvent(RealTimeEvent newEvent)
+        /// <param name="name"></param>
+        public void Remove(string name)
         {
-            _events.Add(newEvent);
-        }
-
-        /// <summary>
-        /// Reset the events -- 
-        /// All real time event handlers are self-resetting, and much auto-trigger a reset when the day changes.
-        /// </summary>
-        public void ResetEvents()
-        {
-            for (var i = 0; i < _events.Count; i++)
-            {
-                _events[i].Reset();
-            }
-        }
-
-        /// <summary>
-        /// Clear any outstanding events fom processing list.
-        /// </summary>
-        public void ClearEvents()
-        {
-            _events.Clear();
+            ScheduledEvent scheduledEvent;
+            _scheduledEvents.TryRemove(name, out scheduledEvent);
         }
 
         /// <summary>
@@ -335,15 +205,8 @@ namespace QuantConnect.Lean.Engine.RealTime
         /// <param name="time"></param>
         public void SetTime(DateTime time)
         {
-            //Reset all the daily events
-            if (_time.Date != time.Date)
-            {
-                //Each day needs the events reset to update the market hours and set daily targets/events.
-                SetupEvents(time);
-            }
-
-            //Set the time:
-            _time = time;
+            // in live mode we use current time for our time keeping
+            // this method is used by backtesting to set time based on the data
         }
 
         /// <summary>
@@ -351,8 +214,7 @@ namespace QuantConnect.Lean.Engine.RealTime
         /// </summary>
         public void Exit()
         {
-            _exitTriggered = true;
+            _cancellationTokenSource.Cancel();
         }
-    } // End Result Handler Thread:
-
-} // End Namespace
+    }
+}

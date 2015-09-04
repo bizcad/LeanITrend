@@ -1,4 +1,4 @@
-﻿/*
+/*
  * QUANTCONNECT.COM - Democratizing Finance, Empowering Individuals.
  * Lean Algorithmic Trading Engine v2.0. Copyright 2014 QuantConnect Corporation.
  * 
@@ -15,28 +15,26 @@
 */
 
 using System;
+using System.Collections.Generic;
 
-namespace QuantConnect.Data.Market
+namespace QuantConnect.Scheduling
 {
     /// <summary>
-    /// Collection of splits keyed by string symbol
+    /// Specifies dates that events should be fired, used in conjunction with the <see cref="ITimeRule"/>
     /// </summary>
-    public class Splits : DataDictionary<Split>
+    public interface IDateRule
     {
         /// <summary>
-        /// Initializes a new instance of the <see cref="Splits"/> dictionary
+        /// Gets a name for this rule
         /// </summary>
-        public Splits()
-        {
-        }
+        string Name { get; }
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="Splits"/> dictionary
+        /// Gets the dates produced by this date rule between the specified times
         /// </summary>
-        /// <param name="frontier">The time associated with the data in this dictionary</param>
-        public Splits(DateTime frontier)
-            : base(frontier)
-        {
-        }
+        /// <param name="start">The start of the interval to produce dates for</param>
+        /// <param name="end">The end of the interval to produce dates for</param>
+        /// <returns>All dates in the interval matching this date rule</returns>
+        IEnumerable<DateTime> GetDates(DateTime start, DateTime end);
     }
 }

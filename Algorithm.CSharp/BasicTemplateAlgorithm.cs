@@ -45,7 +45,6 @@ namespace QuantConnect.Algorithm.CSharp
                 SetHoldings("SPY", 1);
                 Debug("Purchased Stock");
             }
-            Log("test");
         }
     }
 }

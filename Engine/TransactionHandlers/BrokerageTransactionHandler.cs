@@ -153,13 +153,13 @@ namespace QuantConnect.Lean.Engine.TransactionHandlers
             switch (request.OrderRequestType)
             {
                 case OrderRequestType.Submit:
-                    return AddOrder((SubmitOrderRequest)request);
+                    return AddOrder((SubmitOrderRequest) request);
 
                 case OrderRequestType.Update:
-                    return UpdateOrder((UpdateOrderRequest)request);
+                    return UpdateOrder((UpdateOrderRequest) request);
 
                 case OrderRequestType.Cancel:
-                    return CancelOrder((CancelOrderRequest)request);
+                    return CancelOrder((CancelOrderRequest) request);
 
                 default:
                     throw new ArgumentOutOfRangeException();
@@ -309,7 +309,7 @@ namespace QuantConnect.Lean.Engine.TransactionHandlers
         {
             // this function can be invoked by brokerages when getting open orders, guard against null ref
             if (_orders == null) return null;
-
+            
             Order order;
             return _orders.TryGetValue(orderId, out order) ? order : null;
         }
@@ -323,7 +323,7 @@ namespace QuantConnect.Lean.Engine.TransactionHandlers
         {
             // this function can be invoked by brokerages when getting open orders, guard against null ref
             if (_orders == null) return null;
-
+            
             var order = _orders.FirstOrDefault(x => x.Value.BrokerId.Contains(brokerageId)).Value;
             return order != null ? order.Clone() : null;
         }
@@ -375,13 +375,13 @@ namespace QuantConnect.Lean.Engine.TransactionHandlers
                     switch (request.OrderRequestType)
                     {
                         case OrderRequestType.Submit:
-                            response = HandleSubmitOrderRequest((SubmitOrderRequest)request);
+                            response = HandleSubmitOrderRequest((SubmitOrderRequest) request);
                             break;
                         case OrderRequestType.Update:
-                            response = HandleUpdateOrderRequest((UpdateOrderRequest)request);
+                            response = HandleUpdateOrderRequest((UpdateOrderRequest) request);
                             break;
                         case OrderRequestType.Cancel:
-                            response = HandleCancelOrderRequest((CancelOrderRequest)request);
+                            response = HandleCancelOrderRequest((CancelOrderRequest) request);
                             break;
                         default:
                             throw new ArgumentOutOfRangeException();
@@ -509,7 +509,7 @@ namespace QuantConnect.Lean.Engine.TransactionHandlers
                 {
                     return;
                 }
-
+                
                 // if we were returned our balances, update everything and flip our flag as having performed sync today
                 foreach (var balance in balances)
                 {
@@ -629,7 +629,7 @@ namespace QuantConnect.Lean.Engine.TransactionHandlers
             {
                 Log.Error(err);
                 orderPlaced = false;
-            }
+             }
 
             if (orderPlaced)
             {
@@ -642,7 +642,7 @@ namespace QuantConnect.Lean.Engine.TransactionHandlers
                 _algorithm.Error(response.ErrorMessage);
                 return response;
             }
-
+            
             order.Status = OrderStatus.Submitted;
             return OrderResponse.Success(request);
         }
@@ -659,7 +659,7 @@ namespace QuantConnect.Lean.Engine.TransactionHandlers
                 Log.Error("BrokerageTransactionHandler.HandleUpdateOrderRequest(): Unable to update order with ID " + request.OrderId);
                 return OrderResponse.UnableToFindOrder(request);
             }
-
+            
             if (!CanUpdateOrder(order))
             {
                 return OrderResponse.InvalidStatus(request, order);
@@ -679,7 +679,7 @@ namespace QuantConnect.Lean.Engine.TransactionHandlers
                 Log.Error(err);
                 orderUpdated = false;
             }
-
+            
             if (!orderUpdated)
             {
                 // we failed to update the order for some reason
@@ -715,7 +715,7 @@ namespace QuantConnect.Lean.Engine.TransactionHandlers
                 Log.Error("BrokerageTransactionHandler.HandleCancelOrderRequest(): Unable to cancel order with ID " + request.OrderId + ".");
                 return OrderResponse.UnableToFindOrder(request);
             }
-
+            
             if (order.Status.IsClosed())
             {
                 return OrderResponse.InvalidStatus(request, order);

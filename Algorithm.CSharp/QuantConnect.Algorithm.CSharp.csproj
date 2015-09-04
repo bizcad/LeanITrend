@@ -53,12 +53,16 @@
     <Compile Include="BizcadAlgorithm\CyberCycleAlgorithm.cs" />
     <Compile Include="BizcadAlgorithm\FisherTransformAlgorithm.cs" />
     <Compile Include="BizcadAlgorithm\HullMovingAverageAlgorithm.cs" />
+    <Compile Include="BizcadAlgorithm\InstantaneousTrendAlgorithm.cs" />
+    <Compile Include="BizcadAlgorithm\InstantTrendStrategy.cs" />
     <Compile Include="BizcadAlgorithm\MeanReversionAlgorithm.cs" />
     <Compile Include="BizcadAlgorithm\OptimalTrackingAlgorithm.cs" />
     <Compile Include="BizcadAlgorithm\OrderReporter.cs" />
     <Compile Include="BizcadAlgorithm\RateOfChangePercentStrategy.cs" />
     <Compile Include="BizcadAlgorithm\RVIAlgorithm.cs" />
     <Compile Include="BizcadAlgorithm\TradeBarReporter.cs" />
+    <Compile Include="CustomBenchmarkAlgorithm.cs" />
+    <Compile Include="DelistingEventsAlgorithm.cs" />
     <Compile Include="ITrendAlgorithm\ITrendAlgorithm.cs" />
     <Compile Include="ITrendAlgorithm\ITrendStrategy.cs" />
     <Compile Include="ITrendAlgorithm\LoggingITrendAlgorithm.cs" />
@@ -92,11 +96,14 @@
     <Compile Include="QuandlImporterAlgorithm.cs" />
     <Compile Include="RegressionAlgorithm.cs" />
     <Compile Include="RenkoConsolidatorAlgorithm.cs" />
+    <Compile Include="ScheduledEventsAlgorithm.cs" />
     <Compile Include="StressSymbolsAlgorithm.cs" />
+    <Compile Include="StressSymbols.cs" />
     <Compile Include="TickDataFilteringAlgorithm.cs" />
+    <Compile Include="UniverseSelectionAlgorithm.cs" />
     <Compile Include="UpdateOrderLiveTestAlgorithm.cs" />
     <Compile Include="UpdateOrderRegressionAlgorithm.cs" />
-    <Compile Include="UpdateOrderDemoAlgorithm.cs" />
+    <Compile Include="OrderTicketDemoAlgorithm.cs" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Algorithm\QuantConnect.Algorithm.csproj">
@@ -122,6 +129,9 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="Custom Algos\" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 

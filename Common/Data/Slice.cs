@@ -27,16 +27,17 @@ namespace QuantConnect.Data
     /// </summary>
     public class Slice : IEnumerable<KeyValuePair<string, BaseData>>
     {
-        private readonly Lazy<Ticks> _ticks; 
-        private readonly Lazy<TradeBars> _bars;
+        private readonly Ticks _ticks; 
+        private readonly TradeBars _bars;
 
         // aux data
-        private readonly Lazy<Splits> _splits;
-        private readonly Lazy<Dividends> _dividends; 
+        private readonly Splits _splits;
+        private readonly Dividends _dividends;
+        private readonly Delistings _delistings; 
 
         // string -> data   for non-tick data
         // string -> list{data} for tick data
-        private readonly Lazy<DataDictionary<SymbolData>> _data;
+        private readonly DataDictionary<SymbolData> _data;
         // Quandl -> DataDictonary<Quandl>
         private readonly Dictionary<Type, Lazy<object>> _dataByType;
 
@@ -53,7 +54,7 @@ namespace QuantConnect.Data
         /// </summary>
         public TradeBars Bars
         {
-            get { return _bars.Value; }
+            get { return _bars; }
         }
 
         /// <summary>
@@ -61,7 +62,7 @@ namespace QuantConnect.Data
         /// </summary>
         public Ticks Ticks
         {
-            get { return _ticks.Value; }
+            get { return _ticks; }
         }
 
         /// <summary>
@@ -69,7 +70,7 @@ namespace QuantConnect.Data
         /// </summary>
         public Splits Splits
         {
-            get { return _splits.Value; }
+            get { return _splits; }
         }
 
         /// <summary>
@@ -77,7 +78,15 @@ namespace QuantConnect.Data
         /// </summary>
         public Dividends Dividends
         {
-            get { return _dividends.Value; }
+            get { return _dividends; }
+        }
+
+        /// <summary>
+        /// Gets the <see cref="Delistings"/> for this slice of data
+        /// </summary>
+        public Delistings Delistings
+        {
+            get { return _delistings; }
         }
 
         /// <summary>
@@ -85,7 +94,7 @@ namespace QuantConnect.Data
         /// </summary>
         public int Count
         {
-            get { return _data.Value.Count; }
+            get { return _data.Count; }
         }
 
         /// <summary>
@@ -93,7 +102,7 @@ namespace QuantConnect.Data
         /// </summary>
         public IReadOnlyList<string> Keys
         {
-            get { return new List<string>(_data.Value.Keys); }
+            get { return new List<string>(_data.Keys); }
         }
 
         /// <summary>
@@ -112,7 +121,7 @@ namespace QuantConnect.Data
         /// <param name="time">The timestamp for this slice of data</param>
         /// <param name="data">The raw data in this slice</param>
         public Slice(DateTime time, IEnumerable<BaseData> data)
-            : this(time, data, null, null, null, null)
+            : this(time, data, null, null, null, null, null)
         {
         }
 
@@ -125,20 +134,22 @@ namespace QuantConnect.Data
         /// <param name="ticks">This ticks for this slice</param>
         /// <param name="splits">The splits for this slice</param>
         /// <param name="dividends">The dividends for this slice</param>
-        public Slice(DateTime time, IEnumerable<BaseData> data, TradeBars tradeBars, Ticks ticks, Splits splits, Dividends dividends)
+        /// <param name="delistings">The delistings for this slice</param>
+        public Slice(DateTime time, IEnumerable<BaseData> data, TradeBars tradeBars, Ticks ticks, Splits splits, Dividends dividends, Delistings delistings)
         {
             Time = time;
 
             _dataByType = new Dictionary<Type, Lazy<object>>();
 
             // market data
-            _ticks = new Lazy<Ticks>(() => CreateTicksCollection(ticks));
-            _bars = new Lazy<TradeBars>(() => CreateTradeBarsCollection(tradeBars));
-            _data = new Lazy<DataDictionary<SymbolData>>(() => CreateDynamicDataDictionary(data));
+            _data = CreateDynamicDataDictionary(data);
+            _ticks = CreateTicksCollection(ticks);
+            _bars = CreateTradeBarsCollection(tradeBars);
 
             // auxiliary data
-            _splits = new Lazy<Splits>(() => CreateSplitsCollection(splits));
-            _dividends = new Lazy<Dividends>(() => CreateDividendsCollection(dividends));
+            _splits = CreateSplitsCollection(splits);
+            _dividends = CreateDividendsCollection(dividends);
+            _delistings = CreateDelistingsCollection(delistings);
         }
 
         /// <summary>
@@ -154,7 +165,7 @@ namespace QuantConnect.Data
             get
             {
                 SymbolData value;
-                if (_data.Value.TryGetValue(symbol, out value))
+                if (_data.TryGetValue(symbol, out value))
                 {
                     return value.GetData();
                 }
@@ -173,7 +184,7 @@ namespace QuantConnect.Data
             Lazy<object> dictionary;
             if (!_dataByType.TryGetValue(typeof(T), out dictionary))
             {
-                dictionary = new Lazy<object>(() => new DataDictionary<T>(_data.Value.Values.Select(x => x.GetData()).OfType<T>(), x => x.Symbol));
+                dictionary = new Lazy<object>(() => new DataDictionary<T>(_data.Values.Select(x => x.GetData()).OfType<T>(), x => x.Symbol));
                 _dataByType[typeof (T)] = dictionary;
             }
             return (DataDictionary<T>) dictionary.Value;
@@ -198,7 +209,7 @@ namespace QuantConnect.Data
         /// <returns>True if this instance contains data for the symbol, false otherwise</returns>
         public bool ContainsKey(string symbol)
         {
-            return _data.Value.ContainsKey(symbol);
+            return _data.ContainsKey(symbol);
         }
 
         /// <summary>
@@ -211,10 +222,10 @@ namespace QuantConnect.Data
         {
             data = null;
             SymbolData symbolData;
-            if (_data.Value.TryGetValue(symbol, out symbolData))
+            if (_data.TryGetValue(symbol, out symbolData))
             {
                 data = symbolData.GetData();
-                return true;
+                return data != null;
             }
             return false;
         }
@@ -269,7 +280,7 @@ namespace QuantConnect.Data
         {
             if (ticks != null) return ticks;
             ticks = new Ticks(Time);
-            foreach (var listTicks in _data.Value.Values.Select(x => x.GetData()).OfType<List<Tick>>().Where(x => x.Count != 0))
+            foreach (var listTicks in _data.Values.Select(x => x.GetData()).OfType<List<Tick>>().Where(x => x.Count != 0))
             {
                 ticks[listTicks[0].Symbol] = listTicks;
             }
@@ -283,7 +294,7 @@ namespace QuantConnect.Data
         {
             if (tradeBars != null) return tradeBars;
             tradeBars = new TradeBars(Time);
-            foreach (var bar in _data.Value.Values.Select(x => x.GetData()).OfType<TradeBar>())
+            foreach (var bar in _data.Values.Select(x => x.GetData()).OfType<TradeBar>())
             {
                 tradeBars[bar.Symbol] = bar;
             }
@@ -297,7 +308,7 @@ namespace QuantConnect.Data
         {
             if (splits != null) return splits;
             splits = new Splits(Time);
-            foreach (var split in _data.Value.Values.OfType<Split>())
+            foreach (var split in _data.Values.Select(x => x.GetData()).OfType<Split>())
             {
                 splits[split.Symbol] = split;
             }
@@ -311,11 +322,25 @@ namespace QuantConnect.Data
         {
             if (dividends != null) return dividends;
             dividends = new Dividends(Time);
-            foreach (var dividend in _data.Value.Values.OfType<Dividend>())
+            foreach (var dividend in _data.Values.Select(x => x.GetData()).OfType<Dividend>())
             {
                 dividends[dividend.Symbol] = dividend;
             }
             return dividends;
+        }
+
+        /// <summary>
+        /// Returns the input delistings if non-null, otherwise produces one from the dynamic data dictionary
+        /// </summary>
+        private Delistings CreateDelistingsCollection(Delistings delistings)
+        {
+            if (delistings != null) return delistings;
+            delistings = new Delistings(Time);
+            foreach (var delisting in _data.Values.Select(x => x.GetData()).OfType<Delisting>())
+            {
+                delistings[delisting.Symbol] = delisting;
+            }
+            return delistings;
         }
 
         /// <summary>
@@ -345,7 +370,7 @@ namespace QuantConnect.Data
         private IEnumerable<KeyValuePair<string, BaseData>> GetKeyValuePairEnumerable()
         {
             // this will not enumerate auxilliary data!
-            return _data.Value.Select(kvp => new KeyValuePair<string, BaseData>(kvp.Key, kvp.Value.GetData()));
+            return _data.Select(kvp => new KeyValuePair<string, BaseData>(kvp.Key, kvp.Value.GetData()));
         }
 
         private enum SubscriptionType { TradeBar, Tick, Custom };

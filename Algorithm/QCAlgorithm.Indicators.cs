@@ -54,6 +54,24 @@ namespace QuantConnect.Algorithm
             RegisterIndicator(symbol, identity, resolution, selector);
             return identity;
         }
+
+        /// <summary>
+        /// Creates a new Identity indicator for the symbol The indicator will be automatically
+        /// updated on the symbol's subscription resolution
+        /// </summary>
+        /// <param name="symbol">The symbol whose values we want as an indicator</param>
+        /// <param name="resolution">The desired resolution of the data</param>
+        /// <param name="selector">Selects a value from the BaseData, if null defaults to the .Value property (x => x.Value)</param>
+        /// <param name="fieldName">The name of the field being selected</param>
+        /// <returns>A new Identity indicator for the specified symbol and selector</returns>
+        public Identity Identity(string symbol, TimeSpan resolution, Func<BaseData, decimal> selector = null, string fieldName = null)
+        {
+            string name = string.Format("{0}({1}_{2})", symbol, fieldName ?? "close", resolution);
+            var identity = new Identity(name);
+            RegisterIndicator(symbol, identity, ResolveConsolidator(symbol, resolution), selector);
+            return identity;
+        }
+
         /// <summary>
         /// Creates a new IchimokuKinkoHyo indicator for the symbol. The indicator will be automatically
         /// updated on the given resolution.
@@ -73,7 +91,6 @@ namespace QuantConnect.Algorithm
             var ichimoku = new IchimokuKinkoHyo(name, tenkanPeriod, kijunPeriod, senkouAPeriod, senkouBPeriod, senkouADelayPeriod, senkouBDelayPeriod);
             RegisterIndicator(symbol, ichimoku, resolution);
             return ichimoku;
-
         }
 
         /// <summary>
@@ -464,16 +481,31 @@ namespace QuantConnect.Algorithm
         /// The indicator will be automatically updated on the given resolution.
         /// </summary>
         /// <param name="symbol">The symbol whose Donchian Channel we seek.</param>
+        /// <param name="upperPeriod">The period over which to compute the upper Donchian Channel.</param>
+        /// <param name="lowerPeriod">The period over which to compute the lower Donchian Channel.</param>
+        /// <param name="resolution">The resolution.</param>
+        /// <param name="selector">Selects a value from the BaseData to send into the indicator, if null defaults to casting the input value to a TradeBar</param>
+        /// <returns>The Donchian Channel indicator for the requested symbol.</returns>
+        public DonchianChannel DCH(string symbol, int upperPeriod, int lowerPeriod, Resolution? resolution = null, Func<BaseData, TradeBar> selector = null)
+        {
+            var name = CreateIndicatorName(symbol, "DCH", resolution);
+            var donchianChannel = new DonchianChannel(name, upperPeriod, lowerPeriod);
+            RegisterIndicator(symbol, donchianChannel, resolution, selector);
+            return donchianChannel;
+        }
+
+        /// <summary>
+        /// Overload shorthand to create a new symmetric Donchian Channel indicator which
+        /// has the upper and lower channels set to the same period length.
+        /// </summary>
+        /// <param name="symbol">The symbol whose Donchian Channel we seek.</param>
         /// <param name="period">The period over which to compute the Donchian Channel.</param>
         /// <param name="resolution">The resolution.</param>
         /// <param name="selector">Selects a value from the BaseData to send into the indicator, if null defaults to casting the input value to a TradeBar</param>
         /// <returns>The Donchian Channel indicator for the requested symbol.</returns>
         public DonchianChannel DCH(string symbol, int period, Resolution? resolution = null, Func<BaseData, TradeBar> selector = null)
         {
-            var name = CreateIndicatorName(symbol, "DCH", resolution);
-            var donchianChannel = new DonchianChannel(name, period);
-            RegisterIndicator(symbol, donchianChannel, resolution, selector);
-            return donchianChannel;
+            return DCH(symbol, period, period, resolution, selector);
         }
 
         /// <summary>
@@ -564,6 +596,20 @@ namespace QuantConnect.Algorithm
         /// <param name="resolution">The resolution at which to send data to the indicator, null to use the same resolution as the subscription</param>
         /// <param name="selector">Selects a value from the BaseData send into the indicator, if null defaults to a cast (x => (T)x)</param>
         public void RegisterIndicator<T>(string symbol, IndicatorBase<T> indicator, Resolution? resolution, Func<BaseData, T> selector)
+            where T : BaseData
+        {
+            RegisterIndicator(symbol, indicator, ResolveConsolidator(symbol, resolution), selector);
+        }
+
+        /// <summary>
+        /// Registers the consolidator to receive automatic updates as well as configures the indicator to receive updates
+        /// from the consolidator.
+        /// </summary>
+        /// <param name="symbol">The symbol to register against</param>
+        /// <param name="indicator">The indicator to receive data from the consolidator</param>
+        /// <param name="resolution">The resolution at which to send data to the indicator, null to use the same resolution as the subscription</param>
+        /// <param name="selector">Selects a value from the BaseData send into the indicator, if null defaults to a cast (x => (T)x)</param>
+        public void RegisterIndicator<T>(string symbol, IndicatorBase<T> indicator, TimeSpan? resolution, Func<BaseData, T> selector = null)
             where T : BaseData
         {
             RegisterIndicator(symbol, indicator, ResolveConsolidator(symbol, resolution), selector);
@@ -679,11 +725,10 @@ namespace QuantConnect.Algorithm
                 return new TickConsolidator(timeSpan.Value);
             }
 
-            // if our type can be used as a DynamicData then we'll use the DynamicDataConsolidator, inspect
-            // the subscription to figure out the isTradeBar and hasVolume flags
+            // if our type can be used as a DynamicData then we'll use the DynamicDataConsolidator
             if (typeof(DynamicData).IsAssignableFrom(subscription.Type))
             {
-                return new DynamicDataConsolidator(timeSpan.Value, subscription.IsTradeBar, subscription.HasVolume);
+                return new DynamicDataConsolidator(timeSpan.Value);
             }
 
             // no matter what we can always consolidate based on the time-value pair of BaseData
@@ -720,7 +765,7 @@ namespace QuantConnect.Algorithm
         /// <param name="type">The indicator type, for example, 'SMA5'</param>
         /// <param name="resolution">The resolution requested</param>
         /// <returns>A unique for the given parameters</returns>
-        protected string CreateIndicatorName(string symbol, string type, Resolution? resolution)
+        public string CreateIndicatorName(string symbol, string type, Resolution? resolution)
         {
             if (!resolution.HasValue)
             {

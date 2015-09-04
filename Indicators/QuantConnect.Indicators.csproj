@@ -46,8 +46,8 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="AverageDirectionalIndex.cs" />
-    <Compile Include="Custom Indicators\CyclePeriodHomodyme.cs" />
     <Compile Include="Custom Indicators\CyclePeriod.cs" />
+    <Compile Include="Custom Indicators\CyclePeriodHomodyme.cs" />
     <Compile Include="Custom Indicators\Decycle.cs" />
     <Compile Include="DonchianChannel.cs" />
     <Compile Include="IchimokuKinkoHyo.cs" />

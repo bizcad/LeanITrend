@@ -553,11 +553,13 @@ namespace QuantConnect.Algorithm
         public int CalculateOrderQuantity(string symbol, decimal target)
         {
             var security = Securities[symbol];
+            var price = security.Price;
+
+            // can't order it if we don't have data
+            if (price == 0) return 0;
 
             // this is the value in dollars that we want our holdings to have
             var targetPortfolioValue = target*Portfolio.TotalPortfolioValue;
-
-            var price = security.Holdings.Price;
             var quantity = security.Holdings.Quantity;
             var currentHoldingsValue = price*quantity;
 
@@ -643,7 +645,7 @@ namespace QuantConnect.Algorithm
 
         private SubmitOrderRequest CreateSubmitOrderRequest(OrderType orderType, Security security, int quantity, string tag, decimal stopPrice = 0m, decimal limitPrice = 0m)
         {
-            return new SubmitOrderRequest(orderType, security.Type, security.Symbol, quantity, stopPrice, limitPrice, Time, tag);
+            return new SubmitOrderRequest(orderType, security.Type, security.Symbol, quantity, stopPrice, limitPrice, UtcTime, tag);
         }
     }
 }

@@ -15,11 +15,11 @@
 */
 
 using System;
-using System.Collections.Generic;
 using System.ComponentModel.Composition;
 using QuantConnect.Interfaces;
 using QuantConnect.Lean.Engine.Results;
 using QuantConnect.Packets;
+using QuantConnect.Scheduling;
 
 namespace QuantConnect.Lean.Engine.RealTime
 {
@@ -27,24 +27,8 @@ namespace QuantConnect.Lean.Engine.RealTime
     /// Real time event handler, trigger functions at regular or pretimed intervals
     /// </summary>
     [InheritedExport(typeof(IRealTimeHandler))]
-    public interface IRealTimeHandler
+    public interface IRealTimeHandler : IEventSchedule
     {
-        /// <summary>
-        /// The real time handlers internal record of current time used to scan the events.
-        /// </summary>
-        DateTime Time 
-        { 
-            get;
-        }
-
-        /// <summary>
-        /// List of events we're monitoring.
-        /// </summary>
-        List<RealTimeEvent> Events
-        {
-            get;
-        }
-
         /// <summary>
         /// Thread status flag.
         /// </summary>
@@ -54,50 +38,15 @@ namespace QuantConnect.Lean.Engine.RealTime
         }
 
         /// <summary>
-        /// Data for the Market Open Hours Today
-        /// </summary>
-        Dictionary<SecurityType, MarketToday> MarketToday
-        {
-            get;
-        }
-
-        /// <summary>
         /// Intializes the real time handler for the specified algorithm and job
         /// </summary>
-        void Initialize(IAlgorithm algorithm, AlgorithmNodePacket job, IResultHandler resultHandler, IApi api);
+        void Setup(IAlgorithm algorithm, AlgorithmNodePacket job, IResultHandler resultHandler, IApi api);
 
         /// <summary>
         /// Main entry point to scan and trigger the realtime events.
         /// </summary>
         void Run();
-
-        /// <summary>
-        /// Given a list of events, set it up for this day.
-        /// </summary>
-        void SetupEvents(DateTime day);
-
-        /// <summary>
-        /// Add a new event to the processing list
-        /// </summary>
-        /// <param name="newEvent">Event information</param>
-        void AddEvent(RealTimeEvent newEvent);
         
-        /// <summary>
-        /// Trigger a scan of the events.
-        /// </summary>
-        void ScanEvents();
-
-        /// <summary>
-        /// Reset all the event flags for a new day.
-        /// </summary>
-        /// <remarks>Realtime events are setup as a timespan hours since </remarks>
-        void ResetEvents();
-
-        /// <summary>
-        /// Clear all the events in the list.
-        /// </summary>
-        void ClearEvents();
-
         /// <summary>
         /// Set the current time for the event scanner (so we can use same code for backtesting and live events)
         /// </summary>

@@ -323,6 +323,22 @@ namespace QuantConnect
     }
 
     /// <summary>
+    /// Specifies the type of <see cref="QuantConnect.Data.Market.Delisting"/> data
+    /// </summary>
+    public enum DelistingType
+    {
+        /// <summary>
+        /// Specifies a warning of an imminent delisting
+        /// </summary>
+        Warning = 0,
+
+        /// <summary>
+        /// Specifies the symbol has been delisted
+        /// </summary>
+        Delisted = 1
+    }
+
+    /// <summary>
     /// Resolution of data requested.
     /// </summary>
     /// <remarks>Always sort the enum from the smallest to largest resolution</remarks>
@@ -351,6 +367,8 @@ namespace QuantConnect
         /// </summary>
         public AlgorithmControl()
         {
+            // default to true, API can override
+            HasSubscribers = true;
             Status = AlgorithmStatus.Running;
             ChartSubscription = "Strategy Equity";
         }
@@ -364,6 +382,11 @@ namespace QuantConnect
         /// Currently requested chart.
         /// </summary>
         public string ChartSubscription;
+
+        /// <summary>
+        /// True if there's subscribers on the channel
+        /// </summary>
+        public bool HasSubscribers;
     }
 
     /// <summary>
@@ -510,6 +533,20 @@ namespace QuantConnect
         };
     }
 
+    /// <summary>
+    /// Defines the different channel status values
+    /// </summary>
+    public static class ChannelStatus
+    {
+        /// <summary>
+        /// The channel is empty
+        /// </summary>
+        public const string Vacated = "channel_vacated";
+        /// <summary>
+        /// The channel has subscribers
+        /// </summary>
+        public const string Occupied = "channel_occupied";
+    }
 
     /// <summary>
     /// US Public Holidays - Not Tradeable:
