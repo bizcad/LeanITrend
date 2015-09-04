@@ -15,6 +15,7 @@
 
 using NUnit.Framework;
 using QuantConnect.Indicators;
+using QuantConnect.Tests.Indicators;
 using System;
 
 namespace QuantConnect.Tests.Indicators
@@ -36,8 +37,8 @@ namespace QuantConnect.Tests.Indicators
             {
                 /*
                  * Formula:
-                 * prices[idx] = 10 * sin(2 * pi / 20 * idx) + 15
-                 * idx = [0, 1, 2,..., 19]
+                 * prices[i] = 10 * sin(2 * pi / 20 * i) + 15
+                 * i = [0, 1, 2,..., 19]
                  */
                 15m, 18.09m, 20.88m, 23.09m, 24.51m, 25m, 24.51m, 23.09m, 20.88m, 18.09m,
                 15m, 11.91m, 9.12m, 6.91m, 5.49m, 5m, 5.49m, 6.91m, 9.12m, 11.91m
@@ -45,7 +46,7 @@ namespace QuantConnect.Tests.Indicators
 
             decimal[] expectedValues = new decimal[20]
             {
-                // Estimated in TODO:link!
+                // Estimated with Python in http://tinyurl.com/nbt4ud3
                 15m, 18.09m, 18.015m, 20.735m, 22.8925m, 24.2775m, 24.755m, 24.3836m, 23.0445m, 20.8039m,
                 17.8648m, 14.5236m, 11.1232m, 8.0166m, 5.5265m, 3.911m, 3.3413m, 3.8832m, 5.4906m, 8.0133m
             };
@@ -58,13 +59,24 @@ namespace QuantConnect.Tests.Indicators
                 time.AddMinutes(1);
             }
             Assert.AreEqual(expectedValues, actualValues, "Estimation ITrend(5)");
-
         }
 
         [Test]
         public void ResetsProperly()
         {
-            throw new NotImplementedException();
+            int _period = 5;
+            DateTime time = DateTime.Now;
+
+            InstantaneousTrend iTrend = new InstantaneousTrend(_period);
+
+            for (int i = 0; i < 6; i++)
+            {
+                iTrend.Update(new IndicatorDataPoint(time, 100m));
+                time.AddMinutes(1);
+            }
+            Assert.IsTrue(iTrend.IsReady, "Check if the Instantaneous Trend is ready");
+            iTrend.Reset();
+            TestHelper.AssertIndicatorIsInDefaultState(iTrend);
         }
     }
 }

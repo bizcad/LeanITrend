@@ -13,7 +13,7 @@ namespace QuantConnect.Indicators
         private decimal _b;
         private readonly int _period;
         private int barcount;
-        
+
         private readonly RollingWindow<IndicatorDataPoint> _iTrendWindow;
         # endregion
 
@@ -32,7 +32,7 @@ namespace QuantConnect.Indicators
             _period = period;
             // InstantaneousTrend history
             _iTrendWindow = new RollingWindow<IndicatorDataPoint>(2);
-            _alpha = 2 / (_period + 1);
+            _alpha = 2 / ((decimal)_period + 1);
             _a = (_alpha / 2) * (_alpha / 2);
             _b = (1 - _alpha);
             barcount = 0;
@@ -69,7 +69,7 @@ namespace QuantConnect.Indicators
             // for convenience
             DateTime time = input.Time;
 
-            if (barcount < 2 )
+            if (barcount < 2)
             {
                 iTrend = input.Value;
             }
