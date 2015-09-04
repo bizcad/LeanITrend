@@ -44,8 +44,8 @@ namespace QuantConnect.Logging
         public DailyFileLogHandler()
             : this("mydaily.csv")
         {
-            if (File.Exists("mydaily.csv"))
-                File.Delete("mydaily.csv");
+            //if (File.Exists("mydaily.csv"))
+            //    File.Delete("mydaily.csv");
         }
 
         /// <summary>

@@ -7,10 +7,15 @@ namespace QuantConnect.Indicators
     /// </summary>
     public class InstantaneousTrend : WindowIndicator<IndicatorDataPoint>
     {
+<<<<<<< HEAD
         # region Fields
         private decimal _alpha;
         private decimal _a;
         private decimal _b;
+=======
+        // the alpha for the formula
+        private readonly decimal a = 0.1m;
+>>>>>>> master
         private readonly int _period;
         private int barcount;
 
@@ -22,7 +27,7 @@ namespace QuantConnect.Indicators
         /// </summary>
         /// <param name="name"></param>
         /// <param name="period"></param>
-        public InstantaneousTrend(string name, int period)
+        public InstantaneousTrend(string name, int period, decimal alpha)
             : base(name, period)
         {
             if (period < 3)
@@ -30,11 +35,15 @@ namespace QuantConnect.Indicators
                 throw new ArgumentException("InstantaneousTrend must have period of at least 3.", "period");
             }
             _period = period;
+<<<<<<< HEAD
             // InstantaneousTrend history
             _iTrendWindow = new RollingWindow<IndicatorDataPoint>(2);
             _alpha = 2.0m / ((decimal)_period + 1.0m);
             _a = (_alpha / 2) * (_alpha / 2);
             _b = (1 - _alpha);
+=======
+            a = alpha;
+>>>>>>> master
             barcount = 0;
         }
 
@@ -42,8 +51,13 @@ namespace QuantConnect.Indicators
         /// Default constructor
         /// </summary>
         /// <param name="period">int - the number of periods in the indicator warmup</param>
+<<<<<<< HEAD
         public InstantaneousTrend(int period)
             : this("ITrend" + period, period)
+=======
+        public InstantaneousTrend(int period, decimal alpha = .05m)
+            : this("CCy" + period, period, alpha)
+>>>>>>> master
         {
         }
 

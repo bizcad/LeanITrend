@@ -108,6 +108,9 @@ namespace QuantConnect.Views.WinForms
             //Start GUI
             // steal the desktop result handler from the composer's instance
             Application.Run(new LeanEngineWinForm(engine));
+
+            
+            
         }
 
         /// <summary>

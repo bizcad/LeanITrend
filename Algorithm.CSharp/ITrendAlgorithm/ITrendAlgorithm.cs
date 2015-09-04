@@ -1,4 +1,5 @@
-﻿using QuantConnect.Data.Market;
+﻿using System.Reflection;
+using QuantConnect.Data.Market;
 using QuantConnect.Indicators;
 using QuantConnect.Orders;
 using QuantConnect.Securities.Equity;
@@ -62,8 +63,8 @@ namespace QuantConnect.Algorithm.CSharp.ITrendAlgorithm
 
         public override void Initialize()
         {
-            SetStartDate(2015, 8, 19);   //Set Start Date
-            SetEndDate(2015, 9, 2);    //Set End Date
+            SetStartDate(2015, 5, 19);   //Set Start Date
+            SetEndDate(2015, 8, 25);    //Set End Date
             SetCash(22000);             //Set Strategy Cash
 
             #region Logging stuff - Initializing Portfolio Logging
@@ -182,11 +183,12 @@ namespace QuantConnect.Algorithm.CSharp.ITrendAlgorithm
             {
                 string filename = string.Format("ITrendDebug_{0}.csv", symbol);
                 string filePath = @"C:\Users\JJ\Desktop\MA y señales\ITrend Debug\" + filename;
- //               filePath = @"C:\Users\Nick\Desktop\" + filename;
-
+                // JJ do not delete this line it locates my engine\bin\debug folder
+                //  I just uncomment it when I run on my local machine
+                //filePath = AssemblyLocator.ExecutingDirectory() + filename;
+                
                 if (File.Exists(filePath)) File.Delete(filePath);
                 File.AppendAllText(filePath, stockLogging[i].ToString());
-                Debug(string.Format(@"Ending Portfolio Value: {0}", Portfolio.TotalPortfolioValue));
             }
 
             #endregion Logging stuff - Saving the logs

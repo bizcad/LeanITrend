@@ -1,4 +1,4 @@
-﻿using System;
+﻿    using System;
 using System.Linq;
 using QuantConnect.Data.Market;
 using QuantConnect.Indicators;
@@ -11,11 +11,11 @@ namespace QuantConnect.Algorithm.Examples
 {
     class InstantaneousTrendAlgorithm : QCAlgorithm
     {
-        private DateTime _startDate = new DateTime(2015, 5, 19);
-        private DateTime _endDate = new DateTime(2015, 9, 2);
+        private DateTime _startDate = new DateTime(2015, 9, 2);
+        private DateTime _endDate = new DateTime(2015, 9, 3);
         private decimal _portfolioAmount = 10000;
         private decimal _transactionSize = 15000;
-
+        private decimal alpha = 0.25m;
         private string symbol = "AAPL";
 
         #region "Custom Logging"
@@ -24,7 +24,7 @@ namespace QuantConnect.Algorithm.Examples
         private ILogHandler transactionlog = Composer.Instance.GetExportedValueByTypeName<ILogHandler>("TransactionFileLogHandler");
         private readonly OrderReporter _orderReporter;
 
-        private string ondataheader = @"Time,BarCount,trade size,Open,High,Low,Close,Time,Price,Trend,Trigger,ZeroLag,SMA20, iFishTrend,CyberCycle,iFishCyberCycle,maximum, minimum,pricePassedMax,pricePassedMin,ROC,RSI High,RSI Low, iFishRSIHigh, iFishRSILow, direction,slope, comment, Entry Price, Exit Price,orderId , unrealized, shares owned,trade profit, trade fees, trade net,last trade fees, profit, fees, net, day profit, day fees, day net, Portfolio Value";
+        private string ondataheader = @"Time,BarCount,trade size,Open,High,Low,Close,Time,Price,Trend,Trigger,comment, Entry Price, Exit Price,orderId , unrealized, shares owned,trade profit, trade fees, trade net,last trade fees, profit, fees, net, day profit, day fees, day net, Portfolio Value";
         private string dailyheader = @"Trading Date,Daily Profit, Daily Fees, Daily Net, Cum profit, Cum Fees, Cum Net, Trades/day, Portfolio Value, Shares Owned";
         private string transactionheader = @"Symbol,Quantity,Price,Direction,Order Date,Settlement Date, Amount,Commission,Net,Nothing,Description,Action Id,Order Id,RecordType,TaxLotNumber";
         private string comment;
@@ -55,10 +55,14 @@ namespace QuantConnect.Algorithm.Examples
         private int tradecount;
         private int lasttradecount;
         private DateTime tradingDate;
-        #endregion
-
         private decimal nEntryPrice = 0;
         private decimal nExitPrice = 0;
+
+        private Maximum MaxDailyProfit;
+        private Minimum MinDailyProfit;
+        
+
+        #endregion
 
 
         // Strategy
@@ -82,6 +86,9 @@ namespace QuantConnect.Algorithm.Examples
             dailylog.Debug(algoname);
             dailylog.Debug(dailyheader);
             transactionlog.Debug(transactionheader);
+            var days = _endDate.Subtract(_startDate).TotalDays;
+            MaxDailyProfit = new Maximum("MaxDailyProfit",(int)days);
+            MinDailyProfit = new Minimum("MinDailyProfit", (int)days);
             #endregion
 
             //Initialize dates
@@ -96,7 +103,7 @@ namespace QuantConnect.Algorithm.Examples
             Price = new RollingWindow<IndicatorDataPoint>(14);      // The price history
 
             // ITrend
-            trend = new InstantaneousTrend(7);
+            trend = new InstantaneousTrend(7, alpha);
             trendHistory = new RollingWindow<IndicatorDataPoint>(14);
             trendTrigger = new RollingWindow<IndicatorDataPoint>(14);
 
@@ -125,9 +132,13 @@ namespace QuantConnect.Algorithm.Examples
             trend.Update(idp(time, Price[0].Value));
             trendHistory.Add(idp(time, trend.Current.Value)); //add last iteration value for the cycle
             trendTrigger.Add(idp(time, trend.Current.Value));
-            if (barcount == 1)
+            if (Portfolio[symbol].Invested)
             {
-                tradesize = (int)(Portfolio.Cash / Convert.ToInt32(Price[0].Value + 1));
+                tradesize = Math.Abs(Portfolio[symbol].Quantity);
+            }
+            else
+            {
+                tradesize = (int)(_transactionSize / Convert.ToInt32(Price[0].Value + 1));
             }
 
             // iTrendStrategy starts on bar 3 because it uses trendHistory[0] - trendHistory[3]
@@ -199,7 +210,7 @@ namespace QuantConnect.Algorithm.Examples
         /// <param name="data">TradeBars - the data received by the OnData event</param>
         private void Strategy(TradeBars data)
         {
-            string comment = string.Empty;
+            
             #region "Strategy Execution"
 
             if (SellOutEndOfDay(data))
@@ -254,6 +265,9 @@ namespace QuantConnect.Algorithm.Examples
         {
             orderId = orderEvent.OrderId;
             var tickets = Transactions.GetOrderTickets(t => t.OrderId == orderId);
+            nEntryPrice = 0;
+            nExitPrice = 0;
+
             if (tickets.Any())
             {
                 foreach (OrderTicket ticket in tickets)
@@ -279,6 +293,8 @@ namespace QuantConnect.Algorithm.Examples
                             iTrendStrategy.nEntryPrice = orderEvent.FillPrice;
                             #region logging
                             tradefees = Securities[symbol].Holdings.TotalFees - lasttradefees;
+                            nEntryPrice = orderEvent.FillPrice;
+
                             #endregion
 
 
@@ -287,6 +303,7 @@ namespace QuantConnect.Algorithm.Examples
                         else
                         {
                             tradefees += Securities[symbol].Holdings.TotalFees - lasttradefees;
+                            nExitPrice = orderEvent.FillPrice;
                             CalculateTradeProfit(ticket);
                         }
                         #endregion
@@ -325,10 +342,16 @@ namespace QuantConnect.Algorithm.Examples
                     ""
                     );
                 dailylog.Debug(msg);
+
+                MaxDailyProfit.Update(idp(tradingDate, daynet));
+                MinDailyProfit.Update(idp(tradingDate, daynet));
+
                 lasttradecount = tradecount;
                 dayprofit = 0;
                 dayfees = 0;
                 daynet = 0;
+
+
                 #endregion
             }
         }
@@ -365,7 +388,13 @@ namespace QuantConnect.Algorithm.Examples
         public override void OnEndOfAlgorithm()
         {
             int i = 0;
-            
+            string eoa = string.Format(@"{0},{1},{2},{3}", 
+                alpha,
+                MaxDailyProfit.Current.Value,
+                MinDailyProfit.Current.Value,
+                Portfolio.TotalPortfolioValue);
+            Debug(eoa);
+            dailylog.Debug(eoa);
         }
         /// <summary>
         /// Convenience function which creates an IndicatorDataPoint

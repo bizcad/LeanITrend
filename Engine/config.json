@@ -8,13 +8,15 @@
 
     "environment": "backtesting",
 
-    // algorithm class selector 
-    //"algorithm-type-name": "InstantaneousTrendAlgorithm",
-    "algorithm-type-name": "ITrendAlgorithm",
+    // algorithm class selector LoggingITrendAlgorithm
+    "algorithm-type-name": "InstantaneousTrendAlgorithm",
+    //"algorithm-type-name": "ITrendAlgorithm",
+    //"algorithm-type-name": "LoggingITrendAlgorithm",ConsolidatorAlgorithm
+    //"algorithm-type-name": "ConsolidatorAlgorithm",
 
     // Algorithm language selector - options CSharp, FSharp, VisualBasic, Python, Java
-    "algorithm-language": "CSharp", 
-	
+    "algorithm-language": "CSharp",
+
     //Physical DLL location
     "algorithm-location": "QuantConnect.Algorithm.CSharp.dll",
     //"algorithm-location": "QuantConnect.Algorithm.Python.dll",

@@ -173,6 +173,7 @@ namespace QuantConnect.Lean.Engine.Results
                 Directory.Delete(_chartDirectory, true);
             }
             Directory.CreateDirectory(_chartDirectory);
+            
         }
         
         /// <summary>
