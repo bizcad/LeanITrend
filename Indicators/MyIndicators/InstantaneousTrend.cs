@@ -12,7 +12,7 @@ namespace QuantConnect.Indicators
     public class InstantaneousTrend : WindowIndicator<IndicatorDataPoint>
     {
         // the alpha for the formula
-        private readonly decimal a = 0.5m;
+        private readonly decimal a = 0.1m;
         private readonly int _period;
         private readonly RollingWindow<IndicatorDataPoint> _trend;
         private readonly RollingWindow<IndicatorDataPoint> _price;
@@ -23,7 +23,7 @@ namespace QuantConnect.Indicators
         /// </summary>
         /// <param name="name"></param>
         /// <param name="period"></param>
-        public InstantaneousTrend(string name, int period)
+        public InstantaneousTrend(string name, int period, decimal alpha)
             : base(name, period)
         {
 
@@ -31,14 +31,15 @@ namespace QuantConnect.Indicators
             _trend = new RollingWindow<IndicatorDataPoint>(period);
             _price = new RollingWindow<IndicatorDataPoint>(period);
             _period = period;
+            a = alpha;
             barcount = 0;
         }
         /// <summary>
         /// Default constructor
         /// </summary>
         /// <param name="period">int - the number of periods in the indicator warmup</param>
-        public InstantaneousTrend(int period)
-            : this("CCy" + period, period)
+        public InstantaneousTrend(int period, decimal alpha = .05m)
+            : this("CCy" + period, period, alpha)
         {
         }
 

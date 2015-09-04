@@ -706,7 +706,7 @@ namespace QuantConnect.Algorithm
         { 
             //Validate:
             //1. Check Range:
-            if (end > DateTime.Now.Date.AddDays(-1)) 
+            if (end > DateTime.Now.Date.AddDays(-1))
             {
                 end = DateTime.Now.Date.AddDays(-1);
             }

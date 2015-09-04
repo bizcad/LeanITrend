@@ -3,18 +3,20 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using QuantConnect.Algorithm;
 using QuantConnect.Data.Consolidators;
 using QuantConnect.Data.Market;
 using QuantConnect.Indicators;
 
-namespace QuantConnect.Algorithm.CSharp.BizcadAlgorithm
+
+namespace QuantConnect
 {
     public class ConsolidatorAlgorithm : QCAlgorithm
     {
         public override void Initialize()
         {
-            SetStartDate(2013, 1, 1);
-            SetEndDate(2013, 2, 1);
+            SetStartDate(2015, 6, 26);
+            SetEndDate(2015, 7, 2);
             SetCash(25000);
 
             AddSecurity(SecurityType.Equity, "SPY", Resolution.Minute);
@@ -49,8 +51,8 @@ namespace QuantConnect.Algorithm.CSharp.BizcadAlgorithm
 
             // register our indicator and consolidator together. this will wire the consolidator up to receive
             // data for the specified symbol, and also set up the indicator to receive its data from the consolidator
-            //RegisterIndicator("SPY", fastEmaOnFifteenMinuteBars, fifteenMinuteConsolidator);
-            //RegisterIndicator("SPY", slowEmaOnFifteenMinuteBars, fifteenMinuteConsolidator);
+            RegisterIndicator("SPY", fastEmaOnFifteenMinuteBars, fifteenMinuteConsolidator, Field.Close);
+            RegisterIndicator("SPY", slowEmaOnFifteenMinuteBars, fifteenMinuteConsolidator, Field.Close);
 
             // register the indicator to be plotted along
             PlotIndicator("SPY", fastEmaOnFifteenMinuteBars);

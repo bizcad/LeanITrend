@@ -1,4 +1,4 @@
-﻿using System;
+﻿    using System;
 using System.Linq;
 using QuantConnect.Data.Market;
 using QuantConnect.Indicators;
@@ -11,11 +11,11 @@ namespace QuantConnect.Algorithm.Examples
 {
     class InstantaneousTrendAlgorithm : QCAlgorithm
     {
-        private DateTime _startDate = new DateTime(2015, 8, 19);
-        private DateTime _endDate = new DateTime(2015, 8, 25);
+        private DateTime _startDate = new DateTime(2015, 9, 2);
+        private DateTime _endDate = new DateTime(2015, 9, 3);
         private decimal _portfolioAmount = 10000;
-        private decimal _transactionSize = 10000;
-
+        private decimal _transactionSize = 15000;
+        private decimal alpha = 0.25m;
         private string symbol = "AAPL";
 
         #region "Custom Logging"
@@ -58,6 +58,10 @@ namespace QuantConnect.Algorithm.Examples
         private decimal nEntryPrice = 0;
         private decimal nExitPrice = 0;
 
+        private Maximum MaxDailyProfit;
+        private Minimum MinDailyProfit;
+        
+
         #endregion
 
 
@@ -82,6 +86,9 @@ namespace QuantConnect.Algorithm.Examples
             dailylog.Debug(algoname);
             dailylog.Debug(dailyheader);
             transactionlog.Debug(transactionheader);
+            var days = _endDate.Subtract(_startDate).TotalDays;
+            MaxDailyProfit = new Maximum("MaxDailyProfit",(int)days);
+            MinDailyProfit = new Minimum("MinDailyProfit", (int)days);
             #endregion
 
             //Initialize dates
@@ -96,7 +103,7 @@ namespace QuantConnect.Algorithm.Examples
             Price = new RollingWindow<IndicatorDataPoint>(14);      // The price history
 
             // ITrend
-            trend = new InstantaneousTrend(7);
+            trend = new InstantaneousTrend(7, alpha);
             trendHistory = new RollingWindow<IndicatorDataPoint>(14);
             trendTrigger = new RollingWindow<IndicatorDataPoint>(14);
 
@@ -203,7 +210,7 @@ namespace QuantConnect.Algorithm.Examples
         /// <param name="data">TradeBars - the data received by the OnData event</param>
         private void Strategy(TradeBars data)
         {
-            string comment = string.Empty;
+            
             #region "Strategy Execution"
 
             if (SellOutEndOfDay(data))
@@ -258,6 +265,9 @@ namespace QuantConnect.Algorithm.Examples
         {
             orderId = orderEvent.OrderId;
             var tickets = Transactions.GetOrderTickets(t => t.OrderId == orderId);
+            nEntryPrice = 0;
+            nExitPrice = 0;
+
             if (tickets.Any())
             {
                 foreach (OrderTicket ticket in tickets)
@@ -283,6 +293,8 @@ namespace QuantConnect.Algorithm.Examples
                             iTrendStrategy.nEntryPrice = orderEvent.FillPrice;
                             #region logging
                             tradefees = Securities[symbol].Holdings.TotalFees - lasttradefees;
+                            nEntryPrice = orderEvent.FillPrice;
+
                             #endregion
 
 
@@ -291,6 +303,7 @@ namespace QuantConnect.Algorithm.Examples
                         else
                         {
                             tradefees += Securities[symbol].Holdings.TotalFees - lasttradefees;
+                            nExitPrice = orderEvent.FillPrice;
                             CalculateTradeProfit(ticket);
                         }
                         #endregion
@@ -329,10 +342,16 @@ namespace QuantConnect.Algorithm.Examples
                     ""
                     );
                 dailylog.Debug(msg);
+
+                MaxDailyProfit.Update(idp(tradingDate, daynet));
+                MinDailyProfit.Update(idp(tradingDate, daynet));
+
                 lasttradecount = tradecount;
                 dayprofit = 0;
                 dayfees = 0;
                 daynet = 0;
+
+
                 #endregion
             }
         }
@@ -369,7 +388,13 @@ namespace QuantConnect.Algorithm.Examples
         public override void OnEndOfAlgorithm()
         {
             int i = 0;
-            
+            string eoa = string.Format(@"{0},{1},{2},{3}", 
+                alpha,
+                MaxDailyProfit.Current.Value,
+                MinDailyProfit.Current.Value,
+                Portfolio.TotalPortfolioValue);
+            Debug(eoa);
+            dailylog.Debug(eoa);
         }
         /// <summary>
         /// Convenience function which creates an IndicatorDataPoint
