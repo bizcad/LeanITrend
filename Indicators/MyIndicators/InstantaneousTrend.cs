@@ -32,7 +32,7 @@ namespace QuantConnect.Indicators
             _period = period;
             // InstantaneousTrend history
             _iTrendWindow = new RollingWindow<IndicatorDataPoint>(2);
-            _alpha = 2 / (_period + 1);
+            _alpha = 2.0m / ((decimal)_period + 1.0m);
             _a = (_alpha / 2) * (_alpha / 2);
             _b = (1 - _alpha);
             barcount = 0;

@@ -11,10 +11,10 @@ namespace QuantConnect.Algorithm.Examples
 {
     class InstantaneousTrendAlgorithm : QCAlgorithm
     {
-        private DateTime _startDate = new DateTime(2015, 8, 19);
-        private DateTime _endDate = new DateTime(2015, 8, 25);
-        private decimal _portfolioAmount = 22000;
-        private decimal _transactionSize = 22000;
+        private DateTime _startDate = new DateTime(2015, 5, 19);
+        private DateTime _endDate = new DateTime(2015, 9, 2);
+        private decimal _portfolioAmount = 10000;
+        private decimal _transactionSize = 15000;
 
         private string symbol = "AAPL";
 
