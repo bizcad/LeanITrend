@@ -20,47 +20,34 @@ namespace QuantConnect.Algorithm.CSharp.ITrendAlgorithm
 {
     internal class LoggingITrendAlgorithm : QCAlgorithm
     {
+        #region "Algorithm Globals"
+        private DateTime _startDate = new DateTime(2015, 9, 2);
+        private DateTime _endDate = new DateTime(2015, 9, 3);
+        private decimal _portfolioAmount = 10000;
+        private decimal _transactionSize = 15000;
+        #endregion
         #region Fields
-        private DateTime _startDate = new DateTime(2015, 8, 19);
-        private DateTime _endDate = new DateTime(2015, 8, 25);
-    /* +-------------------------------------------------+
+
+        /* +-------------------------------------------------+
      * |Algorithm Control Panel                          |
      * +-------------------------------------------------+*/
         private static int ITrendPeriod = 7;            // Instantaneous Trend period.
-        private static decimal Tolerance = 0.005m;      // Trigger - Trend crossing tolerance.
+        private static decimal Tolerance = 0.000m;      // Trigger - Trend crossing tolerance.
         private static decimal RevertPCT = 1.0015m;     // Percentage tolerance before revert position.
-        
-        private static decimal maxLeverage = 1m;        // Maximum Leverage.  Nick changed to 1m from 3m
-        private decimal leverageBuffer = 0.25m;         // Percentage of Leverage left unused.
-        private int maxOperationQuantity = 250;         // Maximum shares per operation.
+
+        private static decimal maxLeverage = 1m;        // Maximum Leverage.
+        private decimal leverageBuffer = 0.00m;         // Percentage of Leverage left unused.
+        private int maxOperationQuantity = 500;         // Maximum shares per operation.
 
         private decimal RngFac = 0.35m;                 // Percentage of the bar range used to estimate limit prices.
 
-        private bool resetAtEndOfDay = true;           // Reset the strategies at EOD.
+        private bool resetAtEndOfDay = true;            // Reset the strategies at EOD.
         private bool noOvernight = true;                // Close all positions before market close.
-    /* +-------------------------------------------------+*/
-        
-        private static string[] Symbols = { "AAPL" };   // Nick changed to just 1 symbol so logging would work
+        /* +-------------------------------------------------+*/
 
-        #region "Strategy"
-        // Strategy Nick added
-        private int tradesize;
-        private int orderId = 0;
-        #endregion
+        private static string[] Symbols = { "AAPL" };
+        //private static string[] Symbols = { "AIG", "BAC", "IBM", "SPY" };
 
-        #region "Custom Logging"
-        // Nick Added
-        private ILogHandler mylog = Composer.Instance.GetExportedValueByTypeName<ILogHandler>("CustomFileLogHandler");
-        private ILogHandler dailylog = Composer.Instance.GetExportedValueByTypeName<ILogHandler>("DailyFileLogHandler");
-        private ILogHandler transactionlog = Composer.Instance.GetExportedValueByTypeName<ILogHandler>("TransactionFileLogHandler");
-        private readonly OrderReporter _orderReporter;
-
-        private string ondataheader = @"Time,BarCount,trade size,Open,High,Low,Close,Time,Price,Trend,Trigger,comment, Entry Price, Exit Price,orderId , unrealized, shares owned,trade profit, trade fees, trade net,last trade fees, profit, fees, net, day profit, day fees, day net, Portfolio Value";
-        private string dailyheader = @"Trading Date,Daily Profit, Daily Fees, Daily Net, Cum profit, Cum Fees, Cum Net, Trades/day, Portfolio Value, Shares Owned";
-        private string transactionheader = @"Symbol,Quantity,Price,Direction,Order Date,Settlement Date, Amount,Commission,Net,Nothing,Description,Action Id,Order Id,RecordType,TaxLotNumber";
-        private string comment;
-        #endregion
-        
         // Dictionary used to store the ITrendStrategy object for each symbol.
         private Dictionary<string, ITrendStrategy> Strategy = new Dictionary<string, ITrendStrategy>();
 
@@ -73,17 +60,27 @@ namespace QuantConnect.Algorithm.CSharp.ITrendAlgorithm
         // Dictionary used to store the last operation for each symbol.
         private Dictionary<string, OrderSignal> LastOrderSent = new Dictionary<string, OrderSignal>();
 
-        EquityExchange theMarket = new EquityExchange();
-        
+        private EquityExchange theMarket = new EquityExchange();
+
         #endregion Fields
+        #region "Strategy"
+        // Strategy Nick added
+        private int tradesize;
+        private int orderId = 0;
+        #endregion
 
-        #region Logging stuff - Defining
+        #region "Custom Logging - Definitions"
+        // Nick Added
+        private ILogHandler mylog = Composer.Instance.GetExportedValueByTypeName<ILogHandler>("CustomFileLogHandler");
+        private ILogHandler dailylog = Composer.Instance.GetExportedValueByTypeName<ILogHandler>("DailyFileLogHandler");
+        private ILogHandler transactionlog = Composer.Instance.GetExportedValueByTypeName<ILogHandler>("TransactionFileLogHandler");
+        private readonly OrderReporter _orderReporter;
 
-        public List<StringBuilder> stockLogging = new List<StringBuilder>();
-        public StringBuilder portfolioLogging = new StringBuilder();
-        private int barCounter = 0;
+        private string ondataheader = @"Time,BarCount,trade size,Open,High,Low,Close,Time,Price,Trend,Trigger,comment, Entry Price, Exit Price,orderId , unrealized, shares owned,trade profit, trade fees, trade net,last trade fees, profit, fees, net, day profit, day fees, day net, Portfolio Value";
+        private string dailyheader = @"Trading Date,Daily Profit, Daily Fees, Daily Net, Cum profit, Cum Fees, Cum Net, Trades/day, Portfolio Value, Shares Owned";
+        private string transactionheader = @"Symbol,Quantity,Price,Direction,Order Date,Settlement Date, Amount,Commission,Net,Nothing,Description,Action Id,Order Id,RecordType,TaxLotNumber";
+        private string comment;
 
-        #region logging 
         // P & L  Nick added
         private int sharesOwned = 0;
         decimal tradeprofit = 0m;
@@ -105,6 +102,13 @@ namespace QuantConnect.Algorithm.CSharp.ITrendAlgorithm
         private decimal nExitPrice = 0;
 
         #endregion
+
+        #region Logging stuff - Defining
+
+        public List<StringBuilder> stockLogging = new List<StringBuilder>();
+        public StringBuilder portfolioLogging = new StringBuilder();
+        private int barCounter = 0;
+
         #endregion Logging stuff - Defining
 
         #region QCAlgorithm methods
@@ -121,12 +125,16 @@ namespace QuantConnect.Algorithm.CSharp.ITrendAlgorithm
             transactionlog.Debug(transactionheader);
             #endregion
 
-
             SetStartDate(_startDate);   //Set Start Date
             SetEndDate(_endDate);    //Set End Date
             SetCash(22000);             //Set Strategy Cash
+            #region Logging stuff - Initializing Portfolio Logging
 
-            int i = 0;
+            portfolioLogging.AppendLine("Counter, Time, Portfolio Value");
+            int i = 0;  // Only used for logging.
+
+            #endregion Logging stuff - Initializing Portfolio Logging
+
             foreach (string symbol in Symbols)
             {
                 AddSecurity(SecurityType.Equity, symbol, Resolution.Minute);
@@ -136,18 +144,16 @@ namespace QuantConnect.Algorithm.CSharp.ITrendAlgorithm
                 ShareSize.Add(symbol, (maxLeverage * (1 - leverageBuffer)) / Symbols.Count());
                 LastOrderSent.Add(symbol, OrderSignal.doNothing);
 
-                #region Logging stuff - Initializing
+                #region Logging stuff - Initializing Stock Logging
 
                 stockLogging.Add(new StringBuilder());
-                stockLogging[i].AppendLine("Counter, Time, Close, ITrend, Momentum, Trigger, Signal," +
-                    "MomentumWindow[1], MomentumWindow[0]," +
+                stockLogging[i].AppendLine("Counter, Time, Close, ITrend, Trigger," +
+                    "Momentum, EntryPrice, Signal," +
                     "TriggerCrossOverITrend, TriggerCrossUnderITrend, ExitFromLong, ExitFromShort," +
                     "StateFromStrategy, StateFromPorfolio, Portfolio Value");
-                //"Counter, Time, Close, ITrend, Momentum, MomentumWindow, Signal, limitPrice, FillPrice, State, LastState, ShareSize, IsShort, IsLong, QuantityHold");
                 i++;
 
-
-                #endregion Logging stuff - Initializing
+                #endregion Logging stuff - Initializing Stock Logging
             }
 
         }
@@ -161,8 +167,8 @@ namespace QuantConnect.Algorithm.CSharp.ITrendAlgorithm
             barCounter++;
             #endregion
 
-            OrderSignal actualOrder = OrderSignal.doNothing;
             bool isMarketAboutToClose;
+            OrderSignal actualOrder = OrderSignal.doNothing;
 
             int i = 0;
             foreach (string symbol in Symbols)
@@ -389,6 +395,12 @@ namespace QuantConnect.Algorithm.CSharp.ITrendAlgorithm
             return quantity;
         }
 
+        /// <summary>
+        /// Executes the ITrend strategy orders.
+        /// </summary>
+        /// <param name="symbol">The symbol to be traded.</param>
+        /// <param name="actualOrder">The actual arder to be execute.</param>
+        /// <param name="data">The actual TradeBar data.</param>
         private void ExecuteStrategy(string symbol, OrderSignal actualOrder, TradeBars data)
         {
             int shares;
@@ -451,7 +463,7 @@ namespace QuantConnect.Algorithm.CSharp.ITrendAlgorithm
         #endregion Methods
 
         // Nick added ExtendedMethods
-        #region ExtendedMethods
+        #region "Nick Added ExtendedMethods"
         /// <summary>
         /// Handle order events
         /// </summary>

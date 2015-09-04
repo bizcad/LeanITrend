@@ -15,7 +15,7 @@ namespace QuantConnect.Algorithm.Examples
         private DateTime _endDate = new DateTime(2015, 9, 3);
         private decimal _portfolioAmount = 10000;
         private decimal _transactionSize = 15000;
-        private decimal alpha = 0.25m;
+        
         private string symbol = "AAPL";
 
         #region "Custom Logging"
@@ -103,7 +103,7 @@ namespace QuantConnect.Algorithm.Examples
             Price = new RollingWindow<IndicatorDataPoint>(14);      // The price history
 
             // ITrend
-            trend = new InstantaneousTrend(7, alpha);
+            trend = new InstantaneousTrend(7);
             trendHistory = new RollingWindow<IndicatorDataPoint>(14);
             trendTrigger = new RollingWindow<IndicatorDataPoint>(14);
 
@@ -388,8 +388,7 @@ namespace QuantConnect.Algorithm.Examples
         public override void OnEndOfAlgorithm()
         {
             int i = 0;
-            string eoa = string.Format(@"{0},{1},{2},{3}", 
-                alpha,
+            string eoa = string.Format(@"{0},{1},{2}", 
                 MaxDailyProfit.Current.Value,
                 MinDailyProfit.Current.Value,
                 Portfolio.TotalPortfolioValue);

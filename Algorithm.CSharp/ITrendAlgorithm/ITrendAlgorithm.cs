@@ -13,6 +13,12 @@ namespace QuantConnect.Algorithm.CSharp.ITrendAlgorithm
 {
     internal class ITrendAlgorithm : QCAlgorithm
     {
+        #region "Algorithm Globals"
+        private DateTime _startDate = new DateTime(2015, 9, 2);
+        private DateTime _endDate = new DateTime(2015, 9, 3);
+        private decimal _portfolioAmount = 10000;
+        private decimal _transactionSize = 15000;
+        #endregion
         #region Fields
 
     /* +-------------------------------------------------+
@@ -63,9 +69,9 @@ namespace QuantConnect.Algorithm.CSharp.ITrendAlgorithm
 
         public override void Initialize()
         {
-            SetStartDate(2015, 5, 19);   //Set Start Date
-            SetEndDate(2015, 8, 25);    //Set End Date
-            SetCash(22000);             //Set Strategy Cash
+            SetStartDate(_startDate);               //Set Start Date
+            SetEndDate(_endDate);                   //Set End Date
+            SetCash(_portfolioAmount);              //Set Strategy Cash
 
             #region Logging stuff - Initializing Portfolio Logging
 
@@ -189,6 +195,7 @@ namespace QuantConnect.Algorithm.CSharp.ITrendAlgorithm
                 
                 if (File.Exists(filePath)) File.Delete(filePath);
                 File.AppendAllText(filePath, stockLogging[i].ToString());
+                Debug(string.Format("Ending Portfolio Value: {0} ", Portfolio.TotalPortfolioValue));
             }
 
             #endregion Logging stuff - Saving the logs
