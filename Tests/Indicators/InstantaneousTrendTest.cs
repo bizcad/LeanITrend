@@ -50,7 +50,7 @@ namespace QuantConnect.Tests.Indicators
                 15m, 18.09m, 18.015m, 20.735m, 22.8925m, 24.2775m, 24.755m, 24.3836m, 23.0445m, 20.8039m,
                 17.8648m, 14.5236m, 11.1232m, 8.0166m, 5.5265m, 3.911m, 3.3413m, 3.8832m, 5.4906m, 8.0133m
             };
-            # endregion            
+            # endregion
 
             for (int i = 0; i < prices.Length; i++)
             {
