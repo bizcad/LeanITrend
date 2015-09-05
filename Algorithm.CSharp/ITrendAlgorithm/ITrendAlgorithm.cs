@@ -192,7 +192,7 @@ namespace QuantConnect.Algorithm.CSharp.ITrendAlgorithm
                 // JJ do not delete this line it locates my engine\bin\debug folder
                 //  I just uncomment it when I run on my local machine
                 filePath = AssemblyLocator.ExecutingDirectory() + filename;
-                
+
                 if (File.Exists(filePath)) File.Delete(filePath);
                 File.AppendAllText(filePath, stockLogging[i].ToString());
                 Debug(string.Format("Ending Portfolio Value: {0} ", Portfolio.TotalPortfolioValue));
