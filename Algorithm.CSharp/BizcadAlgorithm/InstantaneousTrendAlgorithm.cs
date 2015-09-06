@@ -1,5 +1,9 @@
-﻿    using System;
+﻿using System;
+using System.Collections.Generic;
 using System.Linq;
+using System.Text;
+using QuantConnect.Algorithm.CSharp.Common;
+using QuantConnect.Algorithm.Examples;
 using QuantConnect.Data.Market;
 using QuantConnect.Indicators;
 using QuantConnect.Logging;
@@ -7,7 +11,7 @@ using QuantConnect.Orders;
 using QuantConnect.Securities;
 using QuantConnect.Util;
 
-namespace QuantConnect.Algorithm.Examples
+namespace QuantConnect.Algorithm.CSharp
 {
     class InstantaneousTrendAlgorithm : QCAlgorithm
     {
@@ -15,20 +19,8 @@ namespace QuantConnect.Algorithm.Examples
         private DateTime _endDate = new DateTime(2015, 9, 3);
         private decimal _portfolioAmount = 10000;
         private decimal _transactionSize = 15000;
-        
+
         private string symbol = "AAPL";
-
-        #region "Custom Logging"
-        private ILogHandler mylog = Composer.Instance.GetExportedValueByTypeName<ILogHandler>("CustomFileLogHandler");
-        private ILogHandler dailylog = Composer.Instance.GetExportedValueByTypeName<ILogHandler>("DailyFileLogHandler");
-        private ILogHandler transactionlog = Composer.Instance.GetExportedValueByTypeName<ILogHandler>("TransactionFileLogHandler");
-        private readonly OrderReporter _orderReporter;
-
-        private string ondataheader = @"Time,BarCount,trade size,Open,High,Low,Close,Time,Price,Trend,Trigger,comment, Entry Price, Exit Price,orderId , unrealized, shares owned,trade profit, trade fees, trade net,last trade fees, profit, fees, net, day profit, day fees, day net, Portfolio Value";
-        private string dailyheader = @"Trading Date,Daily Profit, Daily Fees, Daily Net, Cum profit, Cum Fees, Cum Net, Trades/day, Portfolio Value, Shares Owned";
-        private string transactionheader = @"Symbol,Quantity,Price,Direction,Order Date,Settlement Date, Amount,Commission,Net,Nothing,Description,Action Id,Order Id,RecordType,TaxLotNumber";
-        private string comment;
-        #endregion
 
         private int barcount = 0;
 
@@ -36,8 +28,10 @@ namespace QuantConnect.Algorithm.Examples
         private InstantaneousTrend trend;
         private RollingWindow<IndicatorDataPoint> trendHistory;
         private RollingWindow<IndicatorDataPoint> trendTrigger;
+        private bool dowarmup = false;
 
-        #region logging
+        #region "logging P&L"
+
         // P & L
         private int sharesOwned = 0;
         decimal tradeprofit = 0m;
@@ -60,10 +54,23 @@ namespace QuantConnect.Algorithm.Examples
 
         private Maximum MaxDailyProfit;
         private Minimum MinDailyProfit;
-        
+
 
         #endregion
+        #region "Custom Logging"
+        private ILogHandler mylog = Composer.Instance.GetExportedValueByTypeName<ILogHandler>("CustomFileLogHandler");
+        private ILogHandler dailylog = Composer.Instance.GetExportedValueByTypeName<ILogHandler>("DailyFileLogHandler");
+        private ILogHandler transactionlog = Composer.Instance.GetExportedValueByTypeName<ILogHandler>("TransactionFileLogHandler");
+        private readonly OrderReporter _orderReporter;
 
+        private string ondataheader = @"Time,BarCount,trade size,Open,High,Low,Close,Time,Price,Trend,Trigger,comment, Entry Price, Exit Price,orderId , unrealized, shares owned,trade profit, trade fees, trade net,last trade fees, profit, fees, net, day profit, day fees, day net, Portfolio Value";
+        private string dailyheader = @"Trading Date,Daily Profit, Daily Fees, Daily Net, Cum profit, Cum Fees, Cum Net, Trades/day, Portfolio Value, Shares Owned";
+        private string transactionheader = @"Symbol,Quantity,Price,Direction,Order Date,Settlement Date, Amount,Commission,Net,Nothing,Description,Action Id,Order Id,RecordType,TaxLotNumber";
+        private string comment;
+        #endregion
+
+        // Warm up
+        private List<TradeBar> tradeBarList;
 
         // Strategy
         private InstantTrendStrategy iTrendStrategy;
@@ -87,7 +94,7 @@ namespace QuantConnect.Algorithm.Examples
             dailylog.Debug(dailyheader);
             transactionlog.Debug(transactionheader);
             var days = _endDate.Subtract(_startDate).TotalDays;
-            MaxDailyProfit = new Maximum("MaxDailyProfit",(int)days);
+            MaxDailyProfit = new Maximum("MaxDailyProfit", (int)days);
             MinDailyProfit = new Minimum("MinDailyProfit", (int)days);
             #endregion
 
@@ -110,8 +117,65 @@ namespace QuantConnect.Algorithm.Examples
             // The ITrendStrategy
             iTrendStrategy = new InstantTrendStrategy(symbol, 14, this);
             iTrendStrategy.ShouldSellOutAtEod = shouldSellOutAtEod;
-        }
 
+            string warmup = @"Volume,Open,High,Low,Close,EndTime,Period,DataType,IsFillForward,Time,Symbol,Value,Price
+373832,107.545,107.79,107.509,107.77,9/1/2015 3:46:00 PM,00:01:00,TradeBar,False,9/1/2015 3:45:00 PM,AAPL,107.77,107.77
+558930,107.79,108.29,107.68,108.08,9/1/2015 3:47:00 PM,00:01:00,TradeBar,False,9/1/2015 3:46:00 PM,AAPL,108.08,108.08
+519871,108.08,108.3,108.03,108.0899,9/1/2015 3:48:00 PM,00:01:00,TradeBar,False,9/1/2015 3:47:00 PM,AAPL,108.0899,108.0899
+419835,108.085,108.28,108.08,108.11,9/1/2015 3:49:00 PM,00:01:00,TradeBar,False,9/1/2015 3:48:00 PM,AAPL,108.11,108.11
+487146,108.12,108.2,107.9,108.07,9/1/2015 3:50:00 PM,00:01:00,TradeBar,False,9/1/2015 3:49:00 PM,AAPL,108.07,108.07
+377260,108.071,108.28,108.069,108.2,9/1/2015 3:51:00 PM,00:01:00,TradeBar,False,9/1/2015 3:50:00 PM,AAPL,108.2,108.2
+432494,108.21,108.46,108.12,108.42,9/1/2015 3:52:00 PM,00:01:00,TradeBar,False,9/1/2015 3:51:00 PM,AAPL,108.42,108.42
+505142,108.41,108.42,108.085,108.09,9/1/2015 3:53:00 PM,00:01:00,TradeBar,False,9/1/2015 3:52:00 PM,AAPL,108.09,108.09
+276146,108.0808,108.2,108.03,108.09,9/1/2015 3:54:00 PM,00:01:00,TradeBar,False,9/1/2015 3:53:00 PM,AAPL,108.09,108.09
+365589,108.09,108.18,107.9551,108.18,9/1/2015 3:55:00 PM,00:01:00,TradeBar,False,9/1/2015 3:54:00 PM,AAPL,108.18,108.18
+281108,108.18,108.2,108.07,108.1,9/1/2015 3:56:00 PM,00:01:00,TradeBar,False,9/1/2015 3:55:00 PM,AAPL,108.1,108.1
+465920,108.1,108.14,108,108.08,9/1/2015 3:57:00 PM,00:01:00,TradeBar,False,9/1/2015 3:56:00 PM,AAPL,108.08,108.08
+474265,108.08,108.45,108.05,108.37,9/1/2015 3:58:00 PM,00:01:00,TradeBar,False,9/1/2015 3:57:00 PM,AAPL,108.37,108.37
+447959,108.36,108.46,108.24,108.3999,9/1/2015 3:59:00 PM,00:01:00,TradeBar,False,9/1/2015 3:58:00 PM,AAPL,108.3999,108.3999
+631543,108.4,108.635,108.3,108.315,9/1/2015 4:00:00 PM,00:01:00,TradeBar,False,9/1/2015 3:59:00 PM,AAPL,108.315,108.315";
+            //public TradeBar(DateTime time, string symbol, decimal open, decimal high, decimal low, decimal close, long volume, TimeSpan? period = null)
+            dowarmup = true;
+            if (dowarmup)
+            {
+                string[] arrWarmup = warmup.Split('\n');
+                int linenumber = 0;
+                foreach (string s in arrWarmup)
+                {
+                    if (linenumber++ > 0)
+                    {
+                        string[] fields = s.Split(',');
+                        try
+                        {
+                            var vol = fields[0].ToInt64();
+                            var dt = DateTime.Parse(fields[5]);
+                            TradeBar tb = new TradeBar(dt,
+                                fields[10],
+                                System.Convert.ToDecimal(fields[1]),
+                                System.Convert.ToDecimal(fields[2]),
+                                System.Convert.ToDecimal(fields[3]),
+                                System.Convert.ToDecimal(fields[4]),
+                                vol,
+                                null
+                                );
+                            Price.Add(idp(tb.EndTime, (tb.Close + tb.Open) / 2));
+                            trend.Update(idp(tb.EndTime, Price[0].Value));
+                            trendHistory.Add(idp(tb.EndTime, trend.Current.Value));
+                            trendTrigger.Add(idp(tb.EndTime, trend.Current.Value));
+                            if (linenumber > 3)
+                            {
+                                trendTrigger[0].Value = 2 * trendHistory[0].Value - trendHistory[2].Value;
+                            }
+                            iTrendStrategy.WarmUpTrendHistory(idp(tb.EndTime, trend.Current.Value));
+                        }
+                        catch (Exception ex)
+                        {
+                            throw new Exception(ex.Message);
+                        }
+                    }
+                }
+            }
+        }
         /// <summary>
         /// OnData event is the primary entry point for your algorithm. Each new data point will be pumped in here.
         /// </summary>
@@ -124,6 +188,16 @@ namespace QuantConnect.Algorithm.Examples
             #endregion
             barcount++;
 
+            if (dowarmup)
+                if (data.Time.Month == _endDate.Month)
+                    if (data.Time.Day == _endDate.Day)
+                        if ((data.Time.Hour == 15 && data.Time.Minute > 45) || (data.Time.Hour == 16 && data.Time.Minute == 0))
+                        {
+                            if (tradeBarList == null)
+                                tradeBarList = new List<TradeBar>();
+                            tradeBarList.Add(data[symbol]);
+                        }
+
             // Add the history for the bar
             var time = data.Time;
             Price.Add(idp(time, (data[symbol].Close + data[symbol].Open) / 2));
@@ -131,7 +205,14 @@ namespace QuantConnect.Algorithm.Examples
             // Update the indicators
             trend.Update(idp(time, Price[0].Value));
             trendHistory.Add(idp(time, trend.Current.Value)); //add last iteration value for the cycle
-            trendTrigger.Add(idp(time, trend.Current.Value));
+            try
+            {
+                trendTrigger.Add(idp(time, 2*trendHistory[0].Value - trendHistory[2].Value));
+            }
+            catch (Exception e)
+            {
+                throw new Exception(e.Message);
+            }
             if (Portfolio[symbol].Invested)
             {
                 tradesize = Math.Abs(Portfolio[symbol].Quantity);
@@ -140,18 +221,19 @@ namespace QuantConnect.Algorithm.Examples
             {
                 tradesize = (int)(_transactionSize / Convert.ToInt32(Price[0].Value + 1));
             }
-
-            // iTrendStrategy starts on bar 3 because it uses trendHistory[0] - trendHistory[3]
-            if (barcount < 7 && barcount > 2)
+            if (!dowarmup)
             {
-                trendHistory[0].Value = (Price[0].Value + 2 * Price[1].Value + Price[2].Value) / 4;
-            }
+                // iTrendStrategy starts on bar 3 because it uses trendHistory[0] - trendHistory[3]
+                if (barcount < 7 && barcount > 2)
+                {
+                    trendHistory[0].Value = (Price[0].Value + 2 * Price[1].Value + Price[2].Value) / 4;
+                }
 
-            if (barcount > 2)
-            {
-                trendTrigger[0].Value = 2 * trendHistory[0].Value - trendHistory[2].Value;
+                if (barcount > 2)
+                {
+                    trendTrigger[0].Value = 2 * trendHistory[0].Value - trendHistory[2].Value;
+                }
             }
-
             Strategy(data);
 
             #region logging
@@ -195,22 +277,20 @@ namespace QuantConnect.Algorithm.Examples
             if (data.Time.Hour == 16)
             {
                 trend.Reset();
-                trendHistory.Reset();
-                trendTrigger.Reset();
+                //trendHistory.Reset();
+                //trendTrigger.Reset();
                 barcount = 0;
                 Plot("Strategy Equity", "Portfolio", Portfolio.TotalPortfolioValue);
             }
 
         }
-
-
         /// <summary>
         /// Run the strategy associated with this algorithm
         /// </summary>
         /// <param name="data">TradeBars - the data received by the OnData event</param>
         private void Strategy(TradeBars data)
         {
-            
+
             #region "Strategy Execution"
 
             if (SellOutEndOfDay(data))
@@ -219,7 +299,10 @@ namespace QuantConnect.Algorithm.Examples
 
                 // if there were limit order tickets to cancel, wait a bar to execute the strategy
                 if (!CanceledUnfilledLimitOrder())
-                    comment = iTrendStrategy.ExecuteStrategy(data, tradesize, trend.Current, trendTrigger[0]);
+                {
+                    string current;
+                    current = iTrendStrategy.ExecuteStrategy(data, tradesize, trend.Current, out comment);
+                }
             }
 
             #endregion
@@ -246,7 +329,37 @@ namespace QuantConnect.Algorithm.Examples
 
             return retval;
         }
+        public bool SellOutEndOfDay(TradeBars data)
+        {
+            if (shouldSellOutAtEod)
+            {
+                if (data.Time.Hour == 15 && data.Time.Minute > 49 || data.Time.Hour == 16)
+                {
+                    if (Portfolio[symbol].IsLong)
+                    {
+                        Sell(symbol, Portfolio[symbol].AbsoluteQuantity);
+                    }
+                    if (Portfolio[symbol].IsShort)
+                    {
+                        Buy(symbol, Portfolio[symbol].AbsoluteQuantity);
+                    }
 
+                    // Daily Profit
+                    #region logging
+                    if (data.Time.Hour == 16)
+                    {
+                        CalculateDailyProfits();
+                        sharesOwned = Portfolio[symbol].Quantity;
+
+
+                    }
+                    #endregion
+
+                    return false;
+                }
+            }
+            return true;
+        }
         /// <summary>
         /// Handle order events
         /// </summary>
@@ -256,7 +369,6 @@ namespace QuantConnect.Algorithm.Examples
             base.OnOrderEvent(orderEvent);
             ProcessOrderEvent(orderEvent);
         }
-
         /// <summary>
         /// Local processing of the order event
         /// </summary>
@@ -311,7 +423,7 @@ namespace QuantConnect.Algorithm.Examples
                 }
             }
         }
-        #region logging
+        #region "Profit Calculations for logging"
         private void CalculateTradeProfit(OrderTicket ticket)
         {
             tradeprofit = Securities[symbol].Holdings.LastTradeProfit;
@@ -356,44 +468,19 @@ namespace QuantConnect.Algorithm.Examples
             }
         }
         #endregion
-        public bool SellOutEndOfDay(TradeBars data)
-        {
-            if (shouldSellOutAtEod)
-            {
-                if (data.Time.Hour == 15 && data.Time.Minute > 49 || data.Time.Hour == 16)
-                {
-                    if (Portfolio[symbol].IsLong)
-                    {
-                        Sell(symbol, Portfolio[symbol].AbsoluteQuantity);
-                    }
-                    if (Portfolio[symbol].IsShort)
-                    {
-                        Buy(symbol, Portfolio[symbol].AbsoluteQuantity);
-                    }
-
-                    // Daily Profit
-                    #region logging
-                    if (data.Time.Hour == 16)
-                    {
-                        CalculateDailyProfits();
-                        sharesOwned = Portfolio[symbol].Quantity;
-                    }
-                    #endregion
-
-                    return false;
-                }
-            }
-            return true;
-        }
         public override void OnEndOfAlgorithm()
         {
-            int i = 0;
-            string eoa = string.Format(@"{0},{1},{2}", 
-                MaxDailyProfit.Current.Value,
-                MinDailyProfit.Current.Value,
-                Portfolio.TotalPortfolioValue);
-            Debug(eoa);
-            dailylog.Debug(eoa);
+            Debug(string.Format("\nAlgorithm Name: {0}\n Ending Portfolio Value: {1} ", this.GetType().Name, Portfolio.TotalPortfolioValue));
+            var tbl = ObjectToCsv.ToCsv(@",", tradeBarList, false);
+            StringBuilder sb = new StringBuilder();
+
+            int c = tbl.Count();
+            if (c <= 0) return;
+            foreach (var line in tbl)
+            {
+                sb.AppendLine(line);
+            }
+            dailylog.Debug(sb.ToString());
         }
         /// <summary>
         /// Convenience function which creates an IndicatorDataPoint
@@ -410,4 +497,5 @@ namespace QuantConnect.Algorithm.Examples
         }
 
     }
+
 }

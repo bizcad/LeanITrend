@@ -3,7 +3,7 @@ using QuantConnect.Data.Market;
 using QuantConnect.Indicators;
 using QuantConnect.Orders;
 
-namespace QuantConnect.Algorithm.Examples
+namespace QuantConnect.Algorithm.CSharp
 {
     /// <summary>
     /// From Ehlers Cybernetics page 27 on Trading the trend
@@ -61,15 +61,15 @@ namespace QuantConnect.Algorithm.Examples
             orderFilled = true;
         }
 
-
+        
         /// <summary>
         /// Executes the Instant Trend strategy
         /// </summary>
         /// <param name="data">TradeBars - the current OnData</param>
         /// <param name="tradesize"></param>
         /// <param name="trendCurrent">IndicatorDataPoint - the current trend value trend</param>
-        /// <param name="triggerCurrent">IndicatorDataPoint - the current trigger</param>
-        public string ExecuteStrategy(TradeBars data, int tradesize, IndicatorDataPoint trendCurrent, IndicatorDataPoint triggerCurrent)
+        /// <param name="current"></param>
+        public string ExecuteStrategy(TradeBars data, int tradesize, IndicatorDataPoint trendCurrent, out string current)
         {
             OrderTicket ticket;
             int orderId = 0;
@@ -82,7 +82,8 @@ namespace QuantConnect.Algorithm.Examples
             if (_algorithm.Portfolio[_symbol].IsShort) nStatus = -1;
             if (!trendHistory.IsReady)
             {
-                return "Trend Not Ready";
+                current = "Trend Not Ready";
+                return "";
             }
 
             if (!SellOutEndOfDay(data))
@@ -126,7 +127,7 @@ namespace QuantConnect.Algorithm.Examples
                                 {
                                     nLimitPrice = Math.Round(Math.Max(data[_symbol].Low, (data[_symbol].Close - (data[_symbol].High - data[_symbol].Low) * RngFac)), 2, MidpointRounding.ToEven);
                                     ticket = _algorithm.LimitOrder(_symbol, tradesize, nLimitPrice, "Long Limit");
-                                    comment = string.Format("Enter Long Limit trig xover price up", nLimitPrice);
+                                    current = string.Format("Enter Long Limit trig xover price up", nLimitPrice);
                                 }
                             }
                             if (comment.Length == 0)
@@ -158,7 +159,6 @@ namespace QuantConnect.Algorithm.Examples
                             }
                         }
                     }
-
                 }
                 catch (Exception ex)
                 {
@@ -166,6 +166,7 @@ namespace QuantConnect.Algorithm.Examples
                 }
                 #endregion
             }
+            current = comment;
             return comment;
         }
         private OrderTicket ReverseToLong()
@@ -180,6 +181,14 @@ namespace QuantConnect.Algorithm.Examples
             nLimitPrice = 0;
             nStatus = -1;
             return _algorithm.Sell(_symbol, _algorithm.Portfolio[_symbol].Quantity * 2);
+        }
+        /// <summary>
+        /// Used to warm up the trend history
+        /// </summary>
+        /// <param name="trendCurrent"></param>
+        public void WarmUpTrendHistory(IndicatorDataPoint trendCurrent)
+        {
+            trendHistory.Add(trendCurrent);
         }
         private bool SellOutEndOfDay(TradeBars data)
         {

@@ -48,6 +48,25 @@ namespace QuantConnect.Indicators
         {
         }
 
+        /// <summary>
+        /// Constructuctor which makes the alpha settable
+        /// </summary>
+        /// <param name="name"></param>
+        /// <param name="period"></param>
+        /// <param name="alpha"></param>
+        public InstantaneousTrend(string name, int period, decimal alpha) : base(name, period)
+        {
+            if (period < 3)
+            {
+                throw new ArgumentException("InstantaneousTrend must have period of at least 3.", "period");
+            }
+            _period = period;
+            _iTrendWindow = new RollingWindow<IndicatorDataPoint>(2);
+            _alpha = alpha;
+            _a = (_alpha / 2) * (_alpha / 2);
+            _b = (1 - _alpha);
+            barcount = 0;
+        }
 
         /// <summary>
         ///     Resets this indicator to its initial state

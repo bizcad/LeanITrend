@@ -7,6 +7,7 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Text;
+using QuantConnect.Algorithm.CSharp.Common;
 using QuantConnect.Algorithm.Examples;
 using QuantConnect.Data.Market;
 using QuantConnect.Logging;
@@ -311,6 +312,8 @@ namespace QuantConnect.Algorithm.CSharp.ITrendAlgorithm
                 if (File.Exists(filePath)) File.Delete(filePath);
 
                 File.AppendAllText(filePath, stockLogging[i].ToString());
+                Debug(string.Format("\nAlgorithm Name: {0}, Ending Portfolio Value: {1} ", this.GetType().Name, Portfolio.TotalPortfolioValue));
+
             }
 
             #endregion Logging stuff - Saving the logs

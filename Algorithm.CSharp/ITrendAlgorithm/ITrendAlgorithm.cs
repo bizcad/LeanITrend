@@ -1,4 +1,5 @@
 ﻿using System.Reflection;
+using QuantConnect.Algorithm.CSharp.Common;
 using QuantConnect.Data.Market;
 using QuantConnect.Indicators;
 using QuantConnect.Orders;
@@ -11,7 +12,7 @@ using System.Text;
 
 namespace QuantConnect.Algorithm.CSharp.ITrendAlgorithm
 {
-    internal class ITrendAlgorithm : QCAlgorithm
+    public class ITrendAlgorithm : QCAlgorithm
     {
         #region "Algorithm Globals"
         private DateTime _startDate = new DateTime(2015, 9, 2);
@@ -195,8 +196,11 @@ namespace QuantConnect.Algorithm.CSharp.ITrendAlgorithm
 
                 if (File.Exists(filePath)) File.Delete(filePath);
                 File.AppendAllText(filePath, stockLogging[i].ToString());
-                Debug(string.Format("Ending Portfolio Value: {0} ", Portfolio.TotalPortfolioValue));
+                Debug(string.Format("\nSymbol Name: {0}, Ending Value: {1} ", symbol, Portfolio[symbol].Profit));
+
             }
+
+            Debug(string.Format("\nAlgorithm Name: {0}\n Ending Portfolio Value: {1} ", this.GetType().Name, Portfolio.TotalPortfolioValue));
 
             #endregion Logging stuff - Saving the logs
         }
