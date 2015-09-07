@@ -1,4 +1,4 @@
-﻿using System.Reflection;
+﻿using QuantConnect.Data.Consolidators;
 using QuantConnect.Data.Market;
 using QuantConnect.Indicators;
 using QuantConnect.Orders;
@@ -14,14 +14,17 @@ namespace QuantConnect.Algorithm.CSharp.ITrendAlgorithm
     internal class ITrendAlgorithm : QCAlgorithm
     {
         #region "Algorithm Globals"
-        private DateTime _startDate = new DateTime(2015, 9, 2);
-        private DateTime _endDate = new DateTime(2015, 9, 3);
-        private decimal _portfolioAmount = 10000;
+
+        private DateTime _startDate = new DateTime(2015, 5, 19);
+        private DateTime _endDate = new DateTime(2015, 5, 31);
+        private decimal _portfolioAmount = 22000;
         private decimal _transactionSize = 15000;
-        #endregion
+
+        #endregion "Algorithm Globals"
+
         #region Fields
 
-    /* +-------------------------------------------------+
+        /* +-------------------------------------------------+
      * |Algorithm Control Panel                          |
      * +-------------------------------------------------+*/
         private static int ITrendPeriod = 7;            // Instantaneous Trend period.
@@ -36,7 +39,7 @@ namespace QuantConnect.Algorithm.CSharp.ITrendAlgorithm
 
         private bool resetAtEndOfDay = true;            // Reset the strategies at EOD.
         private bool noOvernight = true;                // Close all positions before market close.
-    /* +-------------------------------------------------+*/
+        /* +-------------------------------------------------+*/
 
         private static string[] Symbols = { "AAPL" };
         //private static string[] Symbols = { "AIG", "BAC", "IBM", "SPY" };
@@ -84,6 +87,8 @@ namespace QuantConnect.Algorithm.CSharp.ITrendAlgorithm
             {
                 AddSecurity(SecurityType.Equity, symbol, Resolution.Minute);
                 Strategy.Add(symbol, new ITrendStrategy(ITrendPeriod, Tolerance, RevertPCT));
+                // Register the symbol to actualize automatically the strategy trend.
+                RegisterITrend(symbol);
                 Tickets.Add(symbol, new List<OrderTicket>());
                 // Equal portfolio shares for every stock.
                 ShareSize.Add(symbol, (maxLeverage * (1 - leverageBuffer)) / Symbols.Count());
@@ -111,7 +116,7 @@ namespace QuantConnect.Algorithm.CSharp.ITrendAlgorithm
             foreach (string symbol in Symbols)
             {
                 // Update the ITrend indicator in the strategy object.
-                Strategy[symbol].ITrend.Update(new IndicatorDataPoint(Time, (data[symbol].Close + data[symbol].Open) / 2));
+                //Strategy[symbol].ITrend.Update(new IndicatorDataPoint(Time, (data[symbol].Close + data[symbol].Open) / 2));
 
                 isMarketAboutToClose = !theMarket.DateTimeIsOpen(Time.AddMinutes(10));
 
@@ -147,7 +152,7 @@ namespace QuantConnect.Algorithm.CSharp.ITrendAlgorithm
                 string newLine = string.Format("{0},{1},{2},{3},{4},{5},{6},{7},{8},{9},{10},{11},{12},{13},{14}",
                                                barCounter,
                                                Time,
-                                               (data[symbol].Close + data[symbol].Open)/2,
+                                               (data[symbol].Close + data[symbol].Open) / 2,
                                                Strategy[symbol].ITrend.Current.Value,
                                                Strategy[symbol].ITrend.Current.Value + Strategy[symbol].ITrendMomentum.Current.Value,
                                                Strategy[symbol].ITrendMomentum.Current.Value,
@@ -343,6 +348,16 @@ namespace QuantConnect.Algorithm.CSharp.ITrendAlgorithm
 
                 default: break;
             }
+        }
+
+        private void RegisterITrend(string symbol)
+        {
+            var consolidator = new IdentityDataConsolidator<TradeBar>();
+            SubscriptionManager.AddConsolidator(symbol, consolidator);
+            consolidator.DataConsolidated += (sender, consolidated) =>
+            {
+                Strategy[symbol].ITrend.Update(new IndicatorDataPoint(consolidated.Time, consolidated.Price));
+            };
         }
 
         public override void OnOrderEvent(OrderEvent orderEvent)
