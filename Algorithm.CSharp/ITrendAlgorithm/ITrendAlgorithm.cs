@@ -15,20 +15,20 @@ namespace QuantConnect.Algorithm.CSharp.ITrendAlgorithm
     {
         #region "Algorithm Globals"
 
-        private DateTime _startDate = new DateTime(2015, 5, 19);
-        private DateTime _endDate = new DateTime(2015, 5, 31);
-        private decimal _portfolioAmount = 22000;
+        private DateTime _startDate = new DateTime(2013, 10, 7);
+        private DateTime _endDate = new DateTime(2013, 10, 11);
+        private decimal _portfolioAmount = 25000;
         private decimal _transactionSize = 15000;
 
         #endregion "Algorithm Globals"
 
         #region Fields
 
-        /* +-------------------------------------------------+
+    /* +-------------------------------------------------+
      * |Algorithm Control Panel                          |
      * +-------------------------------------------------+*/
         private static int ITrendPeriod = 7;            // Instantaneous Trend period.
-        private static decimal Tolerance = 0.000m;      // Trigger - Trend crossing tolerance.
+        private static decimal Tolerance = 0.001m;      // Trigger - Trend crossing tolerance.
         private static decimal RevertPCT = 1.0015m;     // Percentage tolerance before revert position.
 
         private static decimal maxLeverage = 1m;        // Maximum Leverage.
@@ -39,10 +39,10 @@ namespace QuantConnect.Algorithm.CSharp.ITrendAlgorithm
 
         private bool resetAtEndOfDay = true;            // Reset the strategies at EOD.
         private bool noOvernight = true;                // Close all positions before market close.
-        /* +-------------------------------------------------+*/
+    /* +-------------------------------------------------+*/
 
-        private static string[] Symbols = { "AAPL" };
-        //private static string[] Symbols = { "AIG", "BAC", "IBM", "SPY" };
+        //private static string[] Symbols = { "AAPL" };
+        private static string[] Symbols = { "AIG", "BAC", "IBM", "SPY" };
 
         // Dictionary used to store the ITrendStrategy object for each symbol.
         private Dictionary<string, ITrendStrategy> Strategy = new Dictionary<string, ITrendStrategy>();
@@ -315,6 +315,7 @@ namespace QuantConnect.Algorithm.CSharp.ITrendAlgorithm
                     }
                     // Send the order.
                     Tickets[symbol].Add(LimitOrder(symbol, shares, limitPrice));
+
                     // Update the LastOrderSent dictionary.
                     LastOrderSent[symbol] = actualOrder;
                     break;

@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
-
+using System.Linq;
 using System.Text;
 using System.IO;
 
@@ -30,9 +30,9 @@ namespace QuantConnect
         public override void Initialize()
         {
             SetStartDate(2013, 10, 7);
-            SetEndDate(2013, 10, 7);
+            SetEndDate(2013, 10, 9);
 
-            SetCash(25000);
+            SetCash(250000);
 
             foreach (var symbol in Symbols)
             {
@@ -57,6 +57,21 @@ namespace QuantConnect
             }
             counter++;
         }
+
+        //public override void OnEndOfDay()
+        //{
+        //    int idx = 0;
+        //    var IBMTickets = Transactions.GetOrderTickets(filter: t => (t.Symbol == "IBM" && t.OrderId == 3)).Last();
+        //    foreach (var orderTicket in IBMTickets)
+        //    {
+        //        Console.ForegroundColor = ConsoleColor.Green;
+        //        Console.WriteLine(string.Format("{0} {1} CONSOLE called {2} times || {3}", Time.ToLongDateString(), Time.ToLongTimeString(), idx, orderTicket.ToString()));
+        //        Console.ForegroundColor = ConsoleColor.Red;
+        //        //Log(string.Format("LOG called {0} times || {1}", idx, orderTicket.ToString()));
+        //        Console.ResetColor();
+        //        idx++;
+        //    }
+        //}
 
         public override void OnOrderEvent(OrderEvent orderEvent)
         {
