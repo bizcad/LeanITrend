@@ -33,7 +33,7 @@ namespace QuantConnect.Tests.ITrendAlgorithm
             # endregion
 
             OrderSignal[] actualOrders = new OrderSignal[expectedOrders.Length];
-
+            
             ITrendStrategy strategy = new ITrendStrategy(_period, _tolerance, _revertPct, RevertPositionCheck.vsClosePrice);
 
             for (int i = 0; i < prices.Length; i++)
