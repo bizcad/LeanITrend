@@ -29,4 +29,8 @@ namespace QuantConnect.Algorithm.CSharp.Common
         vsClosePrice,
     }
 
+    public enum PositionInventoryMethod
+    {
+        Lifo, Fifo
+    }
 }

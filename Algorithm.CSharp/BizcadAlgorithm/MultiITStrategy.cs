@@ -4,6 +4,7 @@ using System.Linq;
 using System.Security.AccessControl;
 using System.Text;
 using System.Threading.Tasks;
+using Microsoft.SqlServer.Server;
 using QuantConnect.Algorithm.CSharp.Common;
 using QuantConnect.Data.Market;
 using QuantConnect.Indicators;
@@ -23,6 +24,7 @@ namespace QuantConnect.Algorithm.CSharp
         /// </summary>
         public decimal nEntryPrice { get; set; }
         public int Barcount { get; set; }
+        public string sTrig { get; set; }
 
         private bool bReverseTrade = false;
         private string _symbol { get; set; }
@@ -31,7 +33,7 @@ namespace QuantConnect.Algorithm.CSharp
         private decimal nLimitPrice = 0;
         private int nStatus = 0;
         private int xOver = 0;
-        private RollingWindow<IndicatorDataPoint> trendHistory;
+        
 
         /// <summary>
         /// Flag to determine if the algo should go flat overnight.
@@ -41,55 +43,64 @@ namespace QuantConnect.Algorithm.CSharp
         /// <summary>
         /// the Algorithm being run.
         /// </summary>
-        public QCAlgorithm _algorithm;
+        private QCAlgorithm _algorithm;
 
         /// <summary>
         /// The flag as to whether the order has been filled.
         /// </summary>
         public Boolean orderFilled { get; set; }
+        public RollingWindow<IndicatorDataPoint> _trendHistory;
 
-
-
+        //public InstantTrendStrategy() { }
         /// <summary>
         /// Empty Consturctor
         /// </summary>
-        //public InstantTrendStrategy() { }
-
         /// <summary>
         /// Constructor initializes the symbol and period of the RollingWindow
         /// </summary>
         /// <param name="symbol">string - ticker symbol</param>
-        /// <param name="period">int - the period of the Trend History Rolling Window</param>
         /// <param name="algorithm"></param>
-        public MultiITStrategy(string symbol, int period, QCAlgorithm algorithm)
+        /// <param name="trendHistory"></param>
+        public MultiITStrategy(string symbol, QCAlgorithm algorithm, RollingWindow<IndicatorDataPoint> trendHistory)
         {
             _symbol = symbol;
-            trendHistory = new RollingWindow<IndicatorDataPoint>(period);
             _algorithm = algorithm;
+            _trendHistory = trendHistory;
             orderFilled = true;
         }
 
 
+        //public OrderSignal CheckSignal(TradeBars data, int tradesize, IndicatorDataPoint trendCurrent, out string current)
+        //{
+        //    return CheckSignal(data, tradesize, out current, TODO);
+        //}
         /// <summary>
         /// Executes the Instant Trend strategy
         /// </summary>
         /// <param name="data">TradeBars - the current OnData</param>
+        /// <param name="data">TradeBars - the current OnData</param>
         /// <param name="tradesize"></param>
-        /// <param name="trendCurrent">IndicatorDataPoint - the current trend value trend</param>
+        /// <param name="tradesize"></param>
         /// <param name="current"></param>
-        public OrderSignal ExecuteStrategy(TradeBars data, int tradesize, IndicatorDataPoint trendCurrent, out string current)
+        /// <param name="current"></param>
+        /// <param name="xOver1"></param>
+        /// <param name="trendCurrent">IndicatorDataPoint - the current trend value trend</param>
+        /// <summary>
+        /// Executes the Instant Trend strategy
+        /// </summary>
+        /// <param name="trendHistory"></param>
+        public OrderSignal CheckSignal(TradeBars data, int tradesize, out string current)
         {
             OrderTicket ticket;
             int orderId = 0;
             string comment = string.Empty;
             OrderSignal retval = OrderSignal.doNothing;
-
-            trendHistory.Add(trendCurrent);
+            
             nStatus = 0;
 
             if (_algorithm.Portfolio[_symbol].IsLong) nStatus = 1;
             if (_algorithm.Portfolio[_symbol].IsShort) nStatus = -1;
-            if (!trendHistory.IsReady)
+            if (!_trendHistory.IsReady)
             {
                 current = "Trend Not Ready";
                 return OrderSignal.doNothing;
@@ -100,7 +111,8 @@ namespace QuantConnect.Algorithm.CSharp
             bReverseTrade = false;
             try
             {
-                var nTrig = 2 * trendHistory[0].Value - trendHistory[2].Value;
+                var nTrig = 2 * _trendHistory[0].Value - _trendHistory[2].Value;
+                sTrig = nTrig.ToString();
                 if (nStatus == 1 && nTrig < (nEntryPrice / RevPct))
                 {
                     comment = string.Format("Long Reverse to short. Close < {0} / {1}", nEntryPrice, RevPct);
@@ -108,6 +120,7 @@ namespace QuantConnect.Algorithm.CSharp
                     orderFilled = ticket.OrderId > 0;
                     bReverseTrade = true;
                     retval = OrderSignal.revertToShort;
+                    
                 }
                 else
                 {
@@ -122,20 +135,20 @@ namespace QuantConnect.Algorithm.CSharp
                 }
                 if (!bReverseTrade)
                 {
-                    if (nTrig > trendHistory[0].Value)
+                    if (nTrig > _trendHistory[0].Value)
                     {
                         if (xOver == -1 && nStatus != 1)
                         {
                             if (!orderFilled)
                             {
-                                ticket = _algorithm.Buy(_symbol, tradesize);
+                                //ticket = _algorithm.Buy(_symbol, tradesize);
                                 comment = string.Format("Enter Long after cancel trig xover price up");
                                 retval = OrderSignal.goLong;
                             }
                             else
                             {
                                 nLimitPrice = Math.Round(Math.Max(data[_symbol].Low, (data[_symbol].Close - (data[_symbol].High - data[_symbol].Low) * RngFac)), 2, MidpointRounding.ToEven);
-                                ticket = _algorithm.LimitOrder(_symbol, tradesize, nLimitPrice, "Long Limit");
+                                //ticket = _algorithm.LimitOrder(_symbol, tradesize, nLimitPrice, "Long Limit");
                                 current = string.Format("Enter Long Limit trig xover price up", nLimitPrice);
                                 retval = OrderSignal.goLongLimit;
                             }
@@ -146,22 +159,22 @@ namespace QuantConnect.Algorithm.CSharp
                     }
                     else
                     {
-                        if (nTrig < trendHistory[0].Value)
+                        if (nTrig < _trendHistory[0].Value)
                         {
                             if (xOver == 1 && nStatus != -1)
                             {
                                 if (!orderFilled)
                                 {
-                                    ticket = _algorithm.Sell(_symbol, tradesize);
-                                    comment = string.Format("Enter Short after cancel trig xunder price down");
+                                    //ticket = _algorithm.Sell(_symbol, tradesize);
+                                    comment = string.Format("Market Short after cancel trig xunder price down");
                                     retval = OrderSignal.goShort;
                                 }
                                 else
                                 {
                                     nLimitPrice = Math.Round(Math.Min(data[_symbol].High, (data[_symbol].Close + (data[_symbol].High - data[_symbol].Low) * RngFac)), 2, MidpointRounding.ToEven);
-                                    ticket = _algorithm.LimitOrder(_symbol, -tradesize, nLimitPrice, "Short Limit");
+                                    //ticket = _algorithm.LimitOrder(_symbol, -tradesize, nLimitPrice, "Short Limit");
                                     //ticket = _algorithm.Sell(_symbol, tradesize);
-                                    comment = string.Format("Enter Short at market trig xover price down");
+                                    comment = string.Format("Market Short at market trig xover price down");
                                     retval = OrderSignal.goShortLimit;
                                 }
                             }
@@ -194,6 +207,7 @@ namespace QuantConnect.Algorithm.CSharp
             nStatus = -1;
             return _algorithm.Sell(_symbol, _algorithm.Portfolio[_symbol].Quantity * 2);
         }
+
         //private bool SellOutEndOfDay(TradeBars data)
         //{
         //    if (ShouldSellOutAtEod)
@@ -215,5 +229,4 @@ namespace QuantConnect.Algorithm.CSharp
         //    return false;
         //}
     }
-
 }

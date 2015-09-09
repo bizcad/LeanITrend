@@ -1,4 +1,5 @@
 using System;
+using QuantConnect.Algorithm.CSharp.Common;
 using QuantConnect.Data.Market;
 using QuantConnect.Indicators;
 using QuantConnect.Orders;
@@ -69,11 +70,12 @@ namespace QuantConnect.Algorithm.CSharp
         /// <param name="tradesize"></param>
         /// <param name="trendCurrent">IndicatorDataPoint - the current trend value trend</param>
         /// <param name="current"></param>
-        public string ExecuteStrategy(TradeBars data, int tradesize, IndicatorDataPoint trendCurrent, out string current)
+        public OrderSignal ExecuteStrategy(TradeBars data, int tradesize, IndicatorDataPoint trendCurrent, out string current)
         {
             OrderTicket ticket;
             int orderId = 0;
             string comment = string.Empty;
+            OrderSignal retval = OrderSignal.doNothing;
 
             trendHistory.Add(trendCurrent);
             nStatus = 0;
@@ -83,7 +85,7 @@ namespace QuantConnect.Algorithm.CSharp
             if (!trendHistory.IsReady)
             {
                 current = "Trend Not Ready";
-                return "";
+                return OrderSignal.doNothing;
             }
 
             if (!SellOutEndOfDay(data))
@@ -101,6 +103,7 @@ namespace QuantConnect.Algorithm.CSharp
                         ticket = ReverseToShort();
                         orderFilled = ticket.OrderId > 0;
                         bReverseTrade = true;
+                        retval = OrderSignal.revertToShort;
                     }
                     else
                     {
@@ -110,6 +113,7 @@ namespace QuantConnect.Algorithm.CSharp
                             ticket = ReverseToLong();
                             orderFilled = ticket.OrderId > 0;
                             bReverseTrade = true;
+                            retval = OrderSignal.revertToLong;
                         }
                     }
                     if (!bReverseTrade)
@@ -120,14 +124,30 @@ namespace QuantConnect.Algorithm.CSharp
                             {
                                 if (!orderFilled)
                                 {
-                                    ticket = _algorithm.Buy(_symbol, tradesize);
+                                    try
+                                    {
+                                        ticket = _algorithm.Buy(_symbol, tradesize);
+                                    }
+                                    catch (Exception e)
+                                    {
+                                        Console.WriteLine(e);
+                                    }
                                     comment = string.Format("Enter Long after cancel trig xover price up");
+                                    retval = OrderSignal.goLong;
                                 }
                                 else
                                 {
                                     nLimitPrice = Math.Round(Math.Max(data[_symbol].Low, (data[_symbol].Close - (data[_symbol].High - data[_symbol].Low) * RngFac)), 2, MidpointRounding.ToEven);
-                                    ticket = _algorithm.LimitOrder(_symbol, tradesize, nLimitPrice, "Long Limit");
+                                    try
+                                    {
+                                        ticket = _algorithm.LimitOrder(_symbol, tradesize, nLimitPrice, "Long Limit");
+                                    }
+                                    catch (Exception e)
+                                    {
+                                        Console.WriteLine(e);
+                                    }
                                     current = string.Format("Enter Long Limit trig xover price up", nLimitPrice);
+                                    retval = OrderSignal.goLongLimit;
                                 }
                             }
                             if (comment.Length == 0)
@@ -142,15 +162,31 @@ namespace QuantConnect.Algorithm.CSharp
                                 {
                                     if (!orderFilled)
                                     {
-                                        ticket = _algorithm.Sell(_symbol, tradesize);
+                                        try
+                                        {
+                                            ticket = _algorithm.Sell(_symbol, tradesize);
+                                        }
+                                        catch (Exception e)
+                                        {
+                                            Console.WriteLine(e);
+                                        }
                                         comment = string.Format("Enter Short after cancel trig xunder price down");
+                                        retval = OrderSignal.goShort;
                                     }
                                     else
                                     {
                                         nLimitPrice = Math.Round(Math.Min(data[_symbol].High, (data[_symbol].Close + (data[_symbol].High - data[_symbol].Low) * RngFac)), 2, MidpointRounding.ToEven);
-                                        ticket = _algorithm.LimitOrder(_symbol, -tradesize, nLimitPrice, "Short Limit");
+                                        try
+                                        {
+                                            ticket = _algorithm.LimitOrder(_symbol, -tradesize, nLimitPrice, "Short Limit");
+                                        }
+                                        catch (Exception e)
+                                        {
+                                            Console.WriteLine(e);
+                                        }
                                         //ticket = _algorithm.Sell(_symbol, tradesize);
                                         comment = string.Format("Enter Short at market trig xover price down");
+                                        retval = OrderSignal.goShortLimit;
                                     }
                                 }
                                 if (comment.Length == 0)
@@ -167,7 +203,7 @@ namespace QuantConnect.Algorithm.CSharp
                 #endregion
             }
             current = comment;
-            return comment;
+            return retval;
         }
         private OrderTicket ReverseToLong()
         {
