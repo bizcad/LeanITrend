@@ -15,7 +15,6 @@
 
 using NUnit.Framework;
 using QuantConnect.Indicators;
-using QuantConnect.Tests.Indicators;
 using System;
 
 namespace QuantConnect.Tests.Indicators
@@ -59,7 +58,6 @@ namespace QuantConnect.Tests.Indicators
                 time.AddMinutes(1);
             }
             Assert.AreEqual(expectedValues, actualValues, "Estimation ITrend(5)");
-
         }
 
         [Test]

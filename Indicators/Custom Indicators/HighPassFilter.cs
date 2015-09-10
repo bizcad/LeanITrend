@@ -73,7 +73,7 @@ namespace QuantConnect.Indicators
             // for convenience
             DateTime time = input.Time;
 
-            if (!_hpfWindow.IsReady)
+            if (window.Count < 4)
             {
                 hpf = 0m;
             }

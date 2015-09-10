@@ -20,9 +20,9 @@ namespace QuantConnect
         private static string[] Symbols = { "AIG", "BAC", "IBM", "SPY" };
         int counter;
         int onOrderCounter;
-        
-        CyclePeriod cyclePeriod;
-                
+        bool print = true;
+
+        RollingWindow<int> win = new RollingWindow<int>(10);
         StringBuilder toFile = new StringBuilder();
         #endregion
 
@@ -39,7 +39,6 @@ namespace QuantConnect
                 AddSecurity(SecurityType.Equity, symbol, Resolution.Minute); 
             }
 
-            cyclePeriod = new CyclePeriod("Period");
             counter = 0;
             onOrderCounter = 0;
             
@@ -47,13 +46,17 @@ namespace QuantConnect
 
         public void OnData(TradeBars data)
         {
-            if (counter % 30 == 0)
+            if (counter <10) win.Add(counter);
+            else if(print)
             {
-                foreach (var symbol in Symbols)
+                var lista = win.ToList().GetRange(4, 5);
+                Console.ForegroundColor = ConsoleColor.Green;
+                for (int i = 0; i < lista.Count; i++)
                 {
-                    Buy(symbol, 10);
-                    //LimitOrder(symbol, 10, data[symbol].High * 1.01m);
+                    Console.WriteLine(lista[i]);
                 }
+                Console.ResetColor();
+                print = false;
             }
             counter++;
         }

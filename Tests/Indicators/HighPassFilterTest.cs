@@ -15,7 +15,6 @@
 
 using NUnit.Framework;
 using QuantConnect.Indicators;
-using QuantConnect.Tests.Indicators;
 using System;
 
 namespace QuantConnect.Tests.Indicators
@@ -46,8 +45,9 @@ namespace QuantConnect.Tests.Indicators
 
             decimal[] expectedValues = new decimal[20]
             {
-                // Estimated with Python: 
-                0m, 0m, 0m, -0.1946m, -0.3266m, -0.4106m, -0.4506m, -0.4444m, -0.3945m, -0.3084m,                -0.1884m, -0.052m, 0.0889m, 0.224m, 0.3338m, 0.4121m, 0.4509m, 0.4445m, 0.3945m, 0.3084m
+                // Estimated with Python:
+                0m, 0m, 0m, -0.1946m, -0.3266m, -0.4106m, -0.4506m, -0.4444m, -0.3945m, -0.3084m,
+                -0.1884m, -0.052m, 0.0889m, 0.224m, 0.3338m, 0.4121m, 0.4509m, 0.4445m, 0.3945m, 0.3084m
             };
             # endregion
 
@@ -59,7 +59,6 @@ namespace QuantConnect.Tests.Indicators
                 time.AddMinutes(1);
             }
             Assert.AreEqual(expectedValues, actualValues, "Estimation HighPassFilter(5)");
-
         }
 
         [Test]

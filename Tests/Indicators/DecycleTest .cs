@@ -15,7 +15,6 @@
 
 using NUnit.Framework;
 using QuantConnect.Indicators;
-using QuantConnect.Tests.Indicators;
 using System;
 
 namespace QuantConnect.Tests.Indicators
@@ -46,7 +45,7 @@ namespace QuantConnect.Tests.Indicators
 
             decimal[] expectedValues = new decimal[20]
             {
-                // Estimated with Python: 
+                // Estimated with Python:
                 15m, 18.09m, 19.2641m, 21.554m, 23.4443m, 24.5474m, 24.7221m, 23.946m, 22.2956m, 19.9302m,
                 17.0812m, 14.0293m, 11.0716m, 8.4991m, 6.5641m, 5.4539m, 5.2781m, 6.054m, 7.7044m, 10.0698m
             };
@@ -60,7 +59,6 @@ namespace QuantConnect.Tests.Indicators
                 time.AddMinutes(1);
             }
             Assert.AreEqual(expectedValues, actualValues, "Estimation Decycle(5)");
-
         }
 
         [Test]

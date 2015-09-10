@@ -12,7 +12,7 @@
     //"algorithm-type-name": "BasicTemplateAlgorithm",
     //"algorithm-type-name": "LoggingITrendAlgorithm",     
     //"algorithm-type-name": "InstantaneousTrendAlgorithm",
-    "algorithm-type-name": "ITrendAlgorithm",
+    "algorithm-type-name": "TestingAlgo",
 
     // Algorithm language selector - options CSharp, FSharp, VisualBasic, Python, Java
     "algorithm-language": "CSharp",

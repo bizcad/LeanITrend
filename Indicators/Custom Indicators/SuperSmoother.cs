@@ -29,9 +29,9 @@ namespace QuantConnect.Indicators
         public SuperSmoother(string name, int period)
             : base(name, period)
         {
-            if (period < 2)
+            if (period < 3)
             {
-                throw new ArgumentException("SuperSmoother must have period of at least 2.", "period");
+                throw new ArgumentException("SuperSmoother must have period of at least 3.", "period");
             }
             
             _a = (decimal)Math.Exp(-1.414 * Math.PI / (double)period);
@@ -76,7 +76,7 @@ namespace QuantConnect.Indicators
             // for convenience
             DateTime time = input.Time;
 
-            if (!_sSmootherdWindow.IsReady)
+            if (window.Count < 3)
             {
                 sSmoother = input.Value;
             }

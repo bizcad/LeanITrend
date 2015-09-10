@@ -15,7 +15,8 @@
 
 using NUnit.Framework;
 using QuantConnect.Indicators;
-using QuantConnect.Tests.Indicators;
+
+//using QuantConnect.Tests.Indicators;
 using System;
 
 namespace QuantConnect.Tests.Indicators
@@ -46,9 +47,9 @@ namespace QuantConnect.Tests.Indicators
 
             decimal[] expectedValues = new decimal[20]
             {
-                // Estimated with Python: 
-                15m, 18.09m, 20.88m, 22.0707m, 23.3969m, 24.5046m, 24.8548m, 24.228m, 22.6631m, 20.3313m,
-                17.4741m, 14.3767m, 11.341m, 8.6642m, 6.6086m, 5.374m, 5.0812m, 5.7594m, 7.3412m, 9.6731m
+                // Estimated with Python:
+                15m, 18.09m, 19.5201m, 21.3652m, 23.261m, 24.5534m, 24.9032m, 24.2448m, 22.6636m, 20.3287m,
+                17.4727m, 14.3764m, 11.3411m, 8.6643m, 6.6086m, 5.374m, 5.0812m, 5.7594m, 7.3412m, 9.6731m
             };
             # endregion
 
@@ -60,7 +61,6 @@ namespace QuantConnect.Tests.Indicators
                 time.AddMinutes(1);
             }
             Assert.AreEqual(expectedValues, actualValues, "Estimation SuperSmoother(5)");
-
         }
 
         [Test]
