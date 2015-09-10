@@ -68,7 +68,7 @@
     <Compile Include="BizcadAlgorithm\RateOfChangePercentStrategy.cs" />
     <Compile Include="BizcadAlgorithm\RVIAlgorithm.cs" />
     <Compile Include="BizcadAlgorithm\TradeBarReporter.cs" />
-    <Compile Include="BizcadAlgorithm\OrderProcessor.cs" />
+    <Compile Include="BizcadAlgorithm\OrderTransactionProcessor.cs" />
     <Compile Include="Common\Global.cs" />
     <Compile Include="Common\ObjectToCsv.cs" />
     <Compile Include="CustomBenchmarkAlgorithm.cs" />

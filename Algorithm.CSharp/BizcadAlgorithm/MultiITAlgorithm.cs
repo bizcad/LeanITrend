@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.IO;
 using System.Linq;
 using System.Text;
 using QuantConnect.Algorithm.CSharp.Common;
@@ -40,10 +41,12 @@ namespace QuantConnect.Algorithm.CSharp
         private ILogHandler dailylog = Composer.Instance.GetExportedValueByTypeName<ILogHandler>("DailyFileLogHandler");
         private ILogHandler transactionlog = Composer.Instance.GetExportedValueByTypeName<ILogHandler>("TransactionFileLogHandler");
         private readonly OrderReporter _orderReporter;
+        private List<OrderTransaction> _transactions;
 
         private string ondataheader = @"Time,BarCount,trade size,Open,High,Low,Close,Time,Price,comment,signal, Entry Price, Exit Price,orderId , unrealized, shares owned,trade profit, trade fees, trade net, Portfolio Value";
         private string dailyheader = @"Trading Date,Daily Profit, Daily Fees, Daily Net, Cum profit, Cum Fees, Cum Net, Trades/day, Portfolio Value, Shares Owned";
-        private string transactionheader = @"Symbol,Quantity,Price,Direction,Order Date,Settlement Date, Amount,Commission,Net,Nothing,Description,Action Id,Order Id,RecordType,TaxLotNumber";
+        //private string transactionheader = @"Symbol,Quantity,Price,Direction,Order Date,Settlement Date, Amount,Commission,Net,Nothing,Description,Action Id,Order Id,RecordType,TaxLotNumber";
+        
         private string comment;
         #endregion
         #region "logging P&L"
@@ -62,7 +65,7 @@ namespace QuantConnect.Algorithm.CSharp
         private decimal daynet = 0;
         private decimal lastprofit = 0;
         private decimal lastfees = 0;
-        private int tradecount;
+        private int _tradecount = 0;
         private int lasttradecount;
         private DateTime tradingDate;
         private decimal nEntryPrice = 0;
@@ -95,7 +98,10 @@ namespace QuantConnect.Algorithm.CSharp
             mylog.Debug(ondataheader);
             dailylog.Debug(algoname);
             dailylog.Debug(dailyheader);
-            transactionlog.Debug(transactionheader);
+            _transactions = new List<OrderTransaction>();
+
+            
+            
             var days = _endDate.Subtract(_startDate).TotalDays;
             MaxDailyProfit = new Maximum("MaxDailyProfit", (int)days);
             MinDailyProfit = new Minimum("MinDailyProfit", (int)days);
@@ -376,8 +382,8 @@ namespace QuantConnect.Algorithm.CSharp
 
                         #region logging
                         OrderReporter reporter = new OrderReporter((QCAlgorithm)this, transactionlog);
-                        reporter.ReportTransaction(orderEvent, ticket);
-                        tradecount++;
+                        _transactions.Add(reporter.ReportTransaction(orderEvent, ticket, false));
+                        _tradecount++;
                         #endregion
 
 
@@ -429,8 +435,8 @@ namespace QuantConnect.Algorithm.CSharp
                     holding.Profit,
                     holding.TotalFees,
                     holding.Profit - holding.TotalFees,
-                    tradecount - lasttradecount,
-                    Portfolio.TotalPortfolioValue,
+                    _tradecount - lasttradecount,
+                    Portfolio[symbol].HoldingsValue,
                     sharesOwned,
                     ""
                     );
@@ -439,7 +445,7 @@ namespace QuantConnect.Algorithm.CSharp
                 MaxDailyProfit.Update(idp(tradingDate, daynet));
                 MinDailyProfit.Update(idp(tradingDate, daynet));
 
-                lasttradecount = tradecount;
+                lasttradecount = _tradecount;
                 dayprofit = 0;
                 dayfees = 0;
                 daynet = 0;
@@ -467,6 +473,16 @@ namespace QuantConnect.Algorithm.CSharp
             //    Debug(string.Format("\nSymbol Name: {0}, Ending Portfolio Value: {1} ", symbol, Portfolio[symbol].Profit));
 
             //}
+            string filepath = AssemblyLocator.ExecutingDirectory() + "transactions.csv";
+            if (File.Exists(filepath)) File.Delete(filepath);
+            var liststring = ObjectToCsv.ToCsv<OrderTransaction>(",", _transactions, true);
+            using (StreamWriter fs = new StreamWriter(filepath))
+            {
+                foreach (var s in liststring)
+                    fs.WriteLine(s);
+                fs.Flush();
+                fs.Close();
+            }
 
             Debug(string.Format("\nAlgorithm Name: {0}\nEnding Portfolio Value: {1} ", this.GetType().Name, Portfolio.TotalPortfolioValue));
 

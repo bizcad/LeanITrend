@@ -22,6 +22,7 @@ namespace QuantConnect.Algorithm.CSharp
         public decimal Amount { get; set; }
         public decimal Commission { get; set; }
         public decimal Fees { get; set; }
+        public decimal Net { get; set; }
         public string CUSIP { get; set; }
         public string Description { get; set; }
         public int ActionId { get; set; }
