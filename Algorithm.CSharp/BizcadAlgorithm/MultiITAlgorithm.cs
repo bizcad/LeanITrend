@@ -17,8 +17,8 @@ namespace QuantConnect.Algorithm.CSharp
 {
     public class MultiITAlgorithm : QCAlgorithm
     {
-        private DateTime _startDate = new DateTime(2015, 9, 2);
-        private DateTime _endDate = new DateTime(2015, 9, 3);
+        private DateTime _startDate = new DateTime(2015, 9, 8);
+        private DateTime _endDate = new DateTime(2015, 9, 10);
         private decimal _portfolioAmount = 10000;
         private decimal _transactionSize = 15000;
 

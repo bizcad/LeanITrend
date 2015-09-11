@@ -15,8 +15,8 @@ namespace QuantConnect.Algorithm.CSharp
 {
     class InstantaneousTrendAlgorithm : QCAlgorithm
     {
-        private DateTime _startDate = new DateTime(2015, 9, 2);
-        private DateTime _endDate = new DateTime(2015, 9, 3);
+        private DateTime _startDate = new DateTime(2015, 9, 8);
+        private DateTime _endDate = new DateTime(2015, 9, 10);
         private decimal _portfolioAmount = 10000;
         private decimal _transactionSize = 15000;
 
@@ -27,7 +27,7 @@ namespace QuantConnect.Algorithm.CSharp
         private RollingWindow<IndicatorDataPoint> Price;
         private InstantaneousTrend trend;
         private RollingWindow<IndicatorDataPoint> trendHistory;
-        private RollingWindow<IndicatorDataPoint> trendTrigger;
+        //private RollingWindow<IndicatorDataPoint> trendTrigger;
         private bool dowarmup = false;
 
         #region "logging P&L"
@@ -113,7 +113,7 @@ namespace QuantConnect.Algorithm.CSharp
             // ITrend
             trend = new InstantaneousTrend(7);
             trendHistory = new RollingWindow<IndicatorDataPoint>(14);
-            trendTrigger = new RollingWindow<IndicatorDataPoint>(14);
+            //trendTrigger = new RollingWindow<IndicatorDataPoint>(14);
 
             // The ITrendStrategy
             iTrendStrategy = new InstantTrendStrategy(symbol, 14, this);
@@ -136,7 +136,6 @@ namespace QuantConnect.Algorithm.CSharp
 447959,108.36,108.46,108.24,108.3999,9/1/2015 3:59:00 PM,00:01:00,TradeBar,False,9/1/2015 3:58:00 PM,AAPL,108.3999,108.3999
 631543,108.4,108.635,108.3,108.315,9/1/2015 4:00:00 PM,00:01:00,TradeBar,False,9/1/2015 3:59:00 PM,AAPL,108.315,108.315";
             //public TradeBar(DateTime time, string symbol, decimal open, decimal high, decimal low, decimal close, long volume, TimeSpan? period = null)
-            dowarmup = false;
             if (dowarmup)
             {
                 string[] arrWarmup = warmup.Split('\n');
@@ -162,11 +161,11 @@ namespace QuantConnect.Algorithm.CSharp
                             Price.Add(idp(tb.EndTime, (tb.Close + tb.Open) / 2));
                             trend.Update(idp(tb.EndTime, Price[0].Value));
                             trendHistory.Add(idp(tb.EndTime, trend.Current.Value));
-                            trendTrigger.Add(idp(tb.EndTime, trend.Current.Value));
-                            if (linenumber > 3)
-                            {
-                                trendTrigger[0].Value = 2 * trendHistory[0].Value - trendHistory[2].Value;
-                            }
+                            //trendTrigger.Add(idp(tb.EndTime, trend.Current.Value));
+                            //if (linenumber > 3)
+                            //{
+                            //    trendTrigger[0].Value = 2 * trendHistory[0].Value - trendHistory[2].Value;
+                            //}
                             iTrendStrategy.WarmUpTrendHistory(idp(tb.EndTime, trend.Current.Value));
                         }
                         catch (Exception ex)
@@ -205,7 +204,7 @@ namespace QuantConnect.Algorithm.CSharp
 
             // Update the indicators
             trend.Update(idp(time, Price[0].Value));
-            trendHistory.Add(idp(time, trend.Current.Value)); //add last iteration value for the cycle
+            trendHistory.Add(CalculateNewTrendHistoryValue(barcount, time, Price, trend));
             if (Portfolio[symbol].Invested)
             {
                 tradesize = Math.Abs(Portfolio[symbol].Quantity);
@@ -215,34 +214,7 @@ namespace QuantConnect.Algorithm.CSharp
                 tradesize = (int)(_transactionSize / Convert.ToInt32(Price[0].Value + 1));
             }
 
-            if (!dowarmup)
-            {
-                // iTrendStrategy starts on bar 3 because it uses trendHistory[0] - trendHistory[3]
-                if (barcount < 7 && barcount > 2)
-                {
-                    trendHistory[0].Value = (Price[0].Value + 2*Price[1].Value + Price[2].Value)/4;
-                }
-
-                if (barcount > 2)
-                {
-                    trendTrigger[0].Value = 2*trendHistory[0].Value - trendHistory[2].Value;
-                }
-                else
-                {
-                    trendTrigger.Add(idp(time, trendHistory[0].Value));
-                }
-            }
-            else
-            {
-                try
-                {
-                    trendTrigger.Add(idp(time, 2 * trendHistory[0].Value - trendHistory[2].Value));
-                }
-                catch (Exception e)
-                {
-                    throw new Exception(e.Message);
-                }
-            }
+            
             Strategy(data);
 
             #region logging
@@ -260,7 +232,7 @@ namespace QuantConnect.Algorithm.CSharp
                     data.Time.ToShortTimeString(),
                     Price[0].Value,
                     trend.Current.Value,
-                    trendTrigger[0].Value,
+                    //trendTrigger[0].Value,
                     comment,
                     signal,
                     nEntryPrice,
@@ -272,6 +244,7 @@ namespace QuantConnect.Algorithm.CSharp
                     tradefees,
                     tradenet,
                     Portfolio.TotalPortfolioValue,
+                    "",
                     "",
                     "",
                     ""
@@ -287,12 +260,25 @@ namespace QuantConnect.Algorithm.CSharp
             if (data.Time.Hour == 16)
             {
                 trend.Reset();
-                //trendHistory.Reset();
+                trendHistory.Reset();
                 //trendTrigger.Reset();
                 barcount = 0;
                 Plot("Strategy Equity", "Portfolio", Portfolio.TotalPortfolioValue);
             }
 
+        }
+
+
+        private IndicatorDataPoint CalculateNewTrendHistoryValue(int barcount, DateTime time, RollingWindow<IndicatorDataPoint> price, InstantaneousTrend tr)
+        {
+            if (barcount < 7 && barcount > 2)
+            {
+                return (idp(time, (price[0].Value + 2 * price[1].Value + price[2].Value) / 4));
+            }
+            else
+            {
+                return (idp(time, tr.Current.Value)); //add last iteration value for the cycle
+            }
         }
         /// <summary>
         /// Run the strategy associated with this algorithm
