@@ -6,6 +6,10 @@ using System.Linq;
 
 namespace QuantConnect.Indicators
 {
+    /// <summary>
+    /// Indicator to measure the dominant cycle period.
+    /// --> Ref: Cycle Analytics chapter 8.
+    /// </summary>
     public class AutocorrelogramPeriodogram : WindowIndicator<IndicatorDataPoint>
     {
         #region Fields
@@ -14,18 +18,24 @@ namespace QuantConnect.Indicators
         private readonly int _longPeriod;
         private readonly int _bandwidth;
         private readonly int _correlationWidth;
-        private double maxPower = 1d;        
-
-        public HighPassFilter hpf;
-        public SuperSmoother sSmoother;
-        public RollingWindow<double> sSmootherWindow;
-        public Vector<double> R = null;
-        
+        private double _decayFactor;
+        private double _maxPower = 1d;
+        private Vector<double> R = null;
+        private HighPassFilter hpf;
+        private SuperSmoother sSmoother;
+        private RollingWindow<double> sSmootherWindow;
 
         #endregion Fields
 
         #region Constructors
 
+        /// <summary>
+        /// Initializes a new instance of the <see cref="AutocorrelogramPeriodogram"/> class.
+        /// </summary>
+        /// <param name="name">The name of this indicator</param>
+        /// <param name="shortPeriod">The period of the low pass filter cut off frequency.</param>
+        /// <param name="longPeriod">The period of the high pass filter cut off frequency.</param>
+        /// <param name="correlationWidth">Number of pair observations used to estimate the autocorrelation coefficients.</param>
         public AutocorrelogramPeriodogram(string name, int shortPeriod, int longPeriod, int correlationWidth)
             : base(name, correlationWidth)
         {
@@ -33,6 +43,7 @@ namespace QuantConnect.Indicators
             _longPeriod = longPeriod;
             _bandwidth = longPeriod - shortPeriod;
             _correlationWidth = correlationWidth;
+            _decayFactor = EstimateDecayFactor(_shortPeriod, _longPeriod);
 
             hpf = new HighPassFilter(longPeriod);
             sSmoother = new SuperSmoother(shortPeriod);
@@ -42,9 +53,11 @@ namespace QuantConnect.Indicators
         }
 
         /// <summary>
-        /// Default constructor
+        /// Initializes a new instance of the <see cref="AutocorrelogramPeriodogram"/> class.
         /// </summary>
-        /// <param name="period">int - the number of periods in the indicator warmup</param>
+        /// <param name="shortPeriod">The period of the low pass filter cut off frequency.</param>
+        /// <param name="longPeriod">The period of the high pass filter cut off frequency.</param>
+        /// <param name="correlationWidth">Number of pair observations used to estimate the autocorrelation coefficients.</param>
         public AutocorrelogramPeriodogram(int shortPeriod, int longPeriod, int correlationWidth)
             : this("AP" + correlationWidth, shortPeriod, longPeriod, correlationWidth)
         {
@@ -68,12 +81,19 @@ namespace QuantConnect.Indicators
             hpf.Reset();
             sSmoother.Reset();
             sSmootherWindow.Reset();
+            R = Vector<double>.Build.Dense(_bandwidth + 1, 1d);
         }
 
         #endregion Override Methods
 
         #region ComputeNextValue Method
 
+        /// <summary>
+        /// Computes the next value for this indicator from the given state.
+        /// </summary>
+        /// <param name="window">The window of data held in this indicator</param>
+        /// <param name="input">The input value to this indicator on this time step</param>
+        /// <returns>A new value for this indicator</returns>
         protected override decimal ComputeNextValue(IReadOnlyWindow<IndicatorDataPoint> window, IndicatorDataPoint input)
         {
             decimal dominantCycle;
@@ -90,7 +110,7 @@ namespace QuantConnect.Indicators
             }
             else
             {
-                Correlations = EstimateCorrelations();
+                Correlations = EstimateAutocorrelations();
                 DTF = EstimateDFT(Correlations);
                 dominantCycle = EstimateDominantCycle(DTF);
             }
@@ -101,7 +121,24 @@ namespace QuantConnect.Indicators
 
         #region Auxiliar methods
 
-        private List<double> EstimateCorrelations()
+        /// <summary>
+        /// Estimates the Automatic Gain Control decay factor.
+        /// --> Ref: Cycle Analytics page 55
+        /// </summary>
+        /// <param name="bandwidth">The bandwidth.</param>
+        /// <returns></returns>
+        private double EstimateDecayFactor(int shorPeriod, int longPeriod)
+        {
+            double bandwidth = (double)((longPeriod - shorPeriod) / 2);
+            double ratio = Math.Pow(10d, -1.5d / 20d);
+            return Math.Pow(ratio, 1d / bandwidth);
+        }
+
+        /// <summary>
+        /// Estimates the autocorrelations.
+        /// </summary>
+        /// <returns></returns>
+        private List<double> EstimateAutocorrelations()
         {
             List<double> correlations = new List<double>();
 
@@ -117,6 +154,11 @@ namespace QuantConnect.Indicators
             return correlations;
         }
 
+        /// <summary>
+        /// Estimates a custom DFT from the autocorrelations.
+        /// </summary>
+        /// <param name="Correlations">The autocorrelation.</param>
+        /// <returns></returns>
         private Vector<double> EstimateDFT(List<double> Correlations)
         {
             Vector<double> sinePart = Vector<Double>.Build.Dense(_bandwidth + 1);
@@ -127,7 +169,7 @@ namespace QuantConnect.Indicators
             {
                 double sinePartSum = 0;
                 double cosinePartSum = 0;
-                
+                // Add all the sine and cosine components for each autocorrelation lag.
                 for (int lag = 0; lag < _longPeriod; lag++)
                 {
                     sinePartSum += Correlations[lag] * Math.Sin(2d * Math.PI * (lag + 1) / period);
@@ -143,19 +185,24 @@ namespace QuantConnect.Indicators
             return sinePart + cosinePart;
         }
 
+        /// <summary>
+        /// Estimates the dominant cycle.
+        /// </summary>
+        /// <param name="DTF">The DTF.</param>
+        /// <returns></returns>
         private decimal EstimateDominantCycle(Vector<double> DTF)
         {
             Vector<double> power;
             Vector<double> periods = Vector<double>.Build.Dense(DTF.Count, i => i + _shortPeriod);
 
             R = 0.8d * DTF + 0.2d * R;
-            maxPower *= 0.9995d;
-            maxPower = Math.Max(R.Maximum(), maxPower);
-            power = (R / maxPower).PointwiseMultiply(R / maxPower);
+            _maxPower *= _decayFactor;
+            _maxPower = Math.Max(R.Maximum(), _maxPower);
+            power = (R / _maxPower).PointwiseMultiply(R / _maxPower);
 
             return (decimal)(power.DotProduct(periods) / power.Sum()); ;
         }
-        
+
         /// <summary>
         /// Factory function which creates an IndicatorDataPoint
         /// </summary>
