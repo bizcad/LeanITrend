@@ -14,10 +14,13 @@ namespace QuantConnect.Indicators
         private readonly int _longPeriod;
         private readonly int _bandwidth;
         private readonly int _correlationWidth;
+        private double maxPower = 1d;        
 
         public HighPassFilter hpf;
         public SuperSmoother sSmoother;
-        public RollingWindow<IndicatorDataPoint> sSmootherWindow;
+        public RollingWindow<double> sSmootherWindow;
+        public Vector<double> R = null;
+        
 
         #endregion Fields
 
@@ -33,7 +36,9 @@ namespace QuantConnect.Indicators
 
             hpf = new HighPassFilter(longPeriod);
             sSmoother = new SuperSmoother(shortPeriod);
-            sSmootherWindow = new RollingWindow<IndicatorDataPoint>(longPeriod + _correlationWidth);
+            sSmootherWindow = new RollingWindow<double>(longPeriod + _correlationWidth);
+
+            R = Vector<double>.Build.Dense(_bandwidth + 1, 1d);
         }
 
         /// <summary>
@@ -73,68 +78,84 @@ namespace QuantConnect.Indicators
         {
             decimal dominantCycle;
             List<double> Correlations;
-            List<double> DTF;
+            Vector<double> DTF;
 
-            this.hpf.Update(input);
-            this.sSmoother.Update(this.hpf.Current);
-            this.sSmootherWindow.Add(this.sSmoother.Current);
+            hpf.Update(input);
+            sSmoother.Update(hpf.Current);
+            sSmootherWindow.Add((double)sSmoother.Current.Value);
 
-            //if (!this.IsReady)
-            //{
-            //    dominantCycle = 0m;
-            //}
-            //else
-            //{
-            //    Correlations = EstimateCorrelations();
-            //    DTF = EstimateDFT(Correlations);
-            //}
-            return 1m;
+            if (!this.IsReady)
+            {
+                dominantCycle = 0m;
+            }
+            else
+            {
+                Correlations = EstimateCorrelations();
+                DTF = EstimateDFT(Correlations);
+                dominantCycle = EstimateDominantCycle(DTF);
+            }
+            return dominantCycle;
         }
 
         #endregion ComputeNextValue Method
 
         #region Auxiliar methods
 
-        private List<double> EstimateDFT(List<double> Correlations)
-        {
-            List<double> sinePart = new List<double>();
-            List<double> cosinePart = new List<double>();
-
-            for (int period = _shortPeriod; period <= _longPeriod; period++)
-            {
-                double sinePartSum = 0;
-                double cosinePartSum = 0;
-
-                for (int n = 1; n <= _longPeriod; n++)
-                {
-                    sinePartSum += Correlations[period] * Math.Sin(2d * Math.PI / (double)period);
-                    cosinePartSum += Correlations[period] * Math.Cos(2d * Math.PI / (double)period);
-                }
-                sinePart.Add(sinePartSum);
-                cosinePart.Add(cosinePartSum);
-            }
-
-            var sinVector = Vector<double>.Build.DenseOfEnumerable(sinePart);
-            return sinePart;
-        }
-
         private List<double> EstimateCorrelations()
         {
             List<double> correlations = new List<double>();
 
-            var currentSeries = from obs in sSmootherWindow.ToList().GetRange(0, _correlationWidth)
-                                select (double)obs.Value;
+            var currentSeries = sSmootherWindow.ToList().GetRange(0, _correlationWidth);
 
             for (int lag = 1; lag <= _longPeriod; lag++)
             {
-                var laggedSeries = from obs in sSmootherWindow.ToList().GetRange(lag, _correlationWidth)
-                                   select (double)obs.Value;
+                var laggedSeries = sSmootherWindow.ToList().GetRange(lag, _correlationWidth);
+
                 double pearson = Correlation.Pearson(currentSeries, laggedSeries);
                 correlations.Add(pearson);
             }
             return correlations;
         }
 
+        private Vector<double> EstimateDFT(List<double> Correlations)
+        {
+            Vector<double> sinePart = Vector<Double>.Build.Dense(_bandwidth + 1);
+            Vector<double> cosinePart = Vector<Double>.Build.Dense(_bandwidth + 1);
+            int period = _shortPeriod;
+
+            for (int idx = 0; idx <= _bandwidth; idx++)
+            {
+                double sinePartSum = 0;
+                double cosinePartSum = 0;
+                
+                for (int lag = 0; lag < _longPeriod; lag++)
+                {
+                    sinePartSum += Correlations[lag] * Math.Sin(2d * Math.PI * (lag + 1) / period);
+                    cosinePartSum += Correlations[lag] * Math.Cos(2d * Math.PI * (lag + 1) / period);
+                }
+                period++;
+
+                sinePart[idx] = sinePartSum;
+                cosinePart[idx] = cosinePartSum;
+            }
+            sinePart.PointwiseMultiply(sinePart, sinePart);
+            cosinePart.PointwiseMultiply(cosinePart, cosinePart);
+            return sinePart + cosinePart;
+        }
+
+        private decimal EstimateDominantCycle(Vector<double> DTF)
+        {
+            Vector<double> power;
+            Vector<double> periods = Vector<double>.Build.Dense(DTF.Count, i => i + _shortPeriod);
+
+            R = 0.8d * DTF + 0.2d * R;
+            maxPower *= 0.9995d;
+            maxPower = Math.Max(R.Maximum(), maxPower);
+            power = (R / maxPower).PointwiseMultiply(R / maxPower);
+
+            return (decimal)(power.DotProduct(periods) / power.Sum()); ;
+        }
+        
         /// <summary>
         /// Factory function which creates an IndicatorDataPoint
         /// </summary>
