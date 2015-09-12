@@ -46,9 +46,14 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="AverageDirectionalIndex.cs" />
+    <Compile Include="Custom Indicators\AutocorrelogramPeriodogram.cs">
+      <SubType>Code</SubType>
+    </Compile>
     <Compile Include="Custom Indicators\CyclePeriod.cs" />
     <Compile Include="Custom Indicators\CyclePeriodHomodyme.cs" />
     <Compile Include="Custom Indicators\Decycle.cs" />
+    <Compile Include="Custom Indicators\HighPassFilter.cs" />
+    <Compile Include="Custom Indicators\SuperSmoother.cs" />
     <Compile Include="DonchianChannel.cs" />
     <Compile Include="IchimokuKinkoHyo.cs" />
     <Compile Include="MyIndicators\CyberCycle.cs" />

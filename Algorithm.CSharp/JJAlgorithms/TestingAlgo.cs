@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
-
+using System.Linq;
 using System.Text;
 using System.IO;
 
@@ -20,9 +20,9 @@ namespace QuantConnect
         private static string[] Symbols = { "AIG", "BAC", "IBM", "SPY" };
         int counter;
         int onOrderCounter;
-        
-        CyclePeriod cyclePeriod;
-                
+        bool print = true;
+
+        RollingWindow<int> win = new RollingWindow<int>(10);
         StringBuilder toFile = new StringBuilder();
         #endregion
 
@@ -30,16 +30,15 @@ namespace QuantConnect
         public override void Initialize()
         {
             SetStartDate(2013, 10, 7);
-            SetEndDate(2013, 10, 7);
+            SetEndDate(2013, 10, 9);
 
-            SetCash(25000);
+            SetCash(250000);
 
             foreach (var symbol in Symbols)
             {
                 AddSecurity(SecurityType.Equity, symbol, Resolution.Minute); 
             }
 
-            cyclePeriod = new CyclePeriod("Period");
             counter = 0;
             onOrderCounter = 0;
             
@@ -47,16 +46,35 @@ namespace QuantConnect
 
         public void OnData(TradeBars data)
         {
-            if (counter % 30 == 0)
+            if (counter <10) win.Add(counter);
+            else if(print)
             {
-                foreach (var symbol in Symbols)
+                var lista = win.ToList().GetRange(4, 5);
+                Console.ForegroundColor = ConsoleColor.Green;
+                for (int i = 0; i < lista.Count; i++)
                 {
-                    Buy(symbol, 10);
-                    //LimitOrder(symbol, 10, data[symbol].High * 1.01m);
+                    Console.WriteLine(lista[i]);
                 }
+                Console.ResetColor();
+                print = false;
             }
             counter++;
         }
+
+        //public override void OnEndOfDay()
+        //{
+        //    int idx = 0;
+        //    var IBMTickets = Transactions.GetOrderTickets(filter: t => (t.Symbol == "IBM" && t.OrderId == 3)).Last();
+        //    foreach (var orderTicket in IBMTickets)
+        //    {
+        //        Console.ForegroundColor = ConsoleColor.Green;
+        //        Console.WriteLine(string.Format("{0} {1} CONSOLE called {2} times || {3}", Time.ToLongDateString(), Time.ToLongTimeString(), idx, orderTicket.ToString()));
+        //        Console.ForegroundColor = ConsoleColor.Red;
+        //        //Log(string.Format("LOG called {0} times || {1}", idx, orderTicket.ToString()));
+        //        Console.ResetColor();
+        //        idx++;
+        //    }
+        //}
 
         public override void OnOrderEvent(OrderEvent orderEvent)
         {
