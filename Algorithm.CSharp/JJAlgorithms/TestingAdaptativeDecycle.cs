@@ -6,6 +6,7 @@ using System.Text;
 using System.IO;
 
 using QuantConnect.Algorithm;
+using QuantConnect.Algorithm.CSharp;
 using QuantConnect.Data.Market;
 using QuantConnect.Data.Consolidators;
 using QuantConnect.Orders;
@@ -23,6 +24,7 @@ namespace QuantConnect
 
         Decycle decycle;
         AdaptativeDecycle adaptativeDecycle;
+        AutocorrelogramPeriodogram AP;
                 
         StringBuilder toFile = new StringBuilder();
         #endregion
@@ -31,16 +33,17 @@ namespace QuantConnect
         public override void Initialize()
         {
             SetStartDate(2013, 10, 7);
-            SetEndDate(2013, 10, 8);
+            SetEndDate(2013, 10, 10);
 
-            SetCash(250000);
+            SetCash(1);
 
-            AddSecurity(SecurityType.Equity, symbol, Resolution.Minute); 
-
-            decycle = new Decycle(10);
+            AddSecurity(SecurityType.Equity, symbol, Resolution.Minute);
+            int decyclePeriod = 10;
+            decycle = new Decycle(decyclePeriod);
             adaptativeDecycle = new AdaptativeDecycle();
+            AP = new AutocorrelogramPeriodogram(10, 60, 3);
 
-            toFile.AppendLine("Bar, Close, Decycle(10), AdaptativeDecycle, period");
+            toFile.AppendLine("Bar,Close,Decycle"+decyclePeriod+",AdaptativeDecycle,DominantCycle");
 
             counter = 0;
         }
@@ -49,13 +52,12 @@ namespace QuantConnect
         {
             decycle.Update(new IndicatorDataPoint(Time, data[symbol].Value));
             adaptativeDecycle.Update(new IndicatorDataPoint(Time, data[symbol].Value));
-            if (counter % 50 == 0)
-            {
-                period += 10;
-                adaptativeDecycle.AdaptativePeriod = period;
-            }
+            AP.Update(new IndicatorDataPoint(Time, data[symbol].Value));
+
+            adaptativeDecycle.AdaptativePeriod = (AP.IsReady) ? (int)AP.Current.Value : 10;
+        
             string newLine = string.Format("{0}, {1}, {2}, {3}, {4}", counter, data[symbol].Close, decycle.Current.Value,
-                adaptativeDecycle.Current.Value, period);
+                adaptativeDecycle.Current.Value, AP.Current.Value);
             toFile.AppendLine(newLine);
             counter++;
         }
@@ -63,10 +65,9 @@ namespace QuantConnect
         
         public override void OnEndOfAlgorithm()
         {
-            string filePath = @"C:\Users\JJ\Desktop\MA y señales\ITrend Debug\AdaptativeDecycle.csv";
-            //File.Create(filePath);
-            if (File.Exists(filePath))
-                File.Delete(filePath);
+            string fileName = @"AdaptativeDecycleAP.csv";
+            string filePath = AssemblyLocator.ExecutingDirectory() + fileName;
+            if (File.Exists(filePath)) File.Delete(filePath);
             File.AppendAllText(filePath, toFile.ToString());
         }
         #endregion

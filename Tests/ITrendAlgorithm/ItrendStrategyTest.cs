@@ -1,5 +1,6 @@
 ﻿using NUnit.Framework;
 using QuantConnect.Algorithm.CSharp.ITrendAlgorithm;
+using QuantConnect.Algorithm.CSharp.Common;
 using QuantConnect.Indicators;
 using QuantConnect.Tests.Indicators;
 using System;

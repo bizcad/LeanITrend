@@ -22,6 +22,10 @@ namespace QuantConnect.Indicators
             }
         }
 
+        public AdaptativeDecycle(int period)
+            : base("AdaptativeDecycle", period)
+        { }
+
         public AdaptativeDecycle()
             : base("AdaptativeDecycle", 3)
         { }
