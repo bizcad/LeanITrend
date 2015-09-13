@@ -9,17 +9,17 @@ namespace QuantConnect.Indicators
     public class Decycle : WindowIndicator<IndicatorDataPoint>
     {
         // the alpha for the formula
-        private decimal alpha;
+        public decimal alpha;
         private IndicatorDataPoint _decycle;
-        private readonly int _period;
+        public int period;
 
-        public Decycle(string name, int period)
-            : base(name, period)
+        public Decycle(string name, int Period)
+            : base(name, Period)
         {
 
             // Decycle history
             _decycle = new IndicatorDataPoint();
-            _period = period;
+            period = Period;
             alpha = (decimal)((Math.Cos(2 * Math.PI / (double)period) + Math.Sin(2 * Math.PI / (double)period) - 1) /
                 Math.Cos(2 * Math.PI / (double)period));
         }
