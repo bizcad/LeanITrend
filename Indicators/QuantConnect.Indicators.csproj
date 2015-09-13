@@ -46,6 +46,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="AverageDirectionalIndex.cs" />
+    <Compile Include="Custom Indicators\AdaptativeDecycle.cs" />
     <Compile Include="Custom Indicators\CyclePeriod.cs" />
     <Compile Include="Custom Indicators\CyclePeriodHomodyme.cs" />
     <Compile Include="Custom Indicators\Decycle.cs" />
