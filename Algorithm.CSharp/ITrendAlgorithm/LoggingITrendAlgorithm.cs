@@ -164,7 +164,7 @@ namespace QuantConnect.Algorithm.CSharp.ITrendAlgorithm
             #region logging
             // Nick added
             comment = string.Empty;
-            tradingDate = data.Time;
+            tradingDate = this.Time;
             barCounter++;
             #endregion
 
@@ -236,14 +236,14 @@ namespace QuantConnect.Algorithm.CSharp.ITrendAlgorithm
                 string logmsg =
                     string.Format(
                         "{0},{1},{2},{3},{4},{5},{6},{7},{8},{9},{10},{11},{12},{13},{14},{15},{16},{17},{18},{19},{20},{21},{22},{23}",
-                        data.Time,
+                        this.Time,
                         barCounter,
                         tradesize,
                         data[symbol].Open,
                         data[symbol].High,
                         data[symbol].Low,
                         data[symbol].Close,
-                        data.Time.ToShortTimeString(),
+                        this.Time.ToShortTimeString(),
                         data[symbol].Close, //Price[0].Value
                         Strategy[symbol].ITrend, //trend.Current.Value,
                         Strategy[symbol].ITrendMomentum.Current.Value, // trendTrigger[0].Value,
@@ -274,7 +274,7 @@ namespace QuantConnect.Algorithm.CSharp.ITrendAlgorithm
             }
             #region logging
             // Nick Added
-            if (data.Time.Hour == 16)
+            if (this.Time.Hour == 16)
             {
                 CalculateDailyProfits();
                 sharesOwned = Portfolio[Symbols[0]].Quantity;

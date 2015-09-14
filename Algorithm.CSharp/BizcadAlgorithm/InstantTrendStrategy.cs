@@ -236,33 +236,5 @@ namespace QuantConnect.Algorithm.CSharp
             trendHistory.Reset();
             Barcount = 0;
         }
-        /// <summary>
-        /// Used to warm up the trend history
-        /// </summary>
-        /// <param name="trendCurrent"></param>
-        //public void WarmUpTrendHistory(IndicatorDataPoint trendCurrent)
-        //{
-        //    trendHistory.Add(trendCurrent);
-        //}
-        //private bool SellOutEndOfDay(TradeBars data)
-        //{
-        //    if (ShouldSellOutAtEod)
-        //    {
-        //        if (data.Time.Hour == 15 && data.Time.Minute > 55 || data.Time.Hour == 16)
-        //        {
-        //            if (_algorithm.Portfolio[_symbol].IsLong)
-        //            {
-        //                _algorithm.Sell(_symbol, _algorithm.Portfolio[_symbol].AbsoluteQuantity);
-        //            }
-        //            if (_algorithm.Portfolio[_symbol].IsShort)
-        //            {
-        //                _algorithm.Buy(_symbol, _algorithm.Portfolio[_symbol].AbsoluteQuantity);
-        //            }
-
-        //            return true;
-        //        }
-        //    }
-        //    return false;
-        //}
     }
 }

@@ -63,7 +63,7 @@ namespace QuantConnect.Algorithm.MyAlgorithms
         public void OnData(TradeBars data)
         {
             barcount++;
-            var time = data.Time;
+            var time = this.Time;
             hma7.Update(time, data[symbol].Close);
             hma14.Update(time, data[symbol].Close);
             hma28.Update(time, data[symbol].Close);
@@ -72,7 +72,7 @@ namespace QuantConnect.Algorithm.MyAlgorithms
             if (hma28.IsReady)
             {
                 string logmsg = string.Format("{0},{1},{2},{3},{4},{5},{6},{7},{8},{9},{10}",
-                    data.Time,
+                    this.Time,
                     barcount,
                     data[symbol].Open,
                     data[symbol].High,

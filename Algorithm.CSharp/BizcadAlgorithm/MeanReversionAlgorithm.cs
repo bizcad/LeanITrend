@@ -119,8 +119,8 @@ namespace QuantConnect.Algorithm.Examples
         {
             decimal close = data[symbol].Close;
             barcount++;
-            tradingDate = data.Time;
-            var time = data.Time;
+            tradingDate = this.Time;
+            var time = this.Time;
             Price.Add(idp(time, close));
             trend.Update(idp(time, close));
             trendHistory.Add(idp(time, close));
@@ -131,7 +131,7 @@ namespace QuantConnect.Algorithm.Examples
             var madiff1 = ema10.Current.Value - sma10.Current.Value;
             madiff.Add(idp(time, madiff1));
             stddev.Update(idp(time, madiff1));
-            if (data.Time.Hour == 9 && data.Time.Minute == 31)
+            if (this.Time.Hour == 9 && this.Time.Minute == 31)
             {
                 barcount = 1;
                 tradesize = (int)(Portfolio.Cash / Convert.ToInt32(Price[0].Value + 1));
@@ -146,7 +146,7 @@ namespace QuantConnect.Algorithm.Examples
                 string logmsg =
                     string.Format(
                         "{0},{1},{2},{3},{4},{5},{6},{7},{8},{9},{10},{11},{12},{13},{14},{15},{16},{17},{18},{19},{20},{21},{22},{23},{24},{25},{26},{27}",
-                        data.Time,
+                        this.Time,
                         barcount,
                         data[symbol].Open,
                         data[symbol].High,
@@ -256,7 +256,7 @@ namespace QuantConnect.Algorithm.Examples
                 }
                 SeekingTop = false;
                 SeekingBottom = true;
-                tradeTime = data.Time;
+                tradeTime = this.Time;
             }
             // If we are outside and seeking a bottom
             if (LookingForTrade() && outsideStdDev == -1 && SeekingBottom && DirectionIsUp())
@@ -271,7 +271,7 @@ namespace QuantConnect.Algorithm.Examples
                 }
                 SeekingBottom = false;
                 SeekingTop = true;
-                tradeTime = data.Time;
+                tradeTime = this.Time;
             }
         }
 
@@ -310,7 +310,7 @@ namespace QuantConnect.Algorithm.Examples
         {
             if (shouldSellOutAtEod)
             {
-                if (data.Time.Hour == 15 && data.Time.Minute > 55 && Portfolio[symbol].HoldStock)
+                if (this.Time.Hour == 15 && this.Time.Minute > 55 && Portfolio[symbol].HoldStock)
                 {
                     if (Portfolio[symbol].IsLong)
                     {
@@ -404,7 +404,7 @@ namespace QuantConnect.Algorithm.Examples
         /// <param name="value">decimal - the value for the IndicatorDataPoint</param>
         /// <returns>a new IndicatorDataPoint</returns>
         /// <remarks>I use this function to shorten the a Add call from 
-        /// new IndicatorDataPoint(data.Time, value)
+        /// new IndicatorDataPoint(this.Time, value)
         /// Less typing.</remarks>
         private IndicatorDataPoint idp(DateTime time, decimal value)
         {

@@ -165,13 +165,13 @@ namespace QuantConnect.Algorithm.MyAlgorithms
         public void OnData(TradeBars data)
         {
             barcount++;
-            processingDate = data.Time;
-            var time = data.Time;
+            processingDate = this.Time;
+            var time = this.Time;
             try
             {
                 decimal val = ((data[symbol].High - data[symbol].Low) / 2) + data[symbol].Low;
                 val = data[symbol].Close;
-                Price.Add(idp(data.Time, val));
+                Price.Add(idp(time, val));
 
 
                 UpdateEma(time);
@@ -264,14 +264,14 @@ namespace QuantConnect.Algorithm.MyAlgorithms
 
             openForTrading = true;
             // wait 10 minutes to start trading to avoid opening moves
-            if (data.Time.Hour == 9 && data.Time.Minute < 40)
+            if (this.Time.Hour == 9 && this.Time.Minute < 40)
             {
                 openForTrading = false;
                 return;
             }
 
             // liquidate at 3:50 to avoid the 4:00 rush.
-            if (data.Time.Hour == 15 && data.Time.Minute > 49)
+            if (this.Time.Hour == 15 && this.Time.Minute > 49)
             {
                 openForTrading = false;
                 if (Portfolio.Invested)

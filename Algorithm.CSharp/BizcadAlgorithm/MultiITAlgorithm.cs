@@ -226,7 +226,7 @@ namespace QuantConnect.Algorithm.CSharp
         {
             #region logging
             comment = string.Empty;
-            tradingDate = data.Time;
+            tradingDate = this.Time;
             #endregion
             barcount++;
             // Logs a TradeBar to the mylog
@@ -257,7 +257,7 @@ namespace QuantConnect.Algorithm.CSharp
             
             _brokerSimulator.PricesWindow.Add(data);
             // Add the history for the bar
-            var time = data.Time;
+            var time = this.Time;
             Price.Add(idp(time, (data[symbol].Close + data[symbol].Open) / 2));
 
             //// Update the indicators
@@ -289,14 +289,14 @@ namespace QuantConnect.Algorithm.CSharp
             string logmsg =
                 string.Format(
                     "{0},{1},{2},{3},{4},{5},{6},{7},{8},{9},{10},{11},{12},{13},{14},{15},{16},{17},{18},{19},{20},{21},{22},{23}",
-                    data.Time,
+                    this.Time,
                     barcount,
                     tradesize,
                     data[symbol].Open,
                     data[symbol].High,
                     data[symbol].Low,
                     data[symbol].Close,
-                    data.Time.ToShortTimeString(),
+                    this.Time.ToShortTimeString(),
                     Price[0].Value,
                 //trend.Current.Value,
                 //trendTrigger[0].Value,
@@ -325,7 +325,7 @@ namespace QuantConnect.Algorithm.CSharp
             tradenet = 0;
             #endregion
 
-            if (data.Time.Hour == 16)
+            if (this.Time.Hour == 16)
             {
                 trend.Reset();
                 trendHistory.Reset();
@@ -461,7 +461,7 @@ namespace QuantConnect.Algorithm.CSharp
         {
             if (shouldSellOutAtEod)
             {
-                if (data.Time.Hour == 15 && data.Time.Minute > 49 || data.Time.Hour == 16)
+                if (this.Time.Hour == 15 && this.Time.Minute > 49 || this.Time.Hour == 16)
                 {
                     if (Portfolio[symbol].IsLong)
                     {

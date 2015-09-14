@@ -87,7 +87,7 @@ namespace QuantConnect.Algorithm.MyAlgorithms
         public void OnData(TradeBars data)
         {
             barcount++;
-            var time = data.Time;
+            var time = this.Time;
             Price.Add(idp(time, data[symbol].Close));
             cycleSignal.Add(idp(time, cycle.Current.Value));        //add last iteration value for the cycle
             cycle.Update(time, data[symbol].Close);
@@ -101,7 +101,7 @@ namespace QuantConnect.Algorithm.MyAlgorithms
             //if (cycle.IsReady)
             //{
             string logmsg = string.Format("{0},{1},{2},{3},{4},{5},{6},{7},{8},{9},{10},{11},{12},{13},{14},{15},{16},{17},{18}",
-                    data.Time,
+                    this.Time,
                     barcount,
                     data[symbol].Open,
                     data[symbol].High,
@@ -131,17 +131,17 @@ namespace QuantConnect.Algorithm.MyAlgorithms
         {
             if (barcount < 2)
             {
-                fishDirectionHistory.Add(idp(data.Time, 0));
+                fishDirectionHistory.Add(idp(this.Time, 0));
                 fishDirectionChanged = false;
             }
             else
             {
-                fishDirectionHistory.Add(idp(data.Time, Math.Sign(fishHistory[0].Value - fishHistory[1].Value)));
+                fishDirectionHistory.Add(idp(this.Time, Math.Sign(fishHistory[0].Value - fishHistory[1].Value)));
                 fishDirectionChanged = fishDirectionHistory[0].Value != fishDirectionHistory[1].Value;
             }
 
             // liquidate at 3:50 to avoid the 4:00 rush.
-            if (data.Time.Hour == 15 && data.Time.Minute > 49)
+            if (this.Time.Hour == 15 && this.Time.Minute > 49)
             {
                 openForTrading = false;
                 if (Portfolio.Invested)

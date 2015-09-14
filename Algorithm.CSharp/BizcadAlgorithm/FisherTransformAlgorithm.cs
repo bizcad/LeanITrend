@@ -109,9 +109,9 @@ namespace QuantConnect.Algorithm.Examples
             try
             {
 
-                maxHigh.Update(new IndicatorDataPoint(data.Time, data[_symbol].Close));
-                minLow.Update(new IndicatorDataPoint(data.Time, data[_symbol].Close));
-                fx.Update(new IndicatorDataPoint(data.Time, data[_symbol].Close));
+                maxHigh.Update(new IndicatorDataPoint(this.Time, data[_symbol].Close));
+                minLow.Update(new IndicatorDataPoint(this.Time, data[_symbol].Close));
+                fx.Update(new IndicatorDataPoint(this.Time, data[_symbol].Close));
                 if (fx.IsReady)
                 {
 
@@ -121,7 +121,7 @@ namespace QuantConnect.Algorithm.Examples
 
 
                     var v0 = value1[0].Value;
-                    value1.Add(new IndicatorDataPoint(data.Time, .33m * 2m * ((Price - MinL) / (MaxH - MinL) - .5m) + .67m * v0));
+                    value1.Add(new IndicatorDataPoint(this.Time, .33m * 2m * ((Price - MinL) / (MaxH - MinL) - .5m) + .67m * v0));
 
                     if (value1[0].Value > .9999m) value1[0].Value = .9999m;
                     if (value1[0].Value < -.9999m) value1[0].Value = -.9999m;
@@ -130,9 +130,9 @@ namespace QuantConnect.Algorithm.Examples
                         System.Convert.ToDecimal(.5 * 2.0 *
                                                  Math.Log((1.0 + (double)value1[0].Value) /
                                                           (1.0 - (double)value1[0].Value))) + .5m * fish0.Value;
-                    fish.Add(new IndicatorDataPoint(data.Time, fish1));
+                    fish.Add(new IndicatorDataPoint(this.Time, fish1));
                     //wma.Update(fish[0]);
-                    //wwma.Add(new IndicatorDataPoint(data.Time, wma.Current));
+                    //wwma.Add(new IndicatorDataPoint(this.Time, wma.Current));
                     //fishHigh.Update(fish[0]);
                     //fishLow.Update(fish[0]);
 
@@ -142,7 +142,7 @@ namespace QuantConnect.Algorithm.Examples
 
                     string logmsg =
                         string.Format("{0},{1},{2},{3},{4},{5},{6},{7},{8},{9},{10},{11},{12},{13},{14},{15},{16},{17}",
-                            data.Time,
+                            this.Time,
                             barcount,
                             data[_symbol].Open,
                             data[_symbol].High,

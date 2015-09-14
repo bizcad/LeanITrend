@@ -185,15 +185,15 @@ namespace QuantConnect
             try
             {
                 // wait 10 minutes to start trading to avoid opening moves
-                if (data.Time.Hour == 9 && data.Time.Minute < 40)
+                if (this.Time.Hour == 9 && this.Time.Minute < 40)
                     return;
 
-                RsiHistory.Add(new IndicatorDataPoint(data.Time,_indicators.RSI.Current));
-                fish.Update(new IndicatorDataPoint(data.Time, _indicators.MACD.Current));
-                ifish.Update(new IndicatorDataPoint(data.Time, _indicators.MACD.Current));
+                RsiHistory.Add(new IndicatorDataPoint(this.Time, _indicators.RSI.Current));
+                fish.Update(new IndicatorDataPoint(this.Time, _indicators.MACD.Current));
+                ifish.Update(new IndicatorDataPoint(this.Time, _indicators.MACD.Current));
                 iFishes.Add(ifish.Current);
 
-                unrealized.Add(new IndicatorDataPoint(data.Time, Portfolio.TotalUnrealizedProfit));
+                unrealized.Add(new IndicatorDataPoint(this.Time, Portfolio.TotalUnrealizedProfit));
                 decimal open = _indicators.Rvi.Bars[0].Open;
                 decimal high = _indicators.Rvi.Bars[0].High;
                 decimal low = _indicators.Rvi.Bars[0].Low;
@@ -201,7 +201,7 @@ namespace QuantConnect
 
                 string ondatamsg =
                     string.Format("{0},{1},{2},{3},{4},{5},{6},{7},{8},{9},{10},{11},{12},{13}",
-                        data.Time,
+                        this.Time,
                         barcount,
                         open,
                         high,
@@ -235,7 +235,7 @@ namespace QuantConnect
             }
 
             // liquidate at 3:50 to avoid the 4:00 rush.
-            if (data.Time.Hour == 15 && data.Time.Minute > 49)
+            if (this.Time.Hour == 15 && this.Time.Minute > 49)
             {
                 if (Portfolio.Invested)
                 {

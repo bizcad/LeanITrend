@@ -18,8 +18,8 @@ namespace QuantConnect.Algorithm.CSharp
     {
         #region "Variables"
         
-        private DateTime _startDate = new DateTime(2015, 9, 7);
-        private DateTime _endDate = new DateTime(2015, 9, 11);
+        private DateTime _startDate = new DateTime(2015, 8, 10);
+        private DateTime _endDate = new DateTime(2015, 8, 14);
         private decimal _portfolioAmount = 10000;
         private decimal _transactionSize = 15000;
 
@@ -125,12 +125,12 @@ namespace QuantConnect.Algorithm.CSharp
         {
             #region logging
             comment = string.Empty;
-            tradingDate = data.Time;
+            tradingDate = this.Time;
             #endregion
             barcount++;
-
+            
             // Add the history for the bar
-            var time = data.Time;
+            var time = this.Time;
             Price.Add(idp(time, (data[symbol].Close + data[symbol].Open) / 2));
 
             // Update the indicators
@@ -155,14 +155,14 @@ namespace QuantConnect.Algorithm.CSharp
             string logmsg =
                 string.Format(
                     "{0},{1},{2},{3},{4},{5},{6},{7},{8},{9},{10},{11},{12},{13},{14},{15},{16},{17},{18},{19},{20},{21},{22},{23}",
-                    data.Time,
+                    time,
                     barcount,
                     tradesize,
                     data[symbol].Open,
                     data[symbol].High,
                     data[symbol].Low,
                     data[symbol].Close,
-                    data.Time.ToShortTimeString(),
+                    time.ToShortTimeString(),
                     Price[0].Value,
                     trend.Current.Value,
                     //trendTrigger[0].Value,
@@ -190,7 +190,7 @@ namespace QuantConnect.Algorithm.CSharp
             tradenet = 0;
             #endregion
 
-            if (data.Time.Hour == 16)
+            if (time.Hour == 16)
             {
                 trend.Reset();
                 trendHistory.Reset();
@@ -267,7 +267,7 @@ namespace QuantConnect.Algorithm.CSharp
         {
             if (shouldSellOutAtEod)
             {
-                if (data.Time.Hour == 15 && data.Time.Minute > 49 || data.Time.Hour == 16)
+                if (this.Time.Hour == 15 && this.Time.Minute > 49 || this.Time.Hour == 16)
                 {
                     if (Portfolio[symbol].IsLong)
                     {
@@ -280,7 +280,7 @@ namespace QuantConnect.Algorithm.CSharp
 
                     // Daily Profit
                     #region logging
-                    if (data.Time.Hour == 16)
+                    if (this.Time.Hour == 16)
                     {
                         CalculateDailyProfits();
                         sharesOwned = Portfolio[symbol].Quantity;
@@ -436,7 +436,7 @@ namespace QuantConnect.Algorithm.CSharp
         /// <param name="value">decimal - the value for the IndicatorDataPoint</param>
         /// <returns>a new IndicatorDataPoint</returns>
         /// <remarks>I use this function to shorten the a Add call from 
-        /// new IndicatorDataPoint(data.Time, value)
+        /// new IndicatorDataPoint(this.Time, value)
         /// Less typing.</remarks>
         private IndicatorDataPoint idp(DateTime time, decimal value)
         {

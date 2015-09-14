@@ -86,10 +86,10 @@ namespace QuantConnect.Algorithm.Examples
         {
             maximum = max;
             minimum = min;
-            Price.Add(idp(data[_symbol].EndTime, (data[_symbol].Close + data[_symbol].Open) / 2));
+            Price.Add(idp(data.Time, (data[_symbol].Close + data[_symbol].Open) / 2));
             orderId = 0;
             comment = string.Empty;
-            //sma20.Update(idp(data.Time, data[_symbol].Close));
+            
 
 
 
@@ -103,11 +103,7 @@ namespace QuantConnect.Algorithm.Examples
 
             try
             {
-                //7/9/2015 9:39
-                if (Price[0].EndTime.Day == 9 && Price[0].EndTime.Hour == 9 && Price[0].EndTime.Minute == 39)
-                    System.Threading.Thread.Sleep(100);
-
-
+                
                 if (!_algorithm.Portfolio.Invested)
                 {
                     if (PricePassedAValley() && rocp.Current.Value < 0)
@@ -186,28 +182,7 @@ namespace QuantConnect.Algorithm.Examples
             nStatus = -1;
             return _algorithm.Sell(_symbol, _algorithm.Portfolio[_symbol].Quantity * 2);
         }
-        private bool SellOutEndOfDay(TradeBars data)
-        {
-            if (shouldSellOutAtEod)
-            {
-                if (data.Time.Hour == 15 && data.Time.Minute > 49 || data.Time.Hour == 16)
-                {
-                    if (_algorithm.Portfolio[_symbol].IsLong)
-                    {
-                        _algorithm.Sell(_symbol, _algorithm.Portfolio[_symbol].AbsoluteQuantity);
-                    }
-                    if (_algorithm.Portfolio[_symbol].IsShort)
-                    {
-                        _algorithm.Buy(_symbol, _algorithm.Portfolio[_symbol].AbsoluteQuantity);
-                    }
-
-                    System.Threading.Thread.Sleep(100);
-
-                    return false;
-                }
-            }
-            return true;
-        }
+        
         private bool PricePassedAPeak()
         {
             try
