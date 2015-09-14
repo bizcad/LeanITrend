@@ -61,7 +61,7 @@
     <Compile Include="BizcadAlgorithm\MultiITAlgorithm.cs" />
     <Compile Include="BizcadAlgorithm\MultiITStrategy.cs" />
     <Compile Include="BizcadAlgorithm\OptimalTrackingAlgorithm.cs" />
-    <Compile Include="BizcadAlgorithm\OrderReportFormatter.cs" />
+    <Compile Include="BizcadAlgorithm\OrderTransactionFactory.cs" />
     <Compile Include="BizcadAlgorithm\OrderTransaction.cs" />
     <Compile Include="BizcadAlgorithm\PositionInventoryFifo.cs" />
     <Compile Include="BizcadAlgorithm\PositionInventoryLifo.cs" />
@@ -72,7 +72,7 @@
     <Compile Include="BizcadAlgorithm\OrderTransactionProcessor.cs" />
     <Compile Include="BizcadAlgorithm\BrokerSimulator.cs" />
     <Compile Include="Common\Global.cs" />
-    <Compile Include="Common\ObjectToCsv.cs" />
+    <Compile Include="Common\CsvSerializer.cs" />
     <Compile Include="CustomBenchmarkAlgorithm.cs" />
     <Compile Include="DelistingEventsAlgorithm.cs" />
     <Compile Include="ITrendAlgorithm\ITrendAlgorithm.cs" />

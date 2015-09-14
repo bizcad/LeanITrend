@@ -86,7 +86,7 @@ namespace QuantConnect.Algorithm.Examples
         {
             maximum = max;
             minimum = min;
-            Price.Add(idp(data.Time, (data[_symbol].Close + data[_symbol].Open) / 2));
+            Price.Add(idp(data[_symbol].EndTime, (data[_symbol].Close + data[_symbol].Open) / 2));
             orderId = 0;
             comment = string.Empty;
             

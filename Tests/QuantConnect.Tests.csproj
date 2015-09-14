@@ -98,7 +98,7 @@
     <Compile Include="Common\TimeZonesTest.cs" />
     <Compile Include="Common\Util\BusyBlockingCollectionTests.cs" />
     <Compile Include="Common\Util\ObjectActivatorTests.cs" />
-    <Compile Include="Common\Util\ObjectCsvTests.cs" />
+    <Compile Include="Common\Util\CsvSerializerTests.cs" />
     <Compile Include="Common\Util\ObjectToListJsonConverterTests.cs" />
     <Compile Include="Common\Util\VersionHelperTests.cs" />
     <Compile Include="Common\Util\WhoCalledMeTests.cs" />

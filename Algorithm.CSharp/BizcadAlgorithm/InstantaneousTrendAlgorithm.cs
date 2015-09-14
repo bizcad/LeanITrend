@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -17,7 +18,7 @@ namespace QuantConnect.Algorithm.CSharp
     class InstantaneousTrendAlgorithm : QCAlgorithm
     {
         #region "Variables"
-        
+
         private DateTime _startDate = new DateTime(2015, 8, 10);
         private DateTime _endDate = new DateTime(2015, 8, 14);
         private decimal _portfolioAmount = 10000;
@@ -48,7 +49,6 @@ namespace QuantConnect.Algorithm.CSharp
         private decimal daynet = 0;
         private decimal lastprofit = 0;
         private decimal lastfees = 0;
-        private int _tradecount = 0;
         private int lasttradecount;
         private DateTime tradingDate;
         private decimal nExitPrice = 0;
@@ -59,12 +59,13 @@ namespace QuantConnect.Algorithm.CSharp
         private ILogHandler mylog = Composer.Instance.GetExportedValueByTypeName<ILogHandler>("CustomFileLogHandler");
         private ILogHandler dailylog = Composer.Instance.GetExportedValueByTypeName<ILogHandler>("DailyFileLogHandler");
         //private ILogHandler transactionlog = Composer.Instance.GetExportedValueByTypeName<ILogHandler>("TransactionFileLogHandler");
-        private readonly OrderReportFormatter _orderReportFormatter;
+        private readonly OrderTransactionFactory _orderTransactionFactory;
 
         private string ondataheader = @"Time,BarCount,trade size,Open,High,Low,Close,Time,Price,Trend,Trigger,comment,signal, Entry Price, Exit Price,orderId , unrealized, shares owned,trade profit, trade fees, trade net,last trade fees, profit, fees, net, day profit, day fees, day net, Portfolio Value";
         private string dailyheader = @"Trading Date,Daily Profit, Daily Fees, Daily Net, Cum profit, Cum Fees, Cum Net, Trades/day, Portfolio Value, Shares Owned";
         private string transactionheader = @"Symbol,Quantity,Price,Direction,Order Date,Settlement Date, Amount,Commission,Net,Nothing,Description,Action Id,Order Id,RecordType,TaxLotNumber";
         private List<OrderTransaction> _transactions;
+        private int _tradecount = 0;
         #endregion
 
         // Strategy
@@ -75,7 +76,7 @@ namespace QuantConnect.Algorithm.CSharp
         private OrderSignal signal;
         private decimal nEntryPrice = 0;
         private string comment;
-        
+
         #endregion
 
         /// <summary>
@@ -93,7 +94,8 @@ namespace QuantConnect.Algorithm.CSharp
             dailylog.Debug(algoname);
             dailylog.Debug(dailyheader);
             _transactions = new List<OrderTransaction>();
-
+            string filepath = AssemblyLocator.ExecutingDirectory() + "transactions.csv";
+            if (File.Exists(filepath)) File.Delete(filepath);
             #endregion
 
             //Initialize dates
@@ -128,7 +130,7 @@ namespace QuantConnect.Algorithm.CSharp
             tradingDate = this.Time;
             #endregion
             barcount++;
-            
+
             // Add the history for the bar
             var time = this.Time;
             Price.Add(idp(time, (data[symbol].Close + data[symbol].Open) / 2));
@@ -147,7 +149,7 @@ namespace QuantConnect.Algorithm.CSharp
                 tradesize = (int)(_transactionSize / Convert.ToInt32(Price[0].Value + 1));
             }
 
-            
+
             Strategy(data);
 
             #region logging
@@ -165,7 +167,7 @@ namespace QuantConnect.Algorithm.CSharp
                     time.ToShortTimeString(),
                     Price[0].Value,
                     trend.Current.Value,
-                    //trendTrigger[0].Value,
+                //trendTrigger[0].Value,
                     comment,
                     signal,
                     nEntryPrice,
@@ -284,7 +286,17 @@ namespace QuantConnect.Algorithm.CSharp
                     {
                         CalculateDailyProfits();
                         sharesOwned = Portfolio[symbol].Quantity;
-
+                        var _transactionsAsCsv = CsvSerializer.Serialize<OrderTransaction>(",", _transactions, true);
+                        StringBuilder sb = new StringBuilder();
+                        foreach (string s in _transactionsAsCsv)
+                            sb.AppendLine(s);
+                        string attachment = sb.ToString();
+                        Notify.Email("nicholasstein@cox.net",
+                            "Todays Trades " + this.Time.ToLongDateString(),
+                            "Number of Trades: " + _tradecount,
+                            attachment);
+                        SendTransactionsToFile();
+                        _transactions = new List<OrderTransaction>();
 
                     }
                     #endregion
@@ -329,8 +341,8 @@ namespace QuantConnect.Algorithm.CSharp
 
                         #region logging
 
-                        OrderReportFormatter reportFormatter = new OrderReportFormatter((QCAlgorithm)this);
-                        var t = reportFormatter.ReportTransaction(orderEvent, ticket, false);
+                        OrderTransactionFactory transactionFactory = new OrderTransactionFactory((QCAlgorithm)this);
+                        var t = transactionFactory.Create(orderEvent, ticket, false);
                         _transactions.Add(t);
                         _tradecount++;
                         #endregion
@@ -417,18 +429,23 @@ namespace QuantConnect.Algorithm.CSharp
             //    Debug(string.Format("\nSymbol Name: {0}, Ending Portfolio Value: {1} ", symbol, Portfolio[symbol].Profit));
 
             //}
+            
+        }
+
+        private void SendTransactionsToFile()
+        {
             string filepath = AssemblyLocator.ExecutingDirectory() + "transactions.csv";
-            if (File.Exists(filepath)) File.Delete(filepath);
-            var liststring = ObjectToCsv.ToCsv<OrderTransaction>(",", _transactions, true);
-            using (StreamWriter fs = new StreamWriter(filepath))
+            //if (File.Exists(filepath)) File.Delete(filepath);
+            var liststring = CsvSerializer.Serialize<OrderTransaction>(",", _transactions, true);
+            using (StreamWriter fs = new StreamWriter(filepath, true))
             {
                 foreach (var s in liststring)
                     fs.WriteLine(s);
                 fs.Flush();
                 fs.Close();
             }
-
         }
+
         /// <summary>
         /// Convenience function which creates an IndicatorDataPoint
         /// </summary>

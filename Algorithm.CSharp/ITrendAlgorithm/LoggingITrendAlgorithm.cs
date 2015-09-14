@@ -75,7 +75,7 @@ namespace QuantConnect.Algorithm.CSharp.ITrendAlgorithm
         private ILogHandler mylog = Composer.Instance.GetExportedValueByTypeName<ILogHandler>("CustomFileLogHandler");
         private ILogHandler dailylog = Composer.Instance.GetExportedValueByTypeName<ILogHandler>("DailyFileLogHandler");
         //private ILogHandler transactionlog = Composer.Instance.GetExportedValueByTypeName<ILogHandler>("TransactionFileLogHandler");
-        private readonly OrderReportFormatter _orderReportFormatter;
+        private readonly OrderTransactionFactory _orderTransactionFactory;
 
         private string ondataheader = @"Time,BarCount,trade size,Open,High,Low,Close,Time,Price,Trend,Trigger,comment, Entry Price, Exit Price,orderId , unrealized, shares owned,trade profit, trade fees, trade net,last trade fees, profit, fees, net, day profit, day fees, day net, Portfolio Value";
         private string dailyheader = @"Trading Date,Daily Profit, Daily Fees, Daily Net, Cum profit, Cum Fees, Cum Net, Trades/day, Portfolio Value, Shares Owned";
@@ -499,8 +499,8 @@ namespace QuantConnect.Algorithm.CSharp.ITrendAlgorithm
                         //iTrendStrategy.orderFilled = true;
 
                         #region logging
-                        OrderReportFormatter reportFormatter = new OrderReportFormatter((QCAlgorithm)this);
-                        OrderTransaction t = reportFormatter.ReportTransaction(orderEvent, ticket);
+                        OrderTransactionFactory transactionFactory = new OrderTransactionFactory((QCAlgorithm)this);
+                        OrderTransaction t = transactionFactory.Create(orderEvent, ticket);
                         tradecount++;
                         #endregion
 

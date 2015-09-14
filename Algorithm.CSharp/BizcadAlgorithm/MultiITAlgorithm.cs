@@ -521,8 +521,8 @@ namespace QuantConnect.Algorithm.CSharp
 
                         #region logging
 
-                        OrderReportFormatter reportFormatter = new OrderReportFormatter((QCAlgorithm)this);
-                        var t = reportFormatter.ReportTransaction(orderEvent, ticket, false);
+                        OrderTransactionFactory transactionFactory = new OrderTransactionFactory((QCAlgorithm)this);
+                        var t = transactionFactory.Create(orderEvent, ticket, false);
                         _transactions.Add(t);
                         _tradecount++;
                         #endregion
@@ -763,7 +763,7 @@ namespace QuantConnect.Algorithm.CSharp
             //}
             string filepath = AssemblyLocator.ExecutingDirectory() + "transactions.csv";
             if (File.Exists(filepath)) File.Delete(filepath);
-            var liststring = ObjectToCsv.ToCsv<OrderTransaction>(",", _transactions, true);
+            var liststring = CsvSerializer.Serialize<OrderTransaction>(",", _transactions, true);
             using (StreamWriter fs = new StreamWriter(filepath))
             {
                 foreach (var s in liststring)

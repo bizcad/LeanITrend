@@ -4,14 +4,12 @@ using System.ComponentModel;
 using System.Diagnostics;
 using System.Linq;
 using System.Reflection;
-using System.Text;
-using System.Threading.Tasks;
 
-namespace QuantConnect.Algorithm.CSharp.Common
+namespace QuantConnect.Algorithm.CSharp
 {
-    public static class ObjectToCsv
+    public static class CsvSerializer
     {
-        public static IEnumerable<string> ToCsv<T>(string separator, IEnumerable<T> objectlist, bool includeFields = true)
+        public static IEnumerable<string> Serialize<T>(string separator, IEnumerable<T> objectlist, bool includeFields = true)
         {
             if (objectlist != null)
             {
@@ -28,7 +26,7 @@ namespace QuantConnect.Algorithm.CSharp.Common
             }
         }
 
-        public static void FromCsv<T>(string separator, string csv, ref T inobj, bool includeFields = false)
+        public static void Deserialize<T>(string separator, string csv, ref T inobj, bool includeFields = false)
         {
             if (csv.Length > 0)
             {
@@ -36,7 +34,6 @@ namespace QuantConnect.Algorithm.CSharp.Common
                 PropertyInfo[] properties = typeof(T).GetProperties();
                 string[] arr = csv.Split(',');
 
-                
                 for (int i = 0; i < properties.Length; i++)
                 {
                     var p = properties[i];
@@ -51,11 +48,7 @@ namespace QuantConnect.Algorithm.CSharp.Common
                         Debug.WriteLine(e.Message);
                     }
                 }
-
-
             }
-
-
         }
     }
 }

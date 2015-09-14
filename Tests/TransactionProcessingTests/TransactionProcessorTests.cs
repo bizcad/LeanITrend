@@ -187,13 +187,13 @@ namespace QuantConnect.Tests.TransactionProcessingTests
                     Assert.IsNotNull(line);
                     counter++;
                     OrderTransaction t = new OrderTransaction();
-                    ObjectToCsv.FromCsv(",",line,ref t,false);
+                    CsvSerializer.Deserialize(",",line,ref t,false);
                     list.Add(t);
                     processor.ProcessTransaction(t);
                 }
                 sr.Close();
             }
-            var csv = ObjectToCsv.ToCsv(",", processor.Trades, true);
+            var csv = CsvSerializer.Serialize(",", processor.Trades, true);
             using (StreamWriter sw = new StreamWriter(path + "Trades.csv"))
             {
                 foreach (var s in csv)

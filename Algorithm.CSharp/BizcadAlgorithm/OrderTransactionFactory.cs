@@ -1,23 +1,18 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Linq;
 using QuantConnect.Algorithm.CSharp;
-using QuantConnect.Algorithm.CSharp.Common;
-using QuantConnect.Logging;
 using QuantConnect.Orders;
 
-namespace QuantConnect.Algorithm.Examples
+namespace QuantConnect.Algorithm
 {
     /// <summary>
-    /// Logs an order Event after it is filled.
+    /// Creates an OrderTransaction
     /// </summary>
-    public class OrderReportFormatter
+    public class OrderTransactionFactory
     {
         private QCAlgorithm _algorithm;
-        private ILogHandler _logHandler;
 
-
-        public OrderReportFormatter(QCAlgorithm algorithm)
+        public OrderTransactionFactory(QCAlgorithm algorithm)
         {
             _algorithm = algorithm;
         }
@@ -27,9 +22,8 @@ namespace QuantConnect.Algorithm.Examples
         /// </summary>
         /// <param name="orderEvent">the OrderEvent being logged</param>
         /// <param name="includeHeader">Includes the field names</param>
-        public OrderTransaction ReportTransaction(OrderEvent orderEvent, OrderTicket ticket, bool includeHeader = true)
+        public OrderTransaction Create(OrderEvent orderEvent, OrderTicket ticket, bool includeHeader = true)
         {
-
             var security = _algorithm.Securities[ticket.Symbol];
 
             Order order = _algorithm.Transactions.GetOrderById(orderEvent.OrderId);
@@ -74,11 +68,8 @@ namespace QuantConnect.Algorithm.Examples
                 t.TaxLotNumber = String.Empty;
                 t.TradeDate = ticket.Time;
                 t.TradeNumber = 0;
-
-            }
-
                 #endregion
-
+            }
             return t;
         }
     }

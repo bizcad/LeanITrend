@@ -1,6 +1,6 @@
 {
     // this configuration file works by first loading all top-level
-    // configuration items and then will load the specified environment
+    // configuration it s and then will load the specified environment
     // on top, this provides a layering affect. environment names can be
     // anything, and just require definition in this file. There's
     // two predefined environments, 'backtesting' and 'live', feel free
