@@ -3,21 +3,15 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Linq;
-using System.Reflection;
 using System.Text;
 using Newtonsoft.Json;
-using QuantConnect.Algorithm.CSharp.BizcadAlgorithm;
 using QuantConnect.Algorithm.CSharp.Common;
-using QuantConnect.Algorithm.CSharp.ITrendAlgorithm;
 using QuantConnect.Algorithm.Examples;
-using QuantConnect.Brokerages.Backtesting;
 using QuantConnect.Data.Market;
 using QuantConnect.Indicators;
-using QuantConnect.Lean.Engine;
 using QuantConnect.Logging;
 using QuantConnect.Orders;
 using QuantConnect.Securities;
-using QuantConnect.Securities.Interfaces;
 using QuantConnect.Util;
 
 namespace QuantConnect.Algorithm.CSharp

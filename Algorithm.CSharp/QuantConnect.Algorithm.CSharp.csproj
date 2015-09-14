@@ -65,10 +65,7 @@
     <Compile Include="BizcadAlgorithm\OrderTransaction.cs" />
     <Compile Include="BizcadAlgorithm\PositionInventoryFifo.cs" />
     <Compile Include="BizcadAlgorithm\PositionInventoryLifo.cs" />
-    <Compile Include="Proforma\ProformaBackTestingTransactionHandler.cs" />
     <Compile Include="Proforma\ProformaOrder.cs" />
-    <Compile Include="Proforma\ProformaOrderProcessor.cs" />
-    <Compile Include="Proforma\ProformaSecurityTransactionManager.cs" />
     <Compile Include="BizcadAlgorithm\RateOfChangePercentStrategy.cs" />
     <Compile Include="BizcadAlgorithm\RVIAlgorithm.cs" />
     <Compile Include="BizcadAlgorithm\TradeBarReporter.cs" />
