@@ -61,7 +61,7 @@ namespace QuantConnect.Indicators
                 throw new ArgumentException("InstantaneousTrend must have period of at least 3.", "period");
             }
             _period = period;
-            _iTrendWindow = new RollingWindow<IndicatorDataPoint>(2);
+            _iTrendWindow = new RollingWindow<IndicatorDataPoint>(period);
             _alpha = alpha;
             _a = (_alpha / 2) * (_alpha / 2);
             _b = (1 - _alpha);

@@ -74,12 +74,12 @@ namespace QuantConnect.Algorithm.CSharp.ITrendAlgorithm
         // Nick Added
         private ILogHandler mylog = Composer.Instance.GetExportedValueByTypeName<ILogHandler>("CustomFileLogHandler");
         private ILogHandler dailylog = Composer.Instance.GetExportedValueByTypeName<ILogHandler>("DailyFileLogHandler");
-        private ILogHandler transactionlog = Composer.Instance.GetExportedValueByTypeName<ILogHandler>("TransactionFileLogHandler");
-        private readonly OrderReporter _orderReporter;
+        //private ILogHandler transactionlog = Composer.Instance.GetExportedValueByTypeName<ILogHandler>("TransactionFileLogHandler");
+        private readonly OrderReportFormatter _orderReportFormatter;
 
         private string ondataheader = @"Time,BarCount,trade size,Open,High,Low,Close,Time,Price,Trend,Trigger,comment, Entry Price, Exit Price,orderId , unrealized, shares owned,trade profit, trade fees, trade net,last trade fees, profit, fees, net, day profit, day fees, day net, Portfolio Value";
         private string dailyheader = @"Trading Date,Daily Profit, Daily Fees, Daily Net, Cum profit, Cum Fees, Cum Net, Trades/day, Portfolio Value, Shares Owned";
-        private string transactionheader = @"Symbol,Quantity,Price,Direction,Order Date,Settlement Date, Amount,Commission,Net,Nothing,Description,Action Id,Order Id,RecordType,TaxLotNumber";
+        //private string transactionheader = @"Symbol,Quantity,Price,Direction,Order Date,Settlement Date, Amount,Commission,Net,Nothing,Description,Action Id,Order Id,RecordType,TaxLotNumber";
         private string comment;
 
         // P & L  Nick added
@@ -123,7 +123,7 @@ namespace QuantConnect.Algorithm.CSharp.ITrendAlgorithm
             mylog.Debug(ondataheader);
             dailylog.Debug(algoname);
             dailylog.Debug(dailyheader);
-            transactionlog.Debug(transactionheader);
+            //transactionlog.Debug(transactionheader);
             #endregion
 
             SetStartDate(_startDate);   //Set Start Date
@@ -499,8 +499,8 @@ namespace QuantConnect.Algorithm.CSharp.ITrendAlgorithm
                         //iTrendStrategy.orderFilled = true;
 
                         #region logging
-                        OrderReporter reporter = new OrderReporter((QCAlgorithm)this, transactionlog);
-                        reporter.ReportTransaction(orderEvent, ticket);
+                        OrderReportFormatter reportFormatter = new OrderReportFormatter((QCAlgorithm)this);
+                        OrderTransaction t = reportFormatter.ReportTransaction(orderEvent, ticket);
                         tradecount++;
                         #endregion
 

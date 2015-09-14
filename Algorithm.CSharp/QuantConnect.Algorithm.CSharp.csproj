@@ -61,14 +61,19 @@
     <Compile Include="BizcadAlgorithm\MultiITAlgorithm.cs" />
     <Compile Include="BizcadAlgorithm\MultiITStrategy.cs" />
     <Compile Include="BizcadAlgorithm\OptimalTrackingAlgorithm.cs" />
-    <Compile Include="BizcadAlgorithm\OrderReporter.cs" />
+    <Compile Include="BizcadAlgorithm\OrderReportFormatter.cs" />
     <Compile Include="BizcadAlgorithm\OrderTransaction.cs" />
     <Compile Include="BizcadAlgorithm\PositionInventoryFifo.cs" />
     <Compile Include="BizcadAlgorithm\PositionInventoryLifo.cs" />
+    <Compile Include="Proforma\ProformaBackTestingTransactionHandler.cs" />
+    <Compile Include="Proforma\ProformaOrder.cs" />
+    <Compile Include="Proforma\ProformaOrderProcessor.cs" />
+    <Compile Include="Proforma\ProformaSecurityTransactionManager.cs" />
     <Compile Include="BizcadAlgorithm\RateOfChangePercentStrategy.cs" />
     <Compile Include="BizcadAlgorithm\RVIAlgorithm.cs" />
     <Compile Include="BizcadAlgorithm\TradeBarReporter.cs" />
     <Compile Include="BizcadAlgorithm\OrderTransactionProcessor.cs" />
+    <Compile Include="BizcadAlgorithm\BrokerSimulator.cs" />
     <Compile Include="Common\Global.cs" />
     <Compile Include="Common\ObjectToCsv.cs" />
     <Compile Include="CustomBenchmarkAlgorithm.cs" />
@@ -101,6 +106,8 @@
     <Compile Include="MarketOnOpenOnCloseAlgorithm.cs" />
     <Compile Include="MovingAverageCrossAlgorithm.cs" />
     <Compile Include="MultipleSymbolConsolidationAlgorithm.cs" />
+    <Compile Include="Proforma\ProformaSubmitOrderRequest.cs" />
+    <Compile Include="Proforma\ProformaOrderTicket.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="QuandlFuturesDataAlgorithm.cs" />
     <Compile Include="QuandlImporterAlgorithm.cs" />
@@ -119,6 +126,10 @@
     <ProjectReference Include="..\Algorithm\QuantConnect.Algorithm.csproj">
       <Project>{3240aca4-bdd4-4d24-ac36-bbb651c39212}</Project>
       <Name>QuantConnect.Algorithm</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\Brokerages\QuantConnect.Brokerages.csproj">
+      <Project>{2D3E13CF-2D14-4180-A42D-F0A13AF0ADE2}</Project>
+      <Name>QuantConnect.Brokerages</Name>
     </ProjectReference>
     <ProjectReference Include="..\Common\QuantConnect.csproj">
       <Project>{2545c0b4-fabb-49c9-8dd1-9ad7ee23f86b}</Project>

@@ -118,6 +118,7 @@
     <Compile Include="RegressionTests.cs" />
     <Compile Include="TestExtensions.cs" />
     <Compile Include="Indicators\LinearWeightedMovingAverageTests.cs" />
+    <Compile Include="TransactionProcessingTests\BrokerSimulatorTests.cs" />
     <Compile Include="TransactionProcessingTests\InventoryPositionTests.cs" />
     <Compile Include="TransactionProcessingTests\TransactionProcessorTests.cs" />
     <None Include="RegressionAlgorithms\Test_Cash.cs" />

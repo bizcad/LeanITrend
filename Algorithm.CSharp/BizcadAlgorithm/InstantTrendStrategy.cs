@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics;
 using QuantConnect.Algorithm.CSharp.Common;
 using QuantConnect.Data.Market;
 using QuantConnect.Indicators;
@@ -24,7 +25,7 @@ namespace QuantConnect.Algorithm.CSharp
         private decimal nLimitPrice = 0;
         private int nStatus = 0;
         private int xOver = 0;
-        private RollingWindow<IndicatorDataPoint> trendHistory;
+        public RollingWindow<IndicatorDataPoint> trendHistory { get; set; }
 
         /// <summary>
         /// Flag to determine if the algo should go flat overnight.
@@ -40,7 +41,7 @@ namespace QuantConnect.Algorithm.CSharp
         /// The flag as to whether the order has been filled.
         /// </summary>
         public Boolean orderFilled { get; set; }
-
+        public Boolean maketrade { get; set; }
 
 
         /// <summary>
@@ -60,9 +61,10 @@ namespace QuantConnect.Algorithm.CSharp
             trendHistory = new RollingWindow<IndicatorDataPoint>(period);
             _algorithm = algorithm;
             orderFilled = true;
+            maketrade = true;
         }
 
-        
+
         /// <summary>
         /// Executes the Instant Trend strategy
         /// </summary>
@@ -88,120 +90,130 @@ namespace QuantConnect.Algorithm.CSharp
                 return OrderSignal.doNothing;
             }
 
-            if (!SellOutEndOfDay(data))
+            #region "Strategy Execution"
+
+
+            bReverseTrade = false;
+            try
             {
-                #region "Strategy Execution"
-
-
-                bReverseTrade = false;
-                try
+                var nTrig = 2 * trendHistory[0].Value - trendHistory[2].Value;
+                if (nStatus == 1 && nTrig < (nEntryPrice / RevPct))
                 {
-                    var nTrig = 2 * trendHistory[0].Value - trendHistory[2].Value;
-                    if (nStatus == 1 && nTrig < (nEntryPrice / RevPct))
+                    if(maketrade)
                     {
-                        comment = string.Format("Long Reverse to short. Close < {0} / {1}", nEntryPrice, RevPct);
                         ticket = ReverseToShort();
                         orderFilled = ticket.OrderId > 0;
+                        
+                    }
+                    bReverseTrade = true;
+                    retval = OrderSignal.revertToShort;
+                    comment = string.Format("{0} nStatus == {1} && nTrig {2} < (nEntryPrice {3} * RevPct{4}, orderFilled {5})", retval, nStatus, nTrig, nEntryPrice, RevPct, orderFilled);
+
+                }
+                else
+                {
+                    if (nStatus == -1 && nTrig > (nEntryPrice * RevPct))
+                    {
+                        if (maketrade)
+                        {
+                            ticket = ReverseToLong();
+                            orderFilled = ticket.OrderId > 0;
+                        }
                         bReverseTrade = true;
-                        retval = OrderSignal.revertToShort;
+                        retval = OrderSignal.revertToLong;
+                        comment = string.Format("{0} nStatus == {1} && nTrig {2} > (nEntryPrice {3} * RevPct{4}, orderFilled {5})", retval, nStatus, nTrig, nEntryPrice, RevPct, orderFilled);
+                    }
+                }
+                if (!bReverseTrade)
+                {
+                    if (nTrig > trendHistory[0].Value)
+                    {
+                        if (xOver == -1 && nStatus != 1)
+                        {
+                            if (!orderFilled)
+                            {
+                                try
+                                {
+                                    if (maketrade) ticket = _algorithm.Buy(_symbol, tradesize);
+                                }
+                                catch (Exception e)
+                                {
+                                    Console.WriteLine(e);
+                                }
+                                retval = OrderSignal.goLong;
+                                comment = string.Format("{0} nStatus {1} nTrig {2} > trendHistory[0].Value {3} xOver {4} orderFilled {5}",
+                                    retval, nStatus, nTrig, trendHistory[0].Value, xOver, orderFilled);
+                            }
+                            else
+                            {
+
+                                nLimitPrice = Math.Round(Math.Max(data[_symbol].Low, (data[_symbol].Close - (data[_symbol].High - data[_symbol].Low) * RngFac)), 2, MidpointRounding.ToEven);
+                                try
+                                {
+                                    if (maketrade) ticket = _algorithm.LimitOrder(_symbol, tradesize, nLimitPrice, "Long Limit");
+                                }
+                                catch (Exception e)
+                                {
+                                    Console.WriteLine(e);
+                                }
+                                retval = OrderSignal.goLongLimit;
+                                comment = string.Format("{0} nStatus {1} nTrig {2} > trendHistory[0].Value {3} xOver {4} Limit Price {5}",
+                                    retval, nStatus, nTrig, trendHistory[0].Value, xOver, nLimitPrice);
+                            }
+                        }
+                        if (comment.Length == 0)
+                            comment = "Trigger over Trend";
+                        xOver = 1;
                     }
                     else
                     {
-                        if (nStatus == -1 && nTrig > (nEntryPrice * RevPct))
+                        if (nTrig < trendHistory[0].Value)
                         {
-                            comment = string.Format("Short Reverse to Long. Close > {0} * {1}", nEntryPrice, RevPct);
-                            ticket = ReverseToLong();
-                            orderFilled = ticket.OrderId > 0;
-                            bReverseTrade = true;
-                            retval = OrderSignal.revertToLong;
-                        }
-                    }
-                    if (!bReverseTrade)
-                    {
-                        if (nTrig > trendHistory[0].Value)
-                        {
-                            if (xOver == -1 && nStatus != 1)
+                            if (xOver == 1 && nStatus != -1)
                             {
                                 if (!orderFilled)
                                 {
                                     try
                                     {
-                                        ticket = _algorithm.Buy(_symbol, tradesize);
+                                        if (maketrade) ticket = _algorithm.Sell(_symbol, tradesize);
                                     }
                                     catch (Exception e)
                                     {
                                         Console.WriteLine(e);
                                     }
-                                    comment = string.Format("Enter Long after cancel trig xover price up");
-                                    retval = OrderSignal.goLong;
+                                    retval = OrderSignal.goShort;
+                                    comment = string.Format("{0} Enter Short after cancel trig xunder price down", retval);
                                 }
                                 else
                                 {
-                                    nLimitPrice = Math.Round(Math.Max(data[_symbol].Low, (data[_symbol].Close - (data[_symbol].High - data[_symbol].Low) * RngFac)), 2, MidpointRounding.ToEven);
+                                    nLimitPrice = Math.Round(Math.Min(data[_symbol].High, (data[_symbol].Close + (data[_symbol].High - data[_symbol].Low) * RngFac)), 2, MidpointRounding.ToEven);
                                     try
                                     {
-                                        ticket = _algorithm.LimitOrder(_symbol, tradesize, nLimitPrice, "Long Limit");
+                                        if (maketrade) ticket = _algorithm.LimitOrder(_symbol, -tradesize, nLimitPrice, "Short Limit");
+                                        //ticket = _algorithm.Sell(_symbol, tradesize);
                                     }
                                     catch (Exception e)
                                     {
                                         Console.WriteLine(e);
                                     }
-                                    current = string.Format("Enter Long Limit trig xover price up", nLimitPrice);
-                                    retval = OrderSignal.goLongLimit;
+                                    retval = OrderSignal.goShortLimit;
+                                    comment = string.Format("{0} nStatus {1} nTrig {2} < trendHistory[0].Value {3} xOver {4} Limit Price {5}",
+                                            retval, nStatus, nTrig, trendHistory[0].Value, xOver, nLimitPrice);
                                 }
                             }
                             if (comment.Length == 0)
-                                comment = "Trigger over Trend";
-                            xOver = 1;
-                        }
-                        else
-                        {
-                            if (nTrig < trendHistory[0].Value)
-                            {
-                                if (xOver == 1 && nStatus != -1)
-                                {
-                                    if (!orderFilled)
-                                    {
-                                        try
-                                        {
-                                            ticket = _algorithm.Sell(_symbol, tradesize);
-                                        }
-                                        catch (Exception e)
-                                        {
-                                            Console.WriteLine(e);
-                                        }
-                                        comment = string.Format("Enter Short after cancel trig xunder price down");
-                                        retval = OrderSignal.goShort;
-                                    }
-                                    else
-                                    {
-                                        nLimitPrice = Math.Round(Math.Min(data[_symbol].High, (data[_symbol].Close + (data[_symbol].High - data[_symbol].Low) * RngFac)), 2, MidpointRounding.ToEven);
-                                        try
-                                        {
-                                            ticket = _algorithm.LimitOrder(_symbol, -tradesize, nLimitPrice, "Short Limit");
-                                        }
-                                        catch (Exception e)
-                                        {
-                                            Console.WriteLine(e);
-                                        }
-                                        //ticket = _algorithm.Sell(_symbol, tradesize);
-                                        comment = string.Format("Enter Short at market trig xover price down");
-                                        retval = OrderSignal.goShortLimit;
-                                    }
-                                }
-                                if (comment.Length == 0)
-                                    comment = "Trigger under trend";
-                                xOver = -1;
-                            }
+                                comment = "Trigger under trend";
+                            xOver = -1;
                         }
                     }
                 }
-                catch (Exception ex)
-                {
-                    System.Diagnostics.Debug.WriteLine(ex.StackTrace);
-                }
-                #endregion
             }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine(ex.StackTrace);
+            }
+            #endregion
+
             current = comment;
             return retval;
         }
@@ -218,33 +230,39 @@ namespace QuantConnect.Algorithm.CSharp
             nStatus = -1;
             return _algorithm.Sell(_symbol, _algorithm.Portfolio[_symbol].Quantity * 2);
         }
+
+        public void Reset()
+        {
+            trendHistory.Reset();
+            Barcount = 0;
+        }
         /// <summary>
         /// Used to warm up the trend history
         /// </summary>
         /// <param name="trendCurrent"></param>
-        public void WarmUpTrendHistory(IndicatorDataPoint trendCurrent)
-        {
-            trendHistory.Add(trendCurrent);
-        }
-        private bool SellOutEndOfDay(TradeBars data)
-        {
-            if (ShouldSellOutAtEod)
-            {
-                if (data.Time.Hour == 15 && data.Time.Minute > 55 || data.Time.Hour == 16)
-                {
-                    if (_algorithm.Portfolio[_symbol].IsLong)
-                    {
-                        _algorithm.Sell(_symbol, _algorithm.Portfolio[_symbol].AbsoluteQuantity);
-                    }
-                    if (_algorithm.Portfolio[_symbol].IsShort)
-                    {
-                        _algorithm.Buy(_symbol, _algorithm.Portfolio[_symbol].AbsoluteQuantity);
-                    }
+        //public void WarmUpTrendHistory(IndicatorDataPoint trendCurrent)
+        //{
+        //    trendHistory.Add(trendCurrent);
+        //}
+        //private bool SellOutEndOfDay(TradeBars data)
+        //{
+        //    if (ShouldSellOutAtEod)
+        //    {
+        //        if (data.Time.Hour == 15 && data.Time.Minute > 55 || data.Time.Hour == 16)
+        //        {
+        //            if (_algorithm.Portfolio[_symbol].IsLong)
+        //            {
+        //                _algorithm.Sell(_symbol, _algorithm.Portfolio[_symbol].AbsoluteQuantity);
+        //            }
+        //            if (_algorithm.Portfolio[_symbol].IsShort)
+        //            {
+        //                _algorithm.Buy(_symbol, _algorithm.Portfolio[_symbol].AbsoluteQuantity);
+        //            }
 
-                    return true;
-                }
-            }
-            return false;
-        }
+        //            return true;
+        //        }
+        //    }
+        //    return false;
+        //}
     }
 }

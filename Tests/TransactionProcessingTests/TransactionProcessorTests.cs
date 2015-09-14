@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Newtonsoft.Json;
 using NUnit.Framework;
 using QuantConnect.Algorithm.CSharp;
 using QuantConnect.Algorithm.CSharp.BizcadAlgorithm;
@@ -165,6 +166,12 @@ namespace QuantConnect.Tests.TransactionProcessingTests
         {
             string path = @"C:\Users\Nick\Documents\Visual Studio 2013\Projects\LeanITrend\Engine\bin\Debug\";
             string pathname = path + "transactionsTest.csv";
+
+            using (StreamReader sr = new StreamReader(pathname))
+            {
+                var txt = sr.ReadToEnd();
+                var x = JsonConvert.DeserializeObject<List<TradeBar>>(txt);
+            }
             int counter = 0;
             List<OrderTransaction> list = new List<OrderTransaction>();
 

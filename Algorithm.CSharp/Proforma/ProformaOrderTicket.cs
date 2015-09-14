@@ -1,38 +1,25 @@
-﻿/*
- * QUANTCONNECT.COM - Democratizing Finance, Empowering Individuals.
- * Lean Algorithmic Trading Engine v2.0. Copyright 2014 QuantConnect Corporation.
- * 
- * Licensed under the Apache License, Version 2.0 (the "License"); 
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at http://www.apache.org/licenses/LICENSE-2.0
- * 
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
-*/
-
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+using QuantConnect.Orders;
 using QuantConnect.Securities;
 
-namespace QuantConnect.Orders
+namespace QuantConnect.Algorithm.CSharp
 {
-    /// <summary>
-    /// Provides a single reference to an order for the algorithm to maintain. As the order gets
-    /// updated this ticket will also get updated
-    /// </summary>
-    public sealed class OrderTicket
+    public class ProformaOrderTicket
     {
         private readonly object _orderEventsLock = new object();
         private readonly object _updateRequestsLock = new object();
         private readonly object _setCancelRequestLock = new object();
 
-        private Order _order;
-        public OrderStatus? _orderStatusOverride { get; set; }
+        private ProformaOrder _order;
+        private OrderStatus? _orderStatusOverride;
         private CancelOrderRequest _cancelRequest;
+        private OrderType _orderType { get; set; }
+        public decimal LimitPrice { get; set; }
+        public decimal StopLimit { get; set; }
 
         private int _quantityFilled;
         private decimal _averageFillPrice;
@@ -41,9 +28,7 @@ namespace QuantConnect.Orders
         private readonly List<OrderEvent> _orderEvents; 
         private readonly SubmitOrderRequest _submitRequest;
         private readonly List<UpdateOrderRequest> _updateRequests;
-
-        // we pull this in to provide some behavior/simplicity to the ticket API
-        private readonly SecurityTransactionManager _transactionManager;
+        private SecurityTransactionManager _transactionManager;
 
         /// <summary>
         /// Gets the order id of this ticket
@@ -63,6 +48,7 @@ namespace QuantConnect.Orders
                 if (_orderStatusOverride.HasValue) return _orderStatusOverride.Value;
                 return _order == null ? OrderStatus.New : _order.Status;
             }
+            set { _orderStatusOverride = value; }
         }
 
         /// <summary>
@@ -87,6 +73,10 @@ namespace QuantConnect.Orders
         public int Quantity
         {
             get { return _order == null ? _submitRequest.Quantity : _order.Quantity; }
+            set { 
+                Quantity = value;
+                _order.Quantity = value;
+            }
         }
 
         /// <summary>
@@ -96,15 +86,17 @@ namespace QuantConnect.Orders
         public decimal AverageFillPrice
         {
             get { return _averageFillPrice; }
+            set { _averageFillPrice = value; }
         }
 
         /// <summary>
         /// Gets the total qantity filled for this ticket. If no fills have been processed
         /// then this will return a value of zero.
         /// </summary>
-        public decimal QuantityFilled
+        public int QuantityFilled
         {
             get { return _quantityFilled; }
+            set { _quantityFilled = value; }
         }
 
         /// <summary>
@@ -112,7 +104,9 @@ namespace QuantConnect.Orders
         /// </summary>
         public DateTime Time
         {
-            get { return GetMostRecentOrderRequest().Time; }
+            get { return Time; }
+            set { Time = value; }
+            
         }
 
         /// <summary>
@@ -120,7 +114,8 @@ namespace QuantConnect.Orders
         /// </summary>
         public OrderType OrderType
         {
-            get { return _submitRequest.OrderType; }
+            get { return _orderType; }
+            set { _orderType = value; }
         }
 
         /// <summary>
@@ -129,6 +124,7 @@ namespace QuantConnect.Orders
         public string Tag 
         {
             get { return _order == null ? _submitRequest.Tag : _order.Tag; }
+            set { Tag = value; }
         }
 
         /// <summary>
@@ -182,14 +178,16 @@ namespace QuantConnect.Orders
         /// </summary>
         /// <param name="transactionManager">The transaction manager used for submitting updates and cancels for this ticket</param>
         /// <param name="submitRequest">The order request that initiated this order ticket</param>
-        public OrderTicket(SecurityTransactionManager transactionManager, SubmitOrderRequest submitRequest)
+        public ProformaOrderTicket(SecurityTransactionManager transactionManager, SubmitOrderRequest submitRequest)
         {
             _submitRequest = submitRequest;
             _orderId = submitRequest.OrderId;
+            this.Time = submitRequest.Time;
+
             _transactionManager = transactionManager;
 
-            _orderEvents = new List<OrderEvent>();
-            _updateRequests = new List<UpdateOrderRequest>();
+            //_orderEvents = new List<OrderEvent>();
+            //_updateRequests = new List<UpdateOrderRequest>();
         }
 
         /// <summary>
@@ -205,22 +203,22 @@ namespace QuantConnect.Orders
                 case OrderField.LimitPrice:
                     if (_submitRequest.OrderType == OrderType.Limit)
                     {
-                        return AccessOrder<LimitOrder>(this, field, o => o.LimitPrice, r => r.LimitPrice);
+                        return AccessOrder<ProformaOrder>(this, field, o => o.LimitPrice, r => r.LimitPrice);
                     }
                     if (_submitRequest.OrderType == OrderType.StopLimit)
                     {
-                        return AccessOrder<StopLimitOrder>(this, field, o => o.LimitPrice, r => r.LimitPrice);
+                        return AccessOrder<ProformaOrder>(this, field, o => o.LimitPrice, r => r.LimitPrice);
                     }
                     break;
 
                 case OrderField.StopPrice:
                     if (_submitRequest.OrderType == OrderType.StopLimit)
                     {
-                        return AccessOrder<StopLimitOrder>(this, field, o => o.StopPrice, r => r.StopPrice);
+                        return AccessOrder<ProformaOrder>(this, field, o => o.StopPrice, r => r.StopPrice);
                     }
                     if (_submitRequest.OrderType == OrderType.StopMarket)
                     {
-                        return AccessOrder<StopMarketOrder>(this, field, o => o.StopPrice, r => r.StopPrice);
+                        return AccessOrder<ProformaOrder>(this, field, o => o.StopPrice, r => r.StopPrice);
                     }
                     break;
 
@@ -236,10 +234,25 @@ namespace QuantConnect.Orders
         /// </summary>
         /// <param name="fields">Defines what properties of the order should be updated</param>
         /// <returns>The <see cref="OrderResponse"/> from updating the order</returns>
-        public OrderResponse Update(UpdateOrderFields fields)
+        public void Update(UpdateOrderFields fields)
         {
-            _transactionManager.UpdateOrder(new UpdateOrderRequest(_transactionManager.UtcTime, SubmitRequest.OrderId, fields));
-            return _updateRequests.Last().Response;
+            if (fields.Quantity != null)
+                Quantity = (int) fields.Quantity;
+            if (fields.LimitPrice != null)
+            {
+                _order.LimitPrice = (decimal) fields.LimitPrice;
+            }
+            if (fields.StopPrice != null)
+            {
+                _order.StopPrice = (decimal)fields.StopPrice;
+            }
+            if (fields.Tag != null)
+            {
+                _order.Tag = fields.Tag;
+            }
+            
+            //_transactionManager.UpdateOrder(new UpdateOrderRequest(_transactionManager.UtcTime, SubmitRequest.OrderId, fields));
+            //return _updateRequests.Last().Response;
         }
 
         /// <summary>
@@ -248,7 +261,8 @@ namespace QuantConnect.Orders
         public OrderResponse Cancel(string tag = null)
         {
             var request = new CancelOrderRequest(_transactionManager.UtcTime, OrderId, tag);
-            _transactionManager.ProcessRequest(request);
+            _order = null;
+            //_transactionManager.ProcessRequest(request);
             return CancelRequest.Response;
         }
 
@@ -303,7 +317,7 @@ namespace QuantConnect.Orders
         /// Updates the internal order object with the current state
         /// </summary>
         /// <param name="order">The order</param>
-        internal void SetOrder(Order order)
+        internal void SetOrder(ProformaOrder order)
         {
             if (_order != null && _order.Id != order.Id)
             {
@@ -358,13 +372,13 @@ namespace QuantConnect.Orders
         /// <summary>
         /// Creates a new <see cref="OrderTicket"/> that represents trying to cancel an order for which no ticket exists
         /// </summary>
-        public static OrderTicket InvalidCancelOrderId(SecurityTransactionManager transactionManager, CancelOrderRequest request)
+        public static ProformaOrderTicket InvalidCancelOrderId(SecurityTransactionManager transactionManager, CancelOrderRequest request)
         {
             var submit = new SubmitOrderRequest(OrderType.Market, SecurityType.Base, string.Empty, 0, 0, 0, DateTime.MaxValue, string.Empty);
             submit.SetResponse(OrderResponse.UnableToFindOrder(request));
-            var ticket = new OrderTicket(transactionManager, submit);
+            var ticket = new ProformaOrderTicket(transactionManager, submit);
             request.SetResponse(OrderResponse.UnableToFindOrder(request));
-            ticket.TrySetCancelRequest(request);
+            //ticket.TrySetCancelRequest(request);
             ticket._orderStatusOverride = OrderStatus.Invalid;
             return ticket;
         }
@@ -372,13 +386,13 @@ namespace QuantConnect.Orders
         /// <summary>
         /// Creates a new <see cref="OrderTicket"/> tht represents trying to update an order for which no ticket exists
         /// </summary>
-        public static OrderTicket InvalidUpdateOrderId(SecurityTransactionManager transactionManager, UpdateOrderRequest request)
+        public static ProformaOrderTicket InvalidUpdateOrderId(SecurityTransactionManager transactionManager, UpdateOrderRequest request)
         {
             var submit = new SubmitOrderRequest(OrderType.Market, SecurityType.Base, string.Empty, 0, 0, 0, DateTime.MaxValue, string.Empty);
             submit.SetResponse(OrderResponse.UnableToFindOrder(request));
-            var ticket = new OrderTicket(transactionManager, submit);
+            var ticket = new ProformaOrderTicket(transactionManager, submit);
             request.SetResponse(OrderResponse.UnableToFindOrder(request));
-            ticket.AddUpdateRequest(request);
+            //ticket.AddUpdateRequest(request);
             ticket._orderStatusOverride = OrderStatus.Invalid;
             return ticket;
         }
@@ -386,10 +400,10 @@ namespace QuantConnect.Orders
         /// <summary>
         /// Creates a new <see cref="OrderTicket"/> that represents trying to submit a new order that had errors embodied in the <paramref name="response"/>
         /// </summary>
-        public static OrderTicket InvalidSubmitRequest(SecurityTransactionManager transactionManager, SubmitOrderRequest request, OrderResponse response)
+        public static ProformaOrderTicket InvalidSubmitRequest(SecurityTransactionManager transactionManager, SubmitOrderRequest request, OrderResponse response)
         {
             request.SetResponse(response);
-            return new OrderTicket(transactionManager, request) { _orderStatusOverride = OrderStatus.Invalid };
+            return new ProformaOrderTicket(transactionManager, request) { _orderStatusOverride = OrderStatus.Invalid };
         }
 
         /// <summary>
@@ -426,7 +440,7 @@ namespace QuantConnect.Orders
         /// an error, where it will return the integer value of the <see cref="OrderResponseErrorCode"/> from
         /// the most recent response
         /// </summary>
-        public static implicit operator int(OrderTicket ticket)
+        public static implicit operator int(ProformaOrderTicket ticket)
         {
             var response = ticket.GetMostRecentOrderResponse();
             if (response != null && response.IsError)
@@ -437,8 +451,8 @@ namespace QuantConnect.Orders
         }
 
 
-        private static decimal AccessOrder<T>(OrderTicket ticket, OrderField field, Func<T, decimal> orderSelector, Func<SubmitOrderRequest, decimal> requestSelector)
-            where T : Order
+        private static decimal AccessOrder<T>(ProformaOrderTicket ticket, OrderField field, Func<T, decimal> orderSelector, Func<SubmitOrderRequest, decimal> requestSelector)
+            where T : ProformaOrder
         {
             var order = ticket._order;
             if (order == null)
@@ -452,5 +466,6 @@ namespace QuantConnect.Orders
             }
             throw new ArgumentException(string.Format("Unable to access property {0} on order of type {1}", field, order.Type));
         }
+
     }
 }
