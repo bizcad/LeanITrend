@@ -50,7 +50,7 @@ namespace QuantConnect.Algorithm.CSharp.JJAlgorithms.MultiStrategyAlgo
         private Dictionary<string, RollingWindow<IndicatorDataPoint>> PricesSeriesWindow = new Dictionary<string, RollingWindow<IndicatorDataPoint>>();
 
         // Dictionary used to store the portfolio sharesize for each symbol.
-        private Dictionary<string, decimal> ShareSize = new Dictionary<string, decimal>();
+        private Dictionary<string, decimal> ShareSize = new Dictionary<string, decimal>();  
         
         private EquityExchange theMarket = new EquityExchange();
 
@@ -160,7 +160,7 @@ namespace QuantConnect.Algorithm.CSharp.JJAlgorithms.MultiStrategyAlgo
                 //"Momentum, EntryPrice, Signal," +
                 //"TriggerCrossOverITrend, TriggerCrossUnderITrend, ExitFromLong, ExitFromShort," +
                 //"StateFromStrategy, StateFromPorfolio, Portfolio Value"
-                string newLine = string.Format("{0},{1},{2},{3},{4},{5},{6},{7},{8},{9},{10},{11},{12},{13},{14}",
+                string newLine = string.Format("{0},{1},{2},{3}",
                                                barCounter,
                                                Time,
                                                data[symbol].Close,

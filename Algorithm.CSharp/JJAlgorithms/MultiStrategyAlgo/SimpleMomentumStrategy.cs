@@ -1,6 +1,9 @@
 ﻿using QuantConnect.Algorithm.CSharp.Common;
 using QuantConnect.Indicators;
 using System;
+using System.Linq;
+using System.Collections;
+using System.Collections.Generic;
 
 namespace QuantConnect.Algorithm.CSharp.JJAlgorithms.MultiStrategyAlgo
 {
@@ -52,7 +55,7 @@ namespace QuantConnect.Algorithm.CSharp.JJAlgorithms.MultiStrategyAlgo
             RevertPositionCheck checkRevertPosition = RevertPositionCheck.vsClosePrice)
         {
             Trend = trend;
-            TrendMomentum = new Momentum(2).Of(Trend);
+            TrendMomentum = new Momentum(2);
             MomentumWindow = new RollingWindow<decimal>(2);
             _tolerance = tolerance;
             _revertPCT = revetPct;
@@ -60,19 +63,20 @@ namespace QuantConnect.Algorithm.CSharp.JJAlgorithms.MultiStrategyAlgo
             InitializeTrend(priceSeries);
         }
 
-        private void InitializeTrend(RollingWindow<IndicatorDataPoint> priceSeries)
-        {
-            Trend.Reset();
-            foreach (var dataPoint in priceSeries)
-            {
-                Trend.Update(dataPoint);
-                MomentumWindow.Add(TrendMomentum.Current.Value);
-            }
-        }
-
         #endregion Constructors
 
         #region Methods
+
+        private void InitializeTrend(RollingWindow<IndicatorDataPoint> priceSeries)
+        {
+            Trend.Reset();
+            foreach (var dataPoint in priceSeries.OrderBy(p => p.Time))
+            {
+                Trend.Update(dataPoint);
+                TrendMomentum.Update(Trend.Current);
+                MomentumWindow.Add(TrendMomentum.Current.Value);
+            }
+        }
 
         /// <summary>
         /// Checks If the strategy throws a operation signal.
