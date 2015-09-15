@@ -83,95 +83,20 @@ namespace QuantConnect.Tests.TransactionProcessingTests
         }
 
         [Test]
-        public void MatchingTransactionsCreateTrade()
-        {
-            OrderTransaction trans = new OrderTransaction();
-            trans.TradeDate = new DateTime(2015, 9, 4, 9, 40, 00, DateTimeKind.Local);
-            trans.Direction = OrderDirection.Buy;
-            trans.Quantity = 100;
-            trans.Price = 110.00m;
-            trans.Symbol = "AAPL";
-            trans.Commission = 1m;
-            trans.Amount = trans.Price * trans.Quantity + 1m;
-            trans.OrderType = OrderType.Limit;
-            trans.Broker = "IB";
-            trans.TradeNumber = 1;
-            p.ProcessTransaction(trans);
-            Assert.IsTrue(p.OpenPositions.Count > 0);
-
-            trans = new OrderTransaction();
-            trans.TradeDate = new DateTime(2015, 9, 4, 9, 45, 00, DateTimeKind.Local);
-            trans.Direction = OrderDirection.Sell;
-            trans.Symbol = "AAPL";
-            trans.Quantity = -100;
-            trans.Price = 120.00m;
-            trans.Commission = 1m;
-            trans.Amount = trans.Price * trans.Quantity + 1m;
-            trans.OrderType = OrderType.Market;
-            trans.Broker = "IB";
-            trans.TradeNumber = 2;
-            p.ProcessTransaction(trans);
-            Assert.IsTrue(p.Trades.Count > 0);
-            Assert.IsTrue(p.OpenPositions.Count == 0);
-
-        }
-        [Test]
-        public void UnMatchBuyTransactionsCreateTradeAndPushesRemainder()
-        {
-            // Add a buy to inventory
-            OrderTransaction trans = new OrderTransaction();
-            trans.TradeDate = new DateTime(2015, 9, 4, 9, 40, 00, DateTimeKind.Local);
-            trans.Direction = OrderDirection.Buy;
-            trans.Quantity = 100;
-            trans.Price = 110.00m;
-            trans.Symbol = "AAPL";
-            trans.Commission = 1m;
-            trans.Fees = .2m;
-            trans.Amount = trans.Price * trans.Quantity + +trans.Commission + trans.Fees;
-            trans.OrderType = OrderType.Limit;
-            trans.Broker = "IB";
-            trans.TradeNumber = 1;
-            trans.Description = "Buy Trans which will be split";
-            p.ProcessTransaction(trans);
-            Assert.IsTrue(p.OpenPositions.Count > 0);
-
-            // Remove part of the sell from inventory
-            OrderTransaction selltrans = new OrderTransaction();
-            selltrans.TradeDate = new DateTime(2015, 9, 4, 9, 45, 00, DateTimeKind.Local);
-            selltrans.Direction = OrderDirection.Sell;
-            selltrans.Symbol = "AAPL";
-            selltrans.Quantity = -20;
-            selltrans.Price = 120.00m;
-            selltrans.Commission = 1m;
-            selltrans.Fees = .2m;
-            selltrans.Amount = selltrans.Price * selltrans.Quantity + selltrans.Commission + selltrans.Fees;
-            selltrans.OrderType = OrderType.Market;
-            selltrans.Broker = "IB";
-            selltrans.TradeNumber = 2;
-            selltrans.Description = "Sell Trans which will taken from buy";
-            p.ProcessTransaction(selltrans);
-            Assert.IsTrue(p.Trades.Count > 0);
-            Assert.IsTrue(p.OpenPositions.Count > 0);
-            MatchedTrade t = p.Trades.FirstOrDefault();
-            Assert.IsNotNull(t);
-            Assert.IsTrue(t.Quantity == Math.Abs(selltrans.Quantity));
-            IPositionInventory inv = p.OpenPositions.FirstOrDefault();
-            Assert.IsTrue(inv != null && inv.BuysCount() == 1);
-            OrderTransaction x = inv.RemoveBuy();
-            Assert.IsTrue(x.Quantity == 80);
-        }
-
-        [Test]
         public void MatchedAndUnmatchedTransactions()
         {
             string path = @"C:\Users\Nick\Documents\Visual Studio 2013\Projects\LeanITrend\Engine\bin\Debug\";
             string pathname = path + "transactionsTest.csv";
-
-            using (StreamReader sr = new StreamReader(pathname))
-            {
-                var txt = sr.ReadToEnd();
-                var x = JsonConvert.DeserializeObject<List<TradeBar>>(txt);
-            }
+            // This part of the test is just to look at the JsonConvert
+            //string txt;
+            //using (StreamReader sr = new StreamReader(pathname))
+            //{
+            //    txt = sr.ReadToEnd();
+            //    sr.Close();
+            //}
+            //int index = txt.IndexOf("\r\n", System.StringComparison.Ordinal);
+            //string titlesremoved = txt.Substring(index + 2);
+            
             int counter = 0;
             List<OrderTransaction> list = new List<OrderTransaction>();
 
@@ -203,7 +128,7 @@ namespace QuantConnect.Tests.TransactionProcessingTests
                 sw.Flush();
                 sw.Close();
             }
-
+            var x = JsonConvert.SerializeObject(list);
             Assert.IsTrue(counter == list.Count);
             Assert.IsTrue(processor.TotalProfit == 52.75m);
             Assert.IsTrue(processor.TotalCommission == -26m);

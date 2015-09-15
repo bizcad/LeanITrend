@@ -262,24 +262,6 @@ namespace QuantConnect.Algorithm
 
         public void UpdateTicket(ProformaOrderTicket ticket)
         {
-            //if (TicketExists(ticket))
-            //{
-            //    PropertyInfo[] properties = typeof(ProformaOrderTicket).GetProperties();
-                
-            //    for (int i = 0; i < properties.Length; i++)
-            //    {
-            //        var p = properties[i];
-            //        if (p.Name == fieldname)
-            //        {
-            //            var converter = TypeDescriptor.GetConverter(properties[i].PropertyType);
-            //            var convertedvalue = converter.ConvertFrom(newValue);
-            //            FieldInfo info = typeof (ProformaOrderTicket).GetField(p.Name);
-            //            info.SetValue(ticket, convertedvalue);
-            //            break;
-            //        }
-            //    }
-            //}
-
             _orderTickets.AddOrUpdate(ticket.OrderId, ticket);
         }
 
@@ -352,16 +334,17 @@ namespace QuantConnect.Algorithm
             request.SetOrderId(GetIncrementOrderId());
 
             // Create an Order and add to the list.  We can get it by order id which is set next
-            var p = new ProformaOrder(request);
-            p.OrderStatus = OrderStatus.Submitted;
-            p.CurrentMarketPrice = PricesWindow[0][request.Symbol].Close;
+            var p = new ProformaOrder(request)
+            {
+                OrderStatus = OrderStatus.Submitted,
+                CurrentMarketPrice = PricesWindow[0][request.Symbol].Close
+            };
             var order = _orders.GetOrAdd(p.OrderId, p);
 
             // Create the ticket and add to list
             var ticket = AddOrder(request);
             ticket.OrderStatus = order.OrderStatus;
             ticket._order = order;
-            
             _orderTickets.AddOrUpdate(ticket.OrderId, ticket);
 
             //System.Diagnostics.Debug.WriteLine("Limit order ticket status " + ticket.OrderStatus);
@@ -369,7 +352,7 @@ namespace QuantConnect.Algorithm
         }
 
         /// <summary>
-        /// Create a stop market order and return the newly created order id; or negative if the order is invalid
+        /// Create a stop market order and return the newly created ticket; or negative if the order is invalid
         /// </summary>
         /// <param name="symbol">String symbol for the asset we're trading</param>
         /// <param name="quantity">Quantity to be traded</param>
@@ -386,11 +369,23 @@ namespace QuantConnect.Algorithm
                 return ProformaOrderTicket.InvalidSubmitRequest(_algorithm.Transactions, request, response);
             }
 
-            var ticket = new ProformaOrderTicket(_algorithm.Transactions, request);
-            ticket.OrderType = OrderType.StopMarket;
-            ticket.StopLimit = stopPrice;
-            ticket.Tag = tag;
+            // create an order request
+            request.OrderStatus = OrderStatus.Submitted;
+            request.SetOrderId(GetIncrementOrderId());
 
+            // Create an Order and add to the list.  We can get it by order id which is set next
+            var p = new ProformaOrder(request)
+            {
+                OrderStatus = OrderStatus.Submitted,
+                CurrentMarketPrice = PricesWindow[0][request.Symbol].Close
+            };
+            var order = _orders.GetOrAdd(p.OrderId, p);
+            
+            // Create the ticket and add to list
+            var ticket = AddOrder(request);
+            ticket.OrderStatus = order.OrderStatus;
+            ticket._order = order;
+            _orderTickets.AddOrUpdate(ticket.OrderId, ticket);
 
             return ticket;
 

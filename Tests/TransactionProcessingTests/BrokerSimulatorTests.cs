@@ -49,7 +49,7 @@ namespace QuantConnect.Tests.TransactionProcessingTests
         public void AddsMarketOrder()
         {
             var security = algorithm.Securities[symbol];
-            
+
             string path = @"C:\Users\Nick\Documents\Visual Studio 2013\Projects\LeanITrend\Engine\bin\Debug\";
             string pathname = path + "BrokerSimulatorTestData.json";
             List<TradeBar> list;
@@ -59,12 +59,43 @@ namespace QuantConnect.Tests.TransactionProcessingTests
                 sr.Close();
             }
             var tb = list.FirstOrDefault();
-            
+
             if (tb != null)
             {
                 security.SetMarketPrice(tb);
                 TradeBars bars = new TradeBars(tb.EndTime);
-                bars.Add(security.Symbol,tb);
+                bars.Add(security.Symbol, tb);
+                sim.PricesWindow.Add(bars);
+            }
+
+            var ticket = sim.MarketOrder(security.Symbol, 100, false, "Proforma Market Order");
+            Assert.IsNotNull(ticket);
+            Assert.IsTrue(sim.GetTicketCount() == 1);
+            Assert.IsTrue(ticket.OrderStatus == OrderStatus.Filled);
+            Assert.IsTrue(ticket.QuantityFilled == 100);
+            var tickets = sim._orderTickets;
+
+        }
+        [Test]
+        public void AddsLimitOrder()
+        {
+            var security = algorithm.Securities[symbol];
+
+            string path = @"C:\Users\Nick\Documents\Visual Studio 2013\Projects\LeanITrend\Engine\bin\Debug\";
+            string pathname = path + "BrokerSimulatorTestData.json";
+            List<TradeBar> list;
+            using (StreamReader sr = new StreamReader(pathname))
+            {
+                list = JsonConvert.DeserializeObject<List<TradeBar>>(sr.ReadToEnd());
+                sr.Close();
+            }
+            var tb = list.FirstOrDefault();
+
+            if (tb != null)
+            {
+                security.SetMarketPrice(tb);
+                TradeBars bars = new TradeBars(tb.EndTime);
+                bars.Add(security.Symbol, tb);
                 sim.PricesWindow.Add(bars);
             }
 
@@ -72,15 +103,37 @@ namespace QuantConnect.Tests.TransactionProcessingTests
             Assert.IsTrue(sim.GetTicketCount() == 1);
             Assert.IsTrue(ticket.OrderStatus == OrderStatus.Submitted);
             Assert.IsTrue(ticket.QuantityFilled == 0);
-            
 
-            ticket = sim.MarketOrder(security.Symbol, 100, false, "Proforma Market Order");
-            Assert.IsNotNull(ticket);
-            Assert.IsTrue(sim.GetTicketCount() == 2);
-            Assert.IsTrue(ticket.OrderStatus == OrderStatus.Filled);
-            Assert.IsTrue(ticket.QuantityFilled == 100);
-            var tickets = sim._orderTickets;
-            
+        }
+
+        [Test]
+        public void AddsStopMarketOrder()
+        {
+            var security = algorithm.Securities[symbol];
+
+            string path = @"C:\Users\Nick\Documents\Visual Studio 2013\Projects\LeanITrend\Engine\bin\Debug\";
+            string pathname = path + "BrokerSimulatorTestData.json";
+            List<TradeBar> list;
+            using (StreamReader sr = new StreamReader(pathname))
+            {
+                list = JsonConvert.DeserializeObject<List<TradeBar>>(sr.ReadToEnd());
+                sr.Close();
+            }
+            var tb = list.FirstOrDefault();
+
+            if (tb != null)
+            {
+                security.SetMarketPrice(tb);
+                TradeBars bars = new TradeBars(tb.EndTime);
+                bars.Add(security.Symbol, tb);
+                sim.PricesWindow.Add(bars);
+            }
+
+            var ticket = sim.StopMarketOrder(security.Symbol, 100, security.Price * .95m, "Stop Market Order");
+            Assert.IsTrue(sim.GetTicketCount() == 1);
+            Assert.IsTrue(ticket.OrderStatus == OrderStatus.Submitted);
+            Assert.IsTrue(ticket.QuantityFilled == 0);
+
         }
 
         [Test]
