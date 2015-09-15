@@ -21,6 +21,7 @@ namespace QuantConnect.Algorithm.CSharp.JJAlgorithms.MultiStrategyAlgo
         private decimal _portfolioAmount = 10000;
         private decimal _transactionSize = 15000;
         #endregion
+
         #region Fields
 
     /* +-------------------------------------------------+
@@ -54,6 +55,7 @@ namespace QuantConnect.Algorithm.CSharp.JJAlgorithms.MultiStrategyAlgo
         
         private EquityExchange theMarket = new EquityExchange();
 
+        // Indicators that will be used as conveyor by the Strategies objects.
         private Decycle decycleTrend;
         private InstantaneousTrend ITrend;
 

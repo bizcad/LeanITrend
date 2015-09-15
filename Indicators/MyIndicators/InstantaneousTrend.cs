@@ -11,10 +11,26 @@ namespace QuantConnect.Indicators
         private decimal _alpha;
         private decimal _a;
         private decimal _b;
-        private readonly int _period;
+        private int _period;
         private int barcount;
 
         private readonly RollingWindow<IndicatorDataPoint> _iTrendWindow;
+
+        public int AdaptativePeriod
+        {
+            get { return _period; }
+            set 
+            {
+                if (value < 3)
+                {
+                    throw new ArgumentException("InstantaneousTrend must have _period of at least 3.", "_period");
+                }
+                _period = value;
+                _alpha = 2.0m / ((decimal)_period + 1.0m);
+                _a = (_alpha / 2) * (_alpha / 2);
+                _b = (1 - _alpha);
+            }
+        }
         # endregion
 
         /// <summary>
@@ -25,16 +41,9 @@ namespace QuantConnect.Indicators
         public InstantaneousTrend(string name, int period)
             : base(name, period)
         {
-            if (period < 3)
-            {
-                throw new ArgumentException("InstantaneousTrend must have period of at least 3.", "period");
-            }
-            _period = period;
+            this.AdaptativePeriod = period;
             // InstantaneousTrend history
             _iTrendWindow = new RollingWindow<IndicatorDataPoint>(2);
-            _alpha = 2.0m / ((decimal)_period + 1.0m);
-            _a = (_alpha / 2) * (_alpha / 2);
-            _b = (1 - _alpha);
             barcount = 0;
         }
 
@@ -58,7 +67,7 @@ namespace QuantConnect.Indicators
         {
             if (period < 3)
             {
-                throw new ArgumentException("InstantaneousTrend must have period of at least 3.", "period");
+                throw new ArgumentException("InstantaneousTrend must have _period of at least 3.", "_period");
             }
             _period = period;
             _iTrendWindow = new RollingWindow<IndicatorDataPoint>(2);

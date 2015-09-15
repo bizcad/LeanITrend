@@ -6,23 +6,44 @@ using System.Threading.Tasks;
 
 namespace QuantConnect.Indicators
 {
+    /// <summary>
+    /// Fast trend.
+    /// Low-pass filter with cutoff frequency equal to period.
+    /// --> Ref: Cycle Analytics, Code Listing 4-1.
+    /// </summary>
     public class Decycle : WindowIndicator<IndicatorDataPoint>
     {
-        // the alpha for the formula
-        public decimal alpha;
+        private int _period;
+        // The alpha for the formula
+        private decimal _alpha;
+        // Used as an one-observation RollingWindow.
         private IndicatorDataPoint _decycle;
-        public int period;
+
+        /// <summary>
+        /// Gets or sets the adaptative period and update the alpha correspondent value
+        /// </summary>
+        /// <value>
+        /// The adaptative period.
+        /// </value>
+        public int AdaptativePeriod
+        {
+            get { return _period; }
+            set 
+            { 
+                _period = value;
+                _alpha = (decimal)((Math.Cos(2 * Math.PI / (double)_period) + Math.Sin(2 * Math.PI / (double)_period) - 1) /
+                    Math.Cos(2 * Math.PI / (double)_period));
+            }
+        }
 
         public Decycle(string name, int Period)
             : base(name, Period)
         {
-
             // Decycle history
             _decycle = new IndicatorDataPoint();
-            period = Period;
-            alpha = (decimal)((Math.Cos(2 * Math.PI / (double)period) + Math.Sin(2 * Math.PI / (double)period) - 1) /
-                Math.Cos(2 * Math.PI / (double)period));
+            this.AdaptativePeriod = Period;
         }
+
         /// <summary>
         /// Default constructor
         /// </summary>
@@ -50,10 +71,9 @@ namespace QuantConnect.Indicators
             }
             else
             {                
-                decimal decycle = alpha / 2 * (window[0] + window[1]) + (1 - alpha) * _decycle.Value;
+                decimal decycle = _alpha / 2 * (window[0] + window[1]) + (1 - _alpha) * _decycle.Value;
                 _decycle = idp(time, decycle);
             }
-
             return _decycle;
         }
         /// <summary>

@@ -17,8 +17,27 @@ namespace QuantConnect.Indicators
         private decimal _c1;
         private decimal _c2;
         private decimal _c3;
+        private int _period;
 
         private readonly RollingWindow<IndicatorDataPoint> _sSmootherdWindow;
+
+        public int AdaptativePeriod
+        {
+            get { return _period; }
+            set
+            {
+                if (value < 3)
+                {
+                    throw new ArgumentException("SuperSmoother must have _period of at least 3.", "_period");
+                }
+                _period = value;
+                _a = (decimal)Math.Exp(-1.414 * Math.PI / (double)_period);
+                _b = 2m * _a * (decimal)Math.Cos(1.414 * Math.PI / (double)_period);
+                _c2 = _b;
+                _c3 = -(_a * _a);
+                _c1 = 1m - _c2 - _c3;
+            }
+        }
         # endregion
 
         /// <summary>
@@ -29,19 +48,9 @@ namespace QuantConnect.Indicators
         public SuperSmoother(string name, int period)
             : base(name, period)
         {
-            if (period < 3)
-            {
-                throw new ArgumentException("SuperSmoother must have period of at least 3.", "period");
-            }
-            
-            _a = (decimal)Math.Exp(-1.414 * Math.PI / (double)period);
-            _b = 2m * _a * (decimal)Math.Cos(1.414 * Math.PI / (double)period);
-            _c2 = _b;
-            _c3 = - (_a * _a);
-            _c1 = 1m - _c2 - _c3;
-
-             // SuperSmoother history
-             _sSmootherdWindow = new RollingWindow<IndicatorDataPoint>(2);
+            this.AdaptativePeriod = period;
+            // SuperSmoother history
+            _sSmootherdWindow = new RollingWindow<IndicatorDataPoint>(2);
         }
 
         /// <summary>
@@ -84,7 +93,7 @@ namespace QuantConnect.Indicators
             {
                 sSmoother = _c1 / 2m * (window[0] + window[1]) + _c2 * _sSmootherdWindow[0] + _c3 * _sSmootherdWindow[1];
             }
-            
+
             _sSmootherdWindow.Add(idp(time, sSmoother));
             return _sSmootherdWindow[0].Value;
         }

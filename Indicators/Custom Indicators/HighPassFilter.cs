@@ -15,8 +15,26 @@ namespace QuantConnect.Indicators
         private decimal _alpha;
         private decimal _a;
         private decimal _b;
+        private int _period;
 
         private readonly RollingWindow<IndicatorDataPoint> _hpfWindow;
+
+        public int AdaptativePeriod
+        {
+            get { return _period; }
+            set
+            {
+                if (value < 3)
+                {
+                    throw new ArgumentException("HighPassFilter must have _period of at least 3.", "period");
+                }
+                _period = value;
+                double arg = 2d * Math.PI / (double)_period;
+                _alpha = (decimal)((Math.Cos(arg) + Math.Sin(arg) - 1d) / Math.Cos(arg));
+                _a = (1m - _alpha / 2m) * (1m - _alpha / 2m);
+                _b = 1m - _alpha;
+            }
+        }
         # endregion
 
         /// <summary>
@@ -27,17 +45,9 @@ namespace QuantConnect.Indicators
         public HighPassFilter(string name, int period)
             : base(name, period)
         {
-            if (period < 3)
-            {
-                throw new ArgumentException("HighPassFilter must have period of at least 3.", "period");
-            }
-
-            double arg = 2d * Math.PI / (double)period;
-            _alpha = (decimal)((Math.Cos(arg) + Math.Sin(arg) - 1d) / Math.Cos(arg));
-            _a = (1m - _alpha / 2m) * (1m - _alpha / 2m);
-            _b = 1m - _alpha;
-
-             // HighPassFilter history
+            this.AdaptativePeriod = period;
+            
+            // HighPassFilter history
              _hpfWindow = new RollingWindow<IndicatorDataPoint>(2);
         }
 

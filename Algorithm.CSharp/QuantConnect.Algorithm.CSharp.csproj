@@ -83,7 +83,6 @@
     <Compile Include="JJAlgorithms\MultiStrategyAlgo\IStrategy.cs" />
     <Compile Include="JJAlgorithms\MultiStrategyAlgo\MultiStrategyAlgo.cs" />
     <Compile Include="JJAlgorithms\MultiStrategyAlgo\SimpleMomentumStrategy.cs" />
-    <Compile Include="JJAlgorithms\TestingAdaptativeDecycle.cs" />
     <Compile Include="JJAlgorithms\TestingAlgo.cs" />
     <Compile Include="JJAlgorithms\TestingAP.cs" />
     <Compile Include="LimitFillRegressionAlgorithm.cs" />
