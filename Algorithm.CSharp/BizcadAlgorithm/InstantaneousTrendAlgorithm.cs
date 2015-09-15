@@ -249,16 +249,15 @@ namespace QuantConnect.Algorithm.CSharp
             #region "Unfilled Limit Orders"
 
             bool retval = false;
-            var closedtickets = Transactions.GetOrderTickets(t => t.Status.IsClosed());
             var tickets = Transactions.GetOrderTickets(t => !t.Status.IsClosed());
 
-            if (tickets.Count() > 1)
-                throw new Exception("Multiple tickets in unfilled order");
-            var ticket = tickets.FirstOrDefault();
-            if (ticket != null)
+            foreach (var ticket in tickets)
             {
-                ticket.Cancel();
-                retval = true;
+                if (ticket != null)
+                {
+                    ticket.Cancel();
+                    retval = true;
+                }
             }
 
             #endregion

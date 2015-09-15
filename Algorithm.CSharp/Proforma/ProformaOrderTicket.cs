@@ -41,7 +41,7 @@ namespace QuantConnect.Algorithm.CSharp
         /// <summary>
         /// Gets the current status of this order ticket
         /// </summary>
-        public OrderStatus Status
+        public OrderStatus OrderStatus
         {
             get
             {
@@ -180,12 +180,18 @@ namespace QuantConnect.Algorithm.CSharp
         /// <param name="submitRequest">The order request that initiated this order ticket</param>
         public ProformaOrderTicket(SecurityTransactionManager transactionManager, SubmitOrderRequest submitRequest)
         {
-            _submitRequest = submitRequest;
-            _orderId = submitRequest.OrderId;
-            this.Time = submitRequest.Time;
+            try
+            {
+                _submitRequest = submitRequest;
+                _orderId = submitRequest.OrderId;
+                this.Time = submitRequest.Time;
 
-            _transactionManager = transactionManager;
-
+                _transactionManager = transactionManager;
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e.Message);
+            }
             //_orderEvents = new List<OrderEvent>();
             //_updateRequests = new List<UpdateOrderRequest>();
         }

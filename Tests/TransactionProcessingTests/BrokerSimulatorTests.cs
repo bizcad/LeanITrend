@@ -70,6 +70,14 @@ namespace QuantConnect.Tests.TransactionProcessingTests
             var ticket = sim.MarketOrder(security.Symbol, 100, false, "Proforma Market Order");
             Assert.IsNotNull(ticket);
             Assert.IsTrue(sim.GetTicketCount() > 0);
+            Assert.IsTrue(ticket.OrderStatus == OrderStatus.Filled);
+            Assert.IsTrue(ticket.QuantityFilled == 100);
+        }
+
+        [Test]
+        public void UpdatesTicketField()
+        {
+            
         }
     }
 }

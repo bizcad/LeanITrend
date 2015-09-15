@@ -1,5 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel;
+using System.Diagnostics;
 using System.Linq;
 /*
  * QUANTCONNECT.COM - Democratizing Finance, Empowering Individuals.
@@ -19,6 +21,7 @@ using System.Linq;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Reflection;
 using System.Threading;
 using NodaTime;
 using QuantConnect.Algorithm.CSharp;
@@ -32,14 +35,14 @@ using QuantConnect.Securities.Forex;
 
 namespace QuantConnect.Algorithm
 {
-    public  class BrokerSimulator
+    public class BrokerSimulator
     {
         private IAlgorithm _algorithm;
         private bool _locked;
         private bool _quit;
         private bool _sentNoDataError;
         private IBrokerage _brokerage;
-        
+
         private ConcurrentDictionary<int, ProformaOrder> _orders;
         private ConcurrentDictionary<int, ProformaOrderTicket> _orderTickets;
         public RollingWindow<TradeBars> PricesWindow;
@@ -152,9 +155,9 @@ namespace QuantConnect.Algorithm
         /// <seealso cref="Order(string, double)"/>
         public ProformaOrderTicket Order(string symbol, double quantity)
         {
-            return Order(symbol, (int) quantity);
+            return Order(symbol, (int)quantity);
         }
-        #endregion 
+        #endregion
 
         /// <summary>
         /// Issue an order/trade for asset: Alias wrapper for Order(string, int);
@@ -163,7 +166,7 @@ namespace QuantConnect.Algorithm
         /// <seealso cref="Order(string, double)"/>
         public ProformaOrderTicket Order(string symbol, decimal quantity)
         {
-            return Order(symbol, (int) quantity);
+            return Order(symbol, (int)quantity);
         }
 
         /// <summary>
@@ -191,8 +194,6 @@ namespace QuantConnect.Algorithm
         {
             var security = _algorithm.Securities[symbol];
 
-
-
             // check the exchange is open before sending a market order, if it's not open
             // then convert it into a market on open order
             if (!security.Exchange.ExchangeOpen && _algorithm.LiveMode)
@@ -201,13 +202,12 @@ namespace QuantConnect.Algorithm
                 if (security.SubscriptionDataConfig.Resolution != Resolution.Daily)
                 {
                     _algorithm.Debug("Converted OrderID: " + mooTicket.OrderId + " into a MarketOnOpen order.");
-                }   
+                }
                 return mooTicket;
             }
 
-
             ProformaSubmitOrderRequest request = CreateSubmitOrderRequest(OrderType.Market, security, quantity, tag);
-            
+
             //Initalize the Market order parameters:
             var preOrderCheckResponse = PreOrderChecks(request);
             if (preOrderCheckResponse.IsError)
@@ -218,7 +218,7 @@ namespace QuantConnect.Algorithm
             }
 
             // create an order request
-            request.OrderStatus = OrderStatus.Filled;
+            request.OrderStatus = OrderStatus.Submitted;
             request.SetOrderId(GetIncrementOrderId());
 
             // Create the ticket
@@ -227,20 +227,57 @@ namespace QuantConnect.Algorithm
 
             // Add an order to the list.  We can get it by order id which is set next
             var p = new ProformaOrder(request);
+            p.OrderStatus = OrderStatus.Filled;
             var order = _orders.GetOrAdd(p.OrderId, p);
-            
+
 
             //ProformaOrder porder = new ProformaOrder();
             // Assume the ticket is filled at the last close price
-            ticket.AverageFillPrice = PricesWindow[0][symbol].Close;
-            
+            ticket.AverageFillPrice = PricesWindow[0][symbol].Open;
+            ticket.OrderStatus = OrderStatus.Filled;
 
             // Add the order to tickets
             _orderTickets.TryAdd(ticket.OrderId, ticket);
-
-            // send the order to be processed after creating the ticket
-            //_orderRequestQueue.Enqueue(request);
+            request.OrderStatus = OrderStatus.Filled;
+            
+            // do not send the order to be processed after creating the ticket
+            //  It is marked as filled at the Open
             return ticket;
+        }
+
+        public ProformaOrderTicket PopTicket(int orderId)
+        {
+            ProformaOrderTicket ticket;
+            _orderTickets.TryRemove(orderId, out ticket);
+            return ticket;
+        }
+
+        public bool TicketExists(ProformaOrderTicket ticket)
+        {
+            return _orderTickets.ContainsKey(ticket.OrderId);
+        }
+
+        public void UpdateTicket( string fieldname, string newValue, ref ProformaOrderTicket ticket)
+        {
+            if (TicketExists(ticket))
+            {
+                PropertyInfo[] properties = typeof(ProformaOrderTicket).GetProperties();
+                
+                for (int i = 0; i < properties.Length; i++)
+                {
+                    var p = properties[i];
+                    if (p.Name == fieldname)
+                    {
+                        var converter = TypeDescriptor.GetConverter(properties[i].PropertyType);
+                        var convertedvalue = converter.ConvertFrom(newValue);
+                        FieldInfo info = typeof (ProformaOrderTicket).GetField(p.Name);
+                        info.SetValue(ticket, convertedvalue);
+                        break;
+                    }
+                }
+            }
+
+
         }
 
         /// <summary>
@@ -308,7 +345,7 @@ namespace QuantConnect.Algorithm
 
             var ticket = new ProformaOrderTicket(_algorithm.Transactions, request);
             ticket.OrderType = OrderType.Limit;
-            
+
             _orderTickets.TryAdd(ticket.OrderId, ticket);
             return ticket;
 
@@ -338,9 +375,9 @@ namespace QuantConnect.Algorithm
             ticket.StopLimit = stopPrice;
             ticket.Tag = tag;
 
-            
+
             return ticket;
-            
+
         }
 
         /// <summary>
@@ -363,7 +400,7 @@ namespace QuantConnect.Algorithm
             }
 
             //Add the order and create a new order Id.
-           // return Transactions.AddOrder(request);
+            // return Transactions.AddOrder(request);
             var ticket = new ProformaOrderTicket(_algorithm.Transactions, request);
             ticket.OrderType = OrderType.StopLimit;
             ticket.StopLimit = stopPrice;
@@ -418,12 +455,12 @@ namespace QuantConnect.Algorithm
             {
                 return OrderResponse.Error(request, OrderResponseErrorCode.ExchangeNotOpen, request.OrderType + " order and exchange not open.");
             }
-            
+
             if (price == 0)
             {
                 return OrderResponse.Error(request, OrderResponseErrorCode.SecurityPriceZero, request.Symbol + ": asset price is $0. If using custom data make sure you've set the 'Value' property.");
             }
-            
+
             if (security.Type == SecurityType.Forex)
             {
                 // for forex pairs we need to verify that the conversions to USD have values as well
@@ -442,13 +479,13 @@ namespace QuantConnect.Algorithm
                     return OrderResponse.Error(request, OrderResponseErrorCode.ForexConversionRateZero, request.Symbol + ": requires " + baseCurrency + " and " + quoteCurrency + " to have non-zero conversion rates. This can be caused by lack of data.");
                 }
             }
-            
+
             //Make sure the security has some data:
             if (!security.HasData)
             {
                 return OrderResponse.Error(request, OrderResponseErrorCode.SecurityHasNoData, "There is no data for this symbol yet, please check the security.HasData flag to ensure there is at least one data point.");
             }
-            
+
             //We've already processed too many orders: max 100 per day or the memory usage explodes
             if (_orderTickets.Count > _maxOrders)
             //if (_algorithm.Transactions.OrdersCount > _maxOrders)
@@ -456,7 +493,7 @@ namespace QuantConnect.Algorithm
                 _quit = true;
                 return OrderResponse.Error(request, OrderResponseErrorCode.ExceededMaximumOrders, string.Format("You have exceeded maximum number of orders ({0}), for unlimited orders upgrade your account.", _maxOrders));
             }
-            
+
             if (request.OrderType == OrderType.MarketOnClose)
             {
                 // must be submitted with at least 10 minutes in trading day, add buffer allow order submission
@@ -502,7 +539,7 @@ namespace QuantConnect.Algorithm
 
                 //Liquidate at market price.
                 var ticket = Order(symbol, quantity);
-                if (ticket.Status == OrderStatus.Filled)
+                if (ticket.OrderStatus == OrderStatus.Filled)
                 {
                     orderIdList.Add(ticket.OrderId);
                 }
@@ -632,7 +669,7 @@ namespace QuantConnect.Algorithm
             // this is the value in dollars that we want our holdings to have
             var targetPortfolioValue = target * _algorithm.Portfolio.TotalPortfolioValue;
             var quantity = security.Holdings.Quantity;
-            var currentHoldingsValue = price*quantity;
+            var currentHoldingsValue = price * quantity;
 
             // remove directionality, we'll work in the land of absolutes
             var targetOrderValue = Math.Abs(targetPortfolioValue - currentHoldingsValue);
@@ -640,8 +677,8 @@ namespace QuantConnect.Algorithm
 
 
             // define lower and upper thresholds for the iteration
-            var lowerThreshold = targetOrderValue - price/2;
-            var upperThreshold = targetOrderValue + price/2;
+            var lowerThreshold = targetOrderValue - price / 2;
+            var upperThreshold = targetOrderValue + price / 2;
 
             // continue iterating while  we're still not within the specified thresholds
             var iterations = 0;
@@ -725,6 +762,9 @@ namespace QuantConnect.Algorithm
         {
             return _orderTickets.Count;
         }
+
+
+
         /// <summary>
         /// Get a new order id, and increment the internal counter.
         /// </summary>
