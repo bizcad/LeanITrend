@@ -19,12 +19,12 @@ namespace QuantConnect.Algorithm.CSharp
     {
         #region "Variables"
 
-        private DateTime _startDate = new DateTime(2015, 8, 10);
-        private DateTime _endDate = new DateTime(2015, 8, 14);
+        private DateTime _startDate = new DateTime(2015, 5, 19);
+        private DateTime _endDate = new DateTime(2015, 9, 11);
         private decimal _portfolioAmount = 10000;
         private decimal _transactionSize = 15000;
 
-        private string symbol = "AAPL";
+        private string symbol = "AMZN";
 
         private int barcount = 0;
 

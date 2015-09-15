@@ -1,5 +1,7 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -65,13 +67,20 @@ namespace QuantConnect.Tests.TransactionProcessingTests
                 bars.Add(security.Symbol,tb);
                 sim.PricesWindow.Add(bars);
             }
+
+            var ticket = sim.LimitOrder(security.Symbol, 100, security.Price * .95m, "Limit Order");
+            Assert.IsTrue(sim.GetTicketCount() == 1);
+            Assert.IsTrue(ticket.OrderStatus == OrderStatus.Submitted);
+            Assert.IsTrue(ticket.QuantityFilled == 0);
             
-            
-            var ticket = sim.MarketOrder(security.Symbol, 100, false, "Proforma Market Order");
+
+            ticket = sim.MarketOrder(security.Symbol, 100, false, "Proforma Market Order");
             Assert.IsNotNull(ticket);
-            Assert.IsTrue(sim.GetTicketCount() > 0);
+            Assert.IsTrue(sim.GetTicketCount() == 2);
             Assert.IsTrue(ticket.OrderStatus == OrderStatus.Filled);
             Assert.IsTrue(ticket.QuantityFilled == 100);
+            var tickets = sim._orderTickets;
+            
         }
 
         [Test]

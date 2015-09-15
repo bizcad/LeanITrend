@@ -44,7 +44,7 @@ namespace QuantConnect.Algorithm
         private IBrokerage _brokerage;
 
         private ConcurrentDictionary<int, ProformaOrder> _orders;
-        private ConcurrentDictionary<int, ProformaOrderTicket> _orderTickets;
+        public ConcurrentDictionary<int, ProformaOrderTicket> _orderTickets;
         public RollingWindow<TradeBars> PricesWindow;
 
         private int _maxOrders = 10000;
@@ -221,27 +221,30 @@ namespace QuantConnect.Algorithm
             request.OrderStatus = OrderStatus.Submitted;
             request.SetOrderId(GetIncrementOrderId());
 
-            // Create the ticket
-            var ticket = new ProformaOrderTicket(_algorithm.Transactions, request);
-            ticket.QuantityFilled = ticket.Quantity;
-
-            // Add an order to the list.  We can get it by order id which is set next
+            // Create an Order and add to the list.  We can get it by order id which is set next
             var p = new ProformaOrder(request);
+            p.CurrentMarketPrice = PricesWindow[0][symbol].Close;
             p.OrderStatus = OrderStatus.Filled;
             var order = _orders.GetOrAdd(p.OrderId, p);
-
+            
 
             //ProformaOrder porder = new ProformaOrder();
             // Assume the ticket is filled at the last close price
+            // Create the ticket
+            var ticket = AddOrder(request);
+            ticket.QuantityFilled = ticket.Quantity;
             ticket.AverageFillPrice = PricesWindow[0][symbol].Open;
-            ticket.OrderStatus = OrderStatus.Filled;
+            ticket.OrderStatus = order.OrderStatus;
+            ticket._order = order;
+            
 
-            // Add the order to tickets
-            _orderTickets.TryAdd(ticket.OrderId, ticket);
+            _orderTickets.AddOrUpdate(ticket.OrderId, ticket);
             request.OrderStatus = OrderStatus.Filled;
             
             // do not send the order to be processed after creating the ticket
             //  It is marked as filled at the Open
+            //System.Diagnostics.Debug.WriteLine("Market order ticket status " + ticket.OrderStatus);
+
             return ticket;
         }
 
@@ -257,27 +260,27 @@ namespace QuantConnect.Algorithm
             return _orderTickets.ContainsKey(ticket.OrderId);
         }
 
-        public void UpdateTicket( string fieldname, string newValue, ref ProformaOrderTicket ticket)
+        public void UpdateTicket(ProformaOrderTicket ticket)
         {
-            if (TicketExists(ticket))
-            {
-                PropertyInfo[] properties = typeof(ProformaOrderTicket).GetProperties();
+            //if (TicketExists(ticket))
+            //{
+            //    PropertyInfo[] properties = typeof(ProformaOrderTicket).GetProperties();
                 
-                for (int i = 0; i < properties.Length; i++)
-                {
-                    var p = properties[i];
-                    if (p.Name == fieldname)
-                    {
-                        var converter = TypeDescriptor.GetConverter(properties[i].PropertyType);
-                        var convertedvalue = converter.ConvertFrom(newValue);
-                        FieldInfo info = typeof (ProformaOrderTicket).GetField(p.Name);
-                        info.SetValue(ticket, convertedvalue);
-                        break;
-                    }
-                }
-            }
+            //    for (int i = 0; i < properties.Length; i++)
+            //    {
+            //        var p = properties[i];
+            //        if (p.Name == fieldname)
+            //        {
+            //            var converter = TypeDescriptor.GetConverter(properties[i].PropertyType);
+            //            var convertedvalue = converter.ConvertFrom(newValue);
+            //            FieldInfo info = typeof (ProformaOrderTicket).GetField(p.Name);
+            //            info.SetValue(ticket, convertedvalue);
+            //            break;
+            //        }
+            //    }
+            //}
 
-
+            _orderTickets.AddOrUpdate(ticket.OrderId, ticket);
         }
 
         /// <summary>
@@ -340,16 +343,29 @@ namespace QuantConnect.Algorithm
             var response = PreOrderChecks(request);
             if (response.IsError)
             {
-                return ProformaOrderTicket.InvalidSubmitRequest(_algorithm.Transactions, request, response);
+                request.OrderStatus = OrderStatus.Invalid;
+                return new ProformaOrderTicket(_algorithm.Transactions, request);
             }
 
-            var ticket = new ProformaOrderTicket(_algorithm.Transactions, request);
-            ticket.OrderType = OrderType.Limit;
+            // create an order request
+            request.OrderStatus = OrderStatus.Submitted;
+            request.SetOrderId(GetIncrementOrderId());
 
-            _orderTickets.TryAdd(ticket.OrderId, ticket);
+            // Create an Order and add to the list.  We can get it by order id which is set next
+            var p = new ProformaOrder(request);
+            p.OrderStatus = OrderStatus.Submitted;
+            p.CurrentMarketPrice = PricesWindow[0][request.Symbol].Close;
+            var order = _orders.GetOrAdd(p.OrderId, p);
+
+            // Create the ticket and add to list
+            var ticket = AddOrder(request);
+            ticket.OrderStatus = order.OrderStatus;
+            ticket._order = order;
+            
+            _orderTickets.AddOrUpdate(ticket.OrderId, ticket);
+
+            //System.Diagnostics.Debug.WriteLine("Limit order ticket status " + ticket.OrderStatus);
             return ticket;
-
-            //return Transactions.AddOrder(request);
         }
 
         /// <summary>
@@ -755,7 +771,7 @@ namespace QuantConnect.Algorithm
         {
 
             return new ProformaSubmitOrderRequest(orderType, security.Type, security.Symbol, quantity,
-                stopPrice, limitPrice, PricesWindow[0].Time.AddHours(5), tag);
+                stopPrice, limitPrice, DateTime.Now, tag);
         }
 
         public int GetTicketCount()
@@ -772,6 +788,22 @@ namespace QuantConnect.Algorithm
         public int GetIncrementOrderId()
         {
             return Interlocked.Increment(ref _orderId);
+        }
+
+        /// <summary>
+        /// Add an order to collection and return the unique order id or negative if an error.
+        /// </summary>
+        /// <param name="request">A request detailing the order to be submitted</param>
+        /// <returns>New unique, increasing orderid</returns>
+        public ProformaOrderTicket AddOrder(ProformaSubmitOrderRequest request)
+        {
+            request.SetResponse(OrderResponse.Success(request), OrderRequestStatus.Processing);
+            var ticket = new ProformaOrderTicket(_algorithm.Transactions, request);
+            _orderTickets.TryAdd(ticket.OrderId, ticket);
+
+            // send the order to be processed after creating the ticket
+            //_orderRequestQueue.Enqueue(request);
+            return ticket;
         }
     }
 }

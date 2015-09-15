@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Linq;
+using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
 using QuantConnect.Orders;
@@ -14,18 +16,19 @@ namespace QuantConnect.Algorithm.CSharp
         private readonly object _updateRequestsLock = new object();
         private readonly object _setCancelRequestLock = new object();
 
-        private ProformaOrder _order;
+        public ProformaOrder _order { get; set; }
         private OrderStatus? _orderStatusOverride;
         private CancelOrderRequest _cancelRequest;
         private OrderType _orderType { get; set; }
         public decimal LimitPrice { get; set; }
         public decimal StopLimit { get; set; }
+        
 
         private int _quantityFilled;
         private decimal _averageFillPrice;
 
         private readonly int _orderId;
-        private readonly List<OrderEvent> _orderEvents; 
+        private readonly List<OrderEvent> _orderEvents;
         private readonly SubmitOrderRequest _submitRequest;
         private readonly List<UpdateOrderRequest> _updateRequests;
         private SecurityTransactionManager _transactionManager;
@@ -73,7 +76,8 @@ namespace QuantConnect.Algorithm.CSharp
         public int Quantity
         {
             get { return _order == null ? _submitRequest.Quantity : _order.Quantity; }
-            set { 
+            set
+            {
                 Quantity = value;
                 _order.Quantity = value;
             }
@@ -102,12 +106,12 @@ namespace QuantConnect.Algorithm.CSharp
         /// <summary>
         /// Gets the time this order was last updated
         /// </summary>
-        public DateTime Time
-        {
-            get { return Time; }
-            set { Time = value; }
-            
-        }
+        //public DateTime Time
+        //{
+        //    get { return Time; }
+        //    set { Time = value; }
+
+        //}
 
         /// <summary>
         /// Gets the type of order
@@ -121,7 +125,7 @@ namespace QuantConnect.Algorithm.CSharp
         /// <summary>
         /// Gets the order's current tag
         /// </summary>
-        public string Tag 
+        public string Tag
         {
             get { return _order == null ? _submitRequest.Tag : _order.Tag; }
             set { Tag = value; }
@@ -184,7 +188,6 @@ namespace QuantConnect.Algorithm.CSharp
             {
                 _submitRequest = submitRequest;
                 _orderId = submitRequest.OrderId;
-                this.Time = submitRequest.Time;
 
                 _transactionManager = transactionManager;
             }
@@ -243,10 +246,10 @@ namespace QuantConnect.Algorithm.CSharp
         public void Update(UpdateOrderFields fields)
         {
             if (fields.Quantity != null)
-                Quantity = (int) fields.Quantity;
+                Quantity = (int)fields.Quantity;
             if (fields.LimitPrice != null)
             {
-                _order.LimitPrice = (decimal) fields.LimitPrice;
+                _order.LimitPrice = (decimal)fields.LimitPrice;
             }
             if (fields.StopPrice != null)
             {
@@ -256,7 +259,7 @@ namespace QuantConnect.Algorithm.CSharp
             {
                 _order.Tag = fields.Tag;
             }
-            
+
             //_transactionManager.UpdateOrder(new UpdateOrderRequest(_transactionManager.UtcTime, SubmitRequest.OrderId, fields));
             //return _updateRequests.Last().Response;
         }
@@ -313,8 +316,8 @@ namespace QuantConnect.Algorithm.CSharp
                     // keep running totals of quantity filled and the average fill price so we
                     // don't need to compute these on demand
                     _quantityFilled += orderEvent.FillQuantity;
-                    var quantityWeightedFillPrice = _orderEvents.Where(x => x.Status.IsFill()).Sum(x => x.FillQuantity*x.FillPrice);
-                    _averageFillPrice = quantityWeightedFillPrice/_quantityFilled;
+                    var quantityWeightedFillPrice = _orderEvents.Where(x => x.Status.IsFill()).Sum(x => x.FillQuantity * x.FillPrice);
+                    _averageFillPrice = quantityWeightedFillPrice / _quantityFilled;
                 }
             }
         }
@@ -421,17 +424,13 @@ namespace QuantConnect.Algorithm.CSharp
         /// <filterpriority>2</filterpriority>
         public override string ToString()
         {
-            var counts = "Request Count: " + RequestCount() + " Response Count: " + ResponseCount();
-            if (_order != null)
-            {
-                return OrderId + ": " + _order + " " + counts;
-            }
-            return OrderId + ": " + counts;
+            return "";
+
         }
 
         private int ResponseCount()
         {
-            return (_submitRequest.Response == OrderResponse.Unprocessed ? 0 : 1) 
+            return (_submitRequest.Response == OrderResponse.Unprocessed ? 0 : 1)
                  + (_cancelRequest == null || _cancelRequest.Response == OrderResponse.Unprocessed ? 0 : 1)
                  + _updateRequests.Count(x => x.Response != OrderResponse.Unprocessed);
         }
@@ -451,7 +450,7 @@ namespace QuantConnect.Algorithm.CSharp
             var response = ticket.GetMostRecentOrderResponse();
             if (response != null && response.IsError)
             {
-                return (int) response.ErrorCode;
+                return (int)response.ErrorCode;
             }
             return ticket.OrderId;
         }
