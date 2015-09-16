@@ -19,9 +19,13 @@ namespace QuantConnect.Algorithm.CSharp
                     yield return String.Join(separator, fields.Select(f => f.Name).Union(properties.Select(p => p.Name)).ToArray());
                 foreach (var o in objectlist)
                 {
-                    yield return
-                        string.Join(separator,
-                            (properties.Select(p => (p.GetValue(o, null) ?? "").ToString())).ToArray());
+                    var fe = string.Join(separator, fields.Select(f => f.GetValue(o)));
+                    var pe = string.Join(separator, properties.Select(p => p.GetValue(o, null) ?? ""));
+
+                    if (fe.Length > 0) 
+                        fe += ",";
+                    yield return fe + pe;
+                    //yield return string.Join(separator,(properties.Select(p => (p.GetValue(o, null) ?? "").ToString())).ToArray());
                 }
             }
         }

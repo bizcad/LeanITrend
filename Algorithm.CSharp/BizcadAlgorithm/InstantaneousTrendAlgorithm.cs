@@ -19,8 +19,8 @@ namespace QuantConnect.Algorithm.CSharp
     {
         #region "Variables"
 
-        private DateTime _startDate = new DateTime(2015, 5, 19);
-        private DateTime _endDate = new DateTime(2015, 9, 11);
+        private DateTime _startDate = new DateTime(2015, 8, 10);
+        private DateTime _endDate = new DateTime(2015, 8, 11);
         private decimal _portfolioAmount = 10000;
         private decimal _transactionSize = 15000;
 
@@ -65,6 +65,7 @@ namespace QuantConnect.Algorithm.CSharp
         private string dailyheader = @"Trading Date,Daily Profit, Daily Fees, Daily Net, Cum profit, Cum Fees, Cum Net, Trades/day, Portfolio Value, Shares Owned";
         private string transactionheader = @"Symbol,Quantity,Price,Direction,Order Date,Settlement Date, Amount,Commission,Net,Nothing,Description,Action Id,Order Id,RecordType,TaxLotNumber";
         private List<OrderTransaction> _transactions;
+        private List<OrderEvent> _orderEvents = new List<OrderEvent>();
         private int _tradecount = 0;
         #endregion
 
@@ -320,6 +321,10 @@ namespace QuantConnect.Algorithm.CSharp
         /// <param name="orderEvent">OrderEvent - the order event</param>
         private void ProcessOrderEvent(OrderEvent orderEvent)
         {
+            var security = Securities[orderEvent.Symbol];
+            var tm = this.BrokerageModel.GetTransactionModel(security);
+            if (orderEvent.Status == OrderStatus.Filled)
+                _orderEvents.Add(orderEvent);
             orderId = orderEvent.OrderId;
             var tickets = Transactions.GetOrderTickets(t => t.OrderId == orderId);
             nEntryPrice = 0;
@@ -428,7 +433,8 @@ namespace QuantConnect.Algorithm.CSharp
             //    Debug(string.Format("\nSymbol Name: {0}, Ending Portfolio Value: {1} ", symbol, Portfolio[symbol].Profit));
 
             //}
-            
+
+            //SendOrderEventsToFile();
         }
 
         private void SendTransactionsToFile()
@@ -436,6 +442,19 @@ namespace QuantConnect.Algorithm.CSharp
             string filepath = AssemblyLocator.ExecutingDirectory() + "transactions.csv";
             //if (File.Exists(filepath)) File.Delete(filepath);
             var liststring = CsvSerializer.Serialize<OrderTransaction>(",", _transactions, true);
+            using (StreamWriter fs = new StreamWriter(filepath, true))
+            {
+                foreach (var s in liststring)
+                    fs.WriteLine(s);
+                fs.Flush();
+                fs.Close();
+            }
+        }
+        private void SendOrderEventsToFile()
+        {
+            string filepath = AssemblyLocator.ExecutingDirectory() + "orderEvents.csv";
+            if (File.Exists(filepath)) File.Delete(filepath);
+            var liststring = CsvSerializer.Serialize<OrderEvent>(",", _orderEvents, true);
             using (StreamWriter fs = new StreamWriter(filepath, true))
             {
                 foreach (var s in liststring)

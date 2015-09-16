@@ -39,13 +39,13 @@ namespace QuantConnect.Algorithm
                 var orderDateTime = order.Time;
                 // Order Fees are a cost and negative to my account, therefore a negative number
                 var orderFees = security.TransactionModel.GetOrderFee(security, order) * -1;
-
+                
                 #region "Create OrderTransaction"
 
                 var x = ticket.OrderEvents.FirstOrDefault();
-                t.ActionId = x.Direction.ToString() == "Buy" ? 1 : 13;
+                //t.ActionId = x.Direction.ToString() == "Buy" ? 1 : 13;
                 t.ActionId = orderEvent.Direction.ToString() == "Buy" ? 1 : 13;
-                t.ActionNameUS = order.Direction.ToString();
+                t.ActionNameUS = orderEvent.Direction.ToString();
                 t.Amount = orderValue;
                 t.Broker = "IB";
                 t.CUSIP = "CUSIP";
