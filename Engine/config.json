@@ -13,6 +13,7 @@
     //"algorithm-type-name": "LoggingITrendAlgorithm",     
     //"algorithm-type-name": "InstantaneousTrendAlgorithm",
     //"algorithm-type-name": "TestingAdaptativeDecycle",
+    //"algorithm-type-name": "ITrendAlgorithm",
     "algorithm-type-name": "MultiStrategyAlgo",
 
     // Algorithm language selector - options CSharp, FSharp, VisualBasic, Python, Java

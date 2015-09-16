@@ -41,11 +41,16 @@ namespace QuantConnect.Algorithm.CSharp.JJAlgorithms.MultiStrategyAlgo
         private bool noOvernight = true;                // Close all positions before market close.
     /* +-------------------------------------------------+*/
 
-        private static string[] Symbols = { "SPY" };
-        //private static string[] Symbols = { "AIG", "BAC", "IBM", "SPY" };
+        //private static string[] Symbols = { "BAC" };
+        private static string[] Symbols = { "AIG", "BAC", "IBM", "SPY" };
 
         // The Istrategy object that will be used as "conveyor" each time we instantiate a new Strategy
-        BaseStrategy Strategy;
+        //BaseStrategy Strategy; commented for debug
+        SimpleMomentumStrategy Strategy;
+
+        // Indicators that will be used as conveyor by the Strategies objects.
+        private Decycle decycleTrend;
+        private InstantaneousTrend ITrend;
 
         // Dictionary used to store the ITrendStrategy object for each symbol.
         private Dictionary<string, RollingWindow<IndicatorDataPoint>> PricesSeriesWindow = new Dictionary<string, RollingWindow<IndicatorDataPoint>>();
@@ -54,10 +59,6 @@ namespace QuantConnect.Algorithm.CSharp.JJAlgorithms.MultiStrategyAlgo
         private Dictionary<string, decimal> ShareSize = new Dictionary<string, decimal>();  
         
         private EquityExchange theMarket = new EquityExchange();
-
-        // Indicators that will be used as conveyor by the Strategies objects.
-        private Decycle decycleTrend;
-        private InstantaneousTrend ITrend;
 
         #endregion Fields
 
@@ -87,7 +88,7 @@ namespace QuantConnect.Algorithm.CSharp.JJAlgorithms.MultiStrategyAlgo
             foreach (string symbol in Symbols)
             {
                 AddSecurity(SecurityType.Equity, symbol, Resolution.Minute);
-                PricesSeriesWindow.Add(symbol, new RollingWindow<IndicatorDataPoint>(TrendPeriod));
+                PricesSeriesWindow.Add(symbol, new RollingWindow<IndicatorDataPoint>(TrendPeriod - 1));
                 RegisterRollingWindow(symbol);
 
                 // Equal portfolio shares for every stock.
@@ -127,11 +128,12 @@ namespace QuantConnect.Algorithm.CSharp.JJAlgorithms.MultiStrategyAlgo
                  * else etc.
                  */
 
+                // Instantiate the inidicator we want to use given the market conditions.
                 decycleTrend = new Decycle(TrendPeriod);
-                // Instantiate a Strategy class injecting the indicator we want.
-                Strategy = new SimpleMomentumStrategy(decycleTrend, PricesSeriesWindow[symbol]);
-                // This method update the strategy's position and entry price right from the Portfolio and the Transaction.
-                CheckStrategyStatus(symbol);
+                //ITrend = new InstantaneousTrend(TrendPeriod);
+                // Instantiate a Strategy class injecting the indicator.
+                Strategy = new SimpleMomentumStrategy(decycleTrend, PricesSeriesWindow[symbol], Tolerance, RevertPCT,
+                    RevertPositionCheck.vsClosePrice);
                 
                 // Now we can continue with the Algorithm reasoning
                 
@@ -150,6 +152,8 @@ namespace QuantConnect.Algorithm.CSharp.JJAlgorithms.MultiStrategyAlgo
                     }
                     else
                     {
+                        // This method update the strategy's position and entry price right from the Portfolio and the Transaction.
+                        CheckStrategyStatus(symbol);
                         // Now check if there is some signal and execute the strategy.
                         actualOrder = Strategy.CheckSignal(data[symbol].Close);
                     }
@@ -162,12 +166,24 @@ namespace QuantConnect.Algorithm.CSharp.JJAlgorithms.MultiStrategyAlgo
                 //"Momentum, EntryPrice, Signal," +
                 //"TriggerCrossOverITrend, TriggerCrossUnderITrend, ExitFromLong, ExitFromShort," +
                 //"StateFromStrategy, StateFromPorfolio, Portfolio Value"
-                string newLine = string.Format("{0},{1},{2},{3}",
+                string newLine = "none";
+                    /*string.Format("{0},{1},{2},{3},{4},{5},{6},{7},{8},{9},{10},{11},{12},{13},{14}",
                                                barCounter,
                                                Time,
                                                data[symbol].Close,
+                                               Strategy.Trend.Current.Value,
+                                               Strategy.Trend.Current.Value + Strategy.TrendMomentum.Current.Value,
+                                               Strategy.TrendMomentum.Current.Value,
+                                               (Strategy.EntryPrice == null) ? 0 : Strategy.EntryPrice,
+                                               actualOrder,
+                                               Strategy.TriggerCrossOverITrend.ToString(),
+                                               Strategy.TriggerCrossUnderITrend.ToString(),
+                                               Strategy.ExitFromLong.ToString(),
+                                               Strategy.ExitFromShort.ToString(),
+                                               Strategy.Position.ToString(),
+                                               Portfolio[symbol].Quantity.ToString(),
                                                Portfolio.TotalPortfolioValue
-                                               );
+                                               );*/
                 stockLogging[i].AppendLine(newLine);
                 i++;
 
@@ -196,7 +212,7 @@ namespace QuantConnect.Algorithm.CSharp.JJAlgorithms.MultiStrategyAlgo
             int i = 0;
             foreach (string symbol in Symbols)
             {
-                string filename = string.Format("ITrendDebug_{0}.csv", symbol);
+                string filename = string.Format("MultiStrategyDebug_{0}.csv", symbol);
                 string filePath = AssemblyLocator.ExecutingDirectory() + filename;
 
                 if (File.Exists(filePath)) File.Delete(filePath);

@@ -15,8 +15,8 @@ namespace QuantConnect.Algorithm.CSharp.ITrendAlgorithm
     public class ITrendAlgorithm : QCAlgorithm
     {
         #region "Algorithm Globals"
-        private DateTime _startDate = new DateTime(2015, 9, 2);
-        private DateTime _endDate = new DateTime(2015, 9, 3);
+        private DateTime _startDate = new DateTime(2013, 10, 7);
+        private DateTime _endDate = new DateTime(2013, 10, 11);
         private decimal _portfolioAmount = 10000;
         private decimal _transactionSize = 15000;
         #endregion
@@ -39,8 +39,8 @@ namespace QuantConnect.Algorithm.CSharp.ITrendAlgorithm
         private bool noOvernight = true;                // Close all positions before market close.
     /* +-------------------------------------------------+*/
 
-        private static string[] Symbols = { "AAPL" };
-        //private static string[] Symbols = { "AIG", "BAC", "IBM", "SPY" };
+        //private static string[] Symbols = { "AAPL" };
+        private static string[] Symbols = { "AIG", "BAC", "IBM", "SPY" };
 
         // Dictionary used to store the ITrendStrategy object for each symbol.
         private Dictionary<string, ITrendStrategy> Strategy = new Dictionary<string, ITrendStrategy>();
@@ -84,7 +84,8 @@ namespace QuantConnect.Algorithm.CSharp.ITrendAlgorithm
             foreach (string symbol in Symbols)
             {
                 AddSecurity(SecurityType.Equity, symbol, Resolution.Minute);
-                Strategy.Add(symbol, new ITrendStrategy(ITrendPeriod, Tolerance, RevertPCT));
+                Strategy.Add(symbol, new ITrendStrategy(ITrendPeriod, Tolerance, RevertPCT,
+                    RevertPositionCheck.vsClosePrice));
                 Tickets.Add(symbol, new List<OrderTicket>());
                 // Equal portfolio shares for every stock.
                 ShareSize.Add(symbol, (maxLeverage * (1 - leverageBuffer)) / Symbols.Count());
@@ -148,7 +149,7 @@ namespace QuantConnect.Algorithm.CSharp.ITrendAlgorithm
                 string newLine = string.Format("{0},{1},{2},{3},{4},{5},{6},{7},{8},{9},{10},{11},{12},{13},{14}",
                                                barCounter,
                                                Time,
-                                               (data[symbol].Close + data[symbol].Open)/2,
+                                               data[symbol].Close,
                                                Strategy[symbol].ITrend.Current.Value,
                                                Strategy[symbol].ITrend.Current.Value + Strategy[symbol].ITrendMomentum.Current.Value,
                                                Strategy[symbol].ITrendMomentum.Current.Value,
@@ -197,7 +198,7 @@ namespace QuantConnect.Algorithm.CSharp.ITrendAlgorithm
                 if (File.Exists(filePath)) File.Delete(filePath);
                 File.AppendAllText(filePath, stockLogging[i].ToString());
                 Debug(string.Format("\nSymbol Name: {0}, Ending Value: {1} ", symbol, Portfolio[symbol].Profit));
-
+                i++;
             }
 
             Debug(string.Format("\nAlgorithm Name: {0}\n Ending Portfolio Value: {1} ", this.GetType().Name, Portfolio.TotalPortfolioValue));

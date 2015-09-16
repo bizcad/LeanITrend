@@ -22,12 +22,10 @@ namespace QuantConnect.Algorithm.CSharp.JJAlgorithms.MultiStrategyAlgo
         private bool ExitFromShort = false;
         private bool TriggerCrossOverITrend = false;
         private bool TriggerCrossUnderITrend = false;
-
-        #region made public for debug
-        public RollingWindow<decimal> MomentumWindow;
+        
         public IndicatorBase<IndicatorDataPoint> Trend;
+        public RollingWindow<decimal> MomentumWindow;
         public Momentum TrendMomentum;
-        #endregion made public for debug
 
         public Nullable<decimal> EntryPrice
         {
@@ -44,13 +42,12 @@ namespace QuantConnect.Algorithm.CSharp.JJAlgorithms.MultiStrategyAlgo
         #endregion Fields
 
         #region Constructors
-
+        
         /// <summary>
         /// Initializes a new instance of the <see cref="ITrendStrategy"/> class.
         /// </summary>
         /// <param name="period">The period of the Instantaneous trend.</param>
         public SimpleMomentumStrategy(IndicatorBase<IndicatorDataPoint> trend,
-            RollingWindow<IndicatorDataPoint> priceSeries,
             decimal tolerance = 0.001m, decimal revetPct = 1.0015m,
             RevertPositionCheck checkRevertPosition = RevertPositionCheck.vsClosePrice)
         {
@@ -60,6 +57,18 @@ namespace QuantConnect.Algorithm.CSharp.JJAlgorithms.MultiStrategyAlgo
             _tolerance = tolerance;
             _revertPCT = revetPct;
             _checkRevertPosition = checkRevertPosition;
+        }
+
+        /// <summary>
+        /// Initializes a new instance of the <see cref="ITrendStrategy"/> class.
+        /// </summary>
+        /// <param name="period">The period of the Instantaneous trend.</param>
+        public SimpleMomentumStrategy(IndicatorBase<IndicatorDataPoint> trend,
+            RollingWindow<IndicatorDataPoint> priceSeries,
+            decimal tolerance = 0.001m, decimal revetPct = 1.0015m,
+            RevertPositionCheck checkRevertPosition = RevertPositionCheck.vsClosePrice)
+            : this(trend, tolerance, revetPct, checkRevertPosition)
+        {
             InitializeTrend(priceSeries);
         }
 
