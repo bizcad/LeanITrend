@@ -77,6 +77,10 @@
     <Compile Include="ITrendAlgorithm\ITrendStrategy.cs" />
     <Compile Include="ITrendAlgorithm\LoggingITrendAlgorithm.cs" />
     <Compile Include="JJAlgorithms\CyclePeriodHomodyneAlgorithm.cs" />
+    <Compile Include="JJAlgorithms\IntradayBuyLow\AdaptativeSizing.cs" />
+    <Compile Include="JJAlgorithms\IntradayBuyLow\BuyLowStrategy.cs" />
+    <Compile Include="JJAlgorithms\IntradayBuyLow\IntradayBuyLow1_3.cs" />
+    <Compile Include="JJAlgorithms\IntradayBuyLow\WarmUp.cs" />
     <Compile Include="JJAlgorithms\Laguerre.cs" />
     <Compile Include="JJAlgorithms\LaguerreBasic.cs" />
     <Compile Include="JJAlgorithms\LaguerreEMA.cs" />
