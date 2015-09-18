@@ -14,16 +14,25 @@ using QuantConnect.Indicators;
 
 namespace QuantConnect
 {
+    public class InjectedTrendClass
+    {
+        public IndicatorBase<IndicatorDataPoint> Trend;
+        
+        public InjectedTrendClass(IndicatorBase<IndicatorDataPoint> trend)
+        {
+            Trend = trend;
+        }
+    }
+
     public partial class TestingAlgo : QCAlgorithm
     {
         #region Fields
-        private static string[] Symbols = { "AIG", "BAC", "IBM", "SPY" };
-        int counter;
-        int onOrderCounter;
-        bool print = true;
+        
+        private static string[] Symbols = { "AIG" };
+        //private static string[] Symbols = { "AIG", "BAC", "IBM", "SPY" };
 
-        RollingWindow<int> win = new RollingWindow<int>(10);
-        StringBuilder toFile = new StringBuilder();
+        Dictionary<string, InjectedTrendClass> ClassDict = new Dictionary<string, InjectedTrendClass>();
+
         #endregion
 
         #region QCAlgorithm Methods

@@ -5,9 +5,8 @@ using System.Text;
 using System.Threading.Tasks;
 using QuantConnect.Indicators;
 using QuantConnect.Data.Market;
-using QuantConnect.Algorithm.CSharp.Common;
 
-namespace QuantConnect.Algorithm.CSharp.JJAlgorithms.MultiStrategyAlgo
+namespace QuantConnect.Algorithm.CSharp.Common
 {
     interface IStrategy
     {

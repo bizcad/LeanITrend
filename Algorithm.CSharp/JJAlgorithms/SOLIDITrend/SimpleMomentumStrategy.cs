@@ -5,7 +5,7 @@ using System.Linq;
 using System.Collections;
 using System.Collections.Generic;
 
-namespace QuantConnect.Algorithm.CSharp.JJAlgorithms.MultiStrategyAlgo
+namespace QuantConnect.Algorithm.CSharp.JJAlgorithms.SOLIDITrend
 {
 
     public class SimpleMomentumStrategy : BaseStrategy
@@ -52,7 +52,7 @@ namespace QuantConnect.Algorithm.CSharp.JJAlgorithms.MultiStrategyAlgo
             RevertPositionCheck checkRevertPosition = RevertPositionCheck.vsClosePrice)
         {
             Trend = trend;
-            TrendMomentum = new Momentum(2);
+            TrendMomentum = new Momentum(2).Of(Trend);
             MomentumWindow = new RollingWindow<decimal>(2);
             _tolerance = tolerance;
             _revertPCT = revetPct;
@@ -61,33 +61,9 @@ namespace QuantConnect.Algorithm.CSharp.JJAlgorithms.MultiStrategyAlgo
             this.EntryPrice = null;
         }
 
-        /// <summary>
-        /// Initializes a new instance of the <see cref="ITrendStrategy"/> class.
-        /// </summary>
-        /// <param name="period">The period of the Instantaneous trend.</param>
-        public SimpleMomentumStrategy(IndicatorBase<IndicatorDataPoint> trend,
-            RollingWindow<IndicatorDataPoint> priceSeries,
-            decimal tolerance = 0.001m, decimal revetPct = 1.0015m,
-            RevertPositionCheck checkRevertPosition = RevertPositionCheck.vsClosePrice)
-            : this(trend, tolerance, revetPct, checkRevertPosition)
-        {
-            InitializeTrend(priceSeries);
-        }
-
         #endregion Constructors
 
         #region Methods
-
-        private void InitializeTrend(RollingWindow<IndicatorDataPoint> priceSeries)
-        {
-            Trend.Reset();
-            foreach (var dataPoint in priceSeries.OrderBy(p => p.Time))
-            {
-                Trend.Update(dataPoint);
-                TrendMomentum.Update(Trend.Current);
-                MomentumWindow.Add(TrendMomentum.Current.Value);
-            }
-        }
 
         /// <summary>
         /// Checks If the strategy throws a operation signal.
@@ -95,6 +71,7 @@ namespace QuantConnect.Algorithm.CSharp.JJAlgorithms.MultiStrategyAlgo
         /// <returns>An enum OrderSignal with the proper order to operate.</returns>
         public override OrderSignal CheckSignal(decimal close)
         {
+            MomentumWindow.Add(TrendMomentum.Current.Value);
             // If the injected rolling window isn't enought to fully initialize the strategy, the return will be doNothing
             if (!MomentumWindow.IsReady) return OrderSignal.doNothing;
 
