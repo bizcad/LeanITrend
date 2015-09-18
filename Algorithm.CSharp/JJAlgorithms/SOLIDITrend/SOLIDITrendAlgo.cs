@@ -148,7 +148,7 @@ namespace QuantConnect.Algorithm.CSharp.JJAlgorithms.SOLIDITrend
                     }
                     ExecuteStrategy(symbol, actualOrder, data);
                     // Update the Stocl account
-                    StockAccount[symbol] = _initialStockAccount - Portfolio[symbol].NetProfit;
+                    StockAccount[symbol] = _initialStockAccount + Portfolio[symbol].NetProfit;
                 }
                 
                 #region Logging stuff - Filling the data StockLogging
