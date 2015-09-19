@@ -1,12 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.ComponentModel;
 using System.IO;
 using System.Linq;
 using System.Text;
-using QuantConnect.Algorithm.CSharp.BizcadAlgorithm;
 using QuantConnect.Algorithm.CSharp.Common;
-using QuantConnect.Algorithm.Examples;
 using QuantConnect.Data.Market;
 using QuantConnect.Indicators;
 using QuantConnect.Logging;
@@ -20,8 +17,8 @@ namespace QuantConnect.Algorithm.CSharp
     {
         #region "Variables"
 
-        private DateTime _startDate = new DateTime(2015, 9, 14);
-        private DateTime _endDate = new DateTime(2015, 9, 18);
+        private DateTime _startDate = new DateTime(2015, 9, 17);
+        private DateTime _endDate = new DateTime(2015, 9, 17);
         private decimal _portfolioAmount = 10000;
         private decimal _transactionSize = 15000;
 

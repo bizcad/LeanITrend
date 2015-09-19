@@ -1,4 +1,4 @@
-﻿namespace QuantConnect.Algorithm.CSharp.BizcadAlgorithm
+﻿namespace QuantConnect.Algorithm.CSharp
 {
     public interface IPositionInventory
     {

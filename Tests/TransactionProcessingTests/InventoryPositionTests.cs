@@ -5,7 +5,6 @@ using System.Text;
 using System.Threading.Tasks;
 using NUnit.Framework;
 using QuantConnect.Algorithm.CSharp;
-using QuantConnect.Algorithm.CSharp.BizcadAlgorithm;
 using QuantConnect.Orders;
 
 namespace QuantConnect.Tests.TransactionProcessingTests

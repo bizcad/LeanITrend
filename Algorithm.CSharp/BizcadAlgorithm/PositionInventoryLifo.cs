@@ -1,11 +1,4 @@
-﻿using System;
-using System.Collections.Concurrent;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using QuantConnect.Algorithm.CSharp.BizcadAlgorithm;
-using QuantConnect.Algorithm.Examples;
+﻿using System.Collections.Concurrent;
 using QuantConnect.Orders;
 
 namespace QuantConnect.Algorithm.CSharp
