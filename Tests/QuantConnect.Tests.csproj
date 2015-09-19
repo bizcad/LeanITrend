@@ -107,14 +107,26 @@
     <Compile Include="Engine\DataFeeds\FillForwardEnumeratorTest.cs" />
     <Compile Include="Engine\FactorFileTests.cs" />
     <Compile Include="Engine\RealTime\ScheduledEventTests.cs" />
+    <Compile Include="Indicators\AutocorrelogramPeriodogramTest.cs">
+      <SubType>Code</SubType>
+    </Compile>
     <Compile Include="Indicators\AverageDirectionalIndexTests.cs" />
     <Compile Include="Indicators\DonchianChannelTest.cs" />
     <Compile Include="Indicators\IchimokuKinkoHyoTests.cs" />
+    <Compile Include="Indicators\DecycleTest .cs" />
+    <Compile Include="Indicators\InstantaneousTrendTest.cs" />
     <Compile Include="Indicators\OnBalanceVolumeTest.cs" />
+    <Compile Include="Indicators\HighPassFilterTest.cs" />
+    <Compile Include="Indicators\SuperSmootherTest.cs">
+      <SubType>Code</SubType>
+    </Compile>
     <Compile Include="Indicators\WilliamsPercentRTests.cs" />
     <Compile Include="Indicators\RateOfChangePercentTests.cs" />
     <Compile Include="Indicators\RateOfChangeTests.cs" />
     <Compile Include="Indicators\StochasticTests.cs" />
+    <Compile Include="ITrendAlgorithm\ItrendStrategyTest.cs">
+      <SubType>Code</SubType>
+    </Compile>
     <Compile Include="RegressionTests.cs" />
     <Compile Include="TestExtensions.cs" />
     <Compile Include="Indicators\LinearWeightedMovingAverageTests.cs" />

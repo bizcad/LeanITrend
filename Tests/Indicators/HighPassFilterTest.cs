@@ -20,16 +20,16 @@ using System;
 namespace QuantConnect.Tests.Indicators
 {
     [TestFixture]
-    public class InstantaneousTrendTest
+    public class HighPassFilterTest
     {
         [Test]
-        public void InstantaneousTrendComputesCorrectly()
+        public void HighPassFilterComputesCorrectly()
         {
             int _period = 5;
             DateTime time = DateTime.Now;
             decimal[] actualValues = new decimal[20];
 
-            InstantaneousTrend iTrend = new InstantaneousTrend(_period);
+            HighPassFilter hpf = new HighPassFilter(_period);
 
             # region Arrays inputs
             decimal[] prices = new decimal[20]
@@ -45,19 +45,20 @@ namespace QuantConnect.Tests.Indicators
 
             decimal[] expectedValues = new decimal[20]
             {
-                // Estimated with Python: http://tinyurl.com/nbt4ud3
-                15m, 18.09m, 18.015m, 20.735m, 22.8925m, 24.2775m, 24.755m, 24.3836m, 23.0445m, 20.8039m,
-                17.8648m, 14.5236m, 11.1232m, 8.0166m, 5.5265m, 3.911m, 3.3413m, 3.8832m, 5.4906m, 8.0133m
+                // Estimated with Python:
+                0m, 0m, 0m, -0.1946m, -0.3266m, -0.4106m, -0.4506m, -0.4444m, -0.3945m, -0.3084m,
+                -0.1884m, -0.052m, 0.0889m, 0.224m, 0.3338m, 0.4121m, 0.4509m, 0.4445m, 0.3945m, 0.3084m
             };
             # endregion
 
             for (int i = 0; i < prices.Length; i++)
             {
-                iTrend.Update(new IndicatorDataPoint(time, prices[i]));
-                actualValues[i] = Math.Round(iTrend.Current.Value, 4);
+                hpf.Update(new IndicatorDataPoint(time, prices[i]));
+                actualValues[i] = Math.Round(hpf.Current.Value, 4);
+                Console.WriteLine(actualValues[i]);
                 time.AddMinutes(1);
             }
-            Assert.AreEqual(expectedValues, actualValues, "Estimation ITrend(5)");
+            Assert.AreEqual(expectedValues, actualValues, "Estimation HighPassFilter(5)");
         }
 
         [Test]
@@ -66,16 +67,16 @@ namespace QuantConnect.Tests.Indicators
             int _period = 5;
             DateTime time = DateTime.Now;
 
-            InstantaneousTrend iTrend = new InstantaneousTrend(_period);
+            HighPassFilter hpf = new HighPassFilter(_period);
 
             for (int i = 0; i < 6; i++)
             {
-                iTrend.Update(new IndicatorDataPoint(time, 1m));
+                hpf.Update(new IndicatorDataPoint(time, 1m));
                 time.AddMinutes(1);
             }
-            Assert.IsTrue(iTrend.IsReady, "Instantaneous Trend ready");
-            iTrend.Reset();
-            TestHelper.AssertIndicatorIsInDefaultState(iTrend);
+            Assert.IsTrue(hpf.IsReady, "SuperSmoother ready");
+            hpf.Reset();
+            TestHelper.AssertIndicatorIsInDefaultState(hpf);
         }
     }
 }
