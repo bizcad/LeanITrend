@@ -4,6 +4,7 @@ using System.ComponentModel;
 using System.IO;
 using System.Linq;
 using System.Text;
+using QuantConnect.Algorithm.CSharp.BizcadAlgorithm;
 using QuantConnect.Algorithm.CSharp.Common;
 using QuantConnect.Algorithm.Examples;
 using QuantConnect.Data.Market;
@@ -19,12 +20,12 @@ namespace QuantConnect.Algorithm.CSharp
     {
         #region "Variables"
 
-        private DateTime _startDate = new DateTime(2015, 8, 10);
-        private DateTime _endDate = new DateTime(2015, 8, 11);
+        private DateTime _startDate = new DateTime(2015, 9, 14);
+        private DateTime _endDate = new DateTime(2015, 9, 18);
         private decimal _portfolioAmount = 10000;
         private decimal _transactionSize = 15000;
 
-        private string symbol = "AMZN";
+        private string symbol = "AAPL";
 
         private int barcount = 0;
 
@@ -49,9 +50,12 @@ namespace QuantConnect.Algorithm.CSharp
         private decimal daynet = 0;
         private decimal lastprofit = 0;
         private decimal lastfees = 0;
+        private decimal totalProfit = 0;
+        
         private int lasttradecount;
         private DateTime tradingDate;
         private decimal nExitPrice = 0;
+        private OrderStatus tradeResult;
 
 
         #endregion
@@ -61,7 +65,7 @@ namespace QuantConnect.Algorithm.CSharp
         //private ILogHandler transactionlog = Composer.Instance.GetExportedValueByTypeName<ILogHandler>("TransactionFileLogHandler");
         private readonly OrderTransactionFactory _orderTransactionFactory;
 
-        private string ondataheader = @"Time,BarCount,trade size,Open,High,Low,Close,Time,Price,Trend,Trigger,comment,signal, Entry Price, Exit Price,orderId , unrealized, shares owned,trade profit, trade fees, trade net,last trade fees, profit, fees, net, day profit, day fees, day net, Portfolio Value";
+        private string ondataheader = @"Time,BarCount,trade size,Volume,Open,High,Low,Close,EndTime,Period,DataType,IsFillForward,Time,Symbol,Value,Price,,Time,Price,Trend,comment,signal, Entry Price, Exit Price,Trade Result,orderId, unrealized, shares owned,trade profit, trade fees, trade net,last trade fees, profit, fees, net, day profit, day fees, day net, Portfolio Value";
         private string dailyheader = @"Trading Date,Daily Profit, Daily Fees, Daily Net, Cum profit, Cum Fees, Cum Net, Trades/day, Portfolio Value, Shares Owned";
         private string transactionheader = @"Symbol,Quantity,Price,Direction,Order Date,Settlement Date, Amount,Commission,Net,Nothing,Description,Action Id,Order Id,RecordType,TaxLotNumber";
         private List<OrderTransaction> _transactions;
@@ -77,6 +81,7 @@ namespace QuantConnect.Algorithm.CSharp
         private OrderSignal signal;
         private decimal nEntryPrice = 0;
         private string comment;
+        private OrderTransactionProcessor _orderTransactionProcessor = new OrderTransactionProcessor();
 
         #endregion
 
@@ -119,6 +124,10 @@ namespace QuantConnect.Algorithm.CSharp
             iTrendStrategy.ShouldSellOutAtEod = shouldSellOutAtEod;
             #region lists
             #endregion
+
+            var security = Securities[symbol];
+            security.TransactionModel = new ConstantFeeTransactionModel(1.0m);
+
         }
         /// <summary>
         /// OnData event is the primary entry point for your algorithm. Each new data point will be pumped in here.
@@ -149,7 +158,9 @@ namespace QuantConnect.Algorithm.CSharp
             {
                 tradesize = (int)(_transactionSize / Convert.ToInt32(Price[0].Value + 1));
             }
-
+            if (barcount > 100)
+                comment = "";
+            CanceledUnfilledLimitOrder();
 
             Strategy(data);
 
@@ -157,22 +168,32 @@ namespace QuantConnect.Algorithm.CSharp
             sharesOwned = Portfolio[symbol].Quantity;
             string logmsg =
                 string.Format(
-                    "{0},{1},{2},{3},{4},{5},{6},{7},{8},{9},{10},{11},{12},{13},{14},{15},{16},{17},{18},{19},{20},{21},{22},{23}",
+                    "{0},{1},{2},{3},{4},{5},{6},{7},{8},{9},{10},{11},{12},{13},{14},{15},{16},{17},{18},{19},{20},{21},{22},{23},{24},{25},{26},{27},{28},{29},{30},{31},{32},{33}",
                     time,
                     barcount,
                     tradesize,
+                    data[symbol].Volume,
                     data[symbol].Open,
                     data[symbol].High,
                     data[symbol].Low,
                     data[symbol].Close,
+                    data[symbol].EndTime,
+                    data[symbol].Period,
+                    data[symbol].DataType,
+                    data[symbol].IsFillForward,
+                    data[symbol].Time,
+                    data[symbol].Symbol,
+                    data[symbol].Value,
+                    data[symbol].Price,
+                    "",
                     time.ToShortTimeString(),
                     Price[0].Value,
                     trend.Current.Value,
-                //trendTrigger[0].Value,
                     comment,
                     signal,
                     nEntryPrice,
                     nExitPrice,
+                    tradeResult,
                     orderId,
                     Portfolio.TotalUnrealisedProfit,
                     sharesOwned,
@@ -180,7 +201,6 @@ namespace QuantConnect.Algorithm.CSharp
                     tradefees,
                     tradenet,
                     Portfolio.TotalPortfolioValue,
-                    "",
                     "",
                     "",
                     ""
@@ -228,20 +248,20 @@ namespace QuantConnect.Algorithm.CSharp
             if (SellOutEndOfDay(data))
             {
                 // if there were limit order tickets to cancel, wait a bar to execute the strategy
-                if (!CanceledUnfilledLimitOrder())
-                {
-                    iTrendStrategy.Barcount = barcount;  // for debugging
-                    iTrendStrategy.nEntryPrice = nEntryPrice;
-                    signal = iTrendStrategy.ExecuteStrategy(data, tradesize, trend.Current, out comment);
-                    #region lists
-                    #endregion
-                }
+
+                iTrendStrategy.Barcount = barcount;  // for debugging
+                iTrendStrategy.nEntryPrice = nEntryPrice;
+                signal = iTrendStrategy.ExecuteStrategy(data, tradesize, trend.Current, out comment);
+                #region lists
+                #endregion
+
             }
 
             #endregion
 
             return ret;
         }
+
         /// <summary>
         /// If the order did not fill within one bar, cancel it and assume the market moved away from the limit order
         /// </summary>
@@ -250,15 +270,13 @@ namespace QuantConnect.Algorithm.CSharp
             #region "Unfilled Limit Orders"
 
             bool retval = false;
-            var tickets = Transactions.GetOrderTickets(t => !t.Status.IsClosed());
 
-            foreach (var ticket in tickets)
+            //var tickets = Transactions.GetOrderTickets(p => p.Time > Transactions.UtcTime.AddMinutes(-2));
+
+            foreach (OrderTicket orderTicket in Transactions.GetOrderTickets().Where(orderTicket => orderTicket.Status == OrderStatus.Submitted || orderTicket.Status == OrderStatus.Invalid))
             {
-                if (ticket != null)
-                {
-                    ticket.Cancel();
-                    retval = true;
-                }
+                orderTicket.Cancel();
+                retval = true;
             }
 
             #endregion
@@ -315,6 +333,7 @@ namespace QuantConnect.Algorithm.CSharp
             base.OnOrderEvent(orderEvent);
             ProcessOrderEvent(orderEvent);
         }
+
         /// <summary>
         /// Local processing of the order event
         /// </summary>
@@ -322,65 +341,71 @@ namespace QuantConnect.Algorithm.CSharp
         private void ProcessOrderEvent(OrderEvent orderEvent)
         {
             var security = Securities[orderEvent.Symbol];
+            IEnumerable<OrderTicket> tickets;
             var tm = this.BrokerageModel.GetTransactionModel(security);
             if (orderEvent.Status == OrderStatus.Filled)
                 _orderEvents.Add(orderEvent);
             orderId = orderEvent.OrderId;
-            var tickets = Transactions.GetOrderTickets(t => t.OrderId == orderId);
-            nEntryPrice = 0;
-            nExitPrice = 0;
-
-            if (tickets.Any())
+            tradeResult = orderEvent.Status;
+            switch (orderEvent.Status)
             {
-                foreach (OrderTicket ticket in tickets)
-                {
-                    var status = ticket.Status;
-                    if (ticket.Status == OrderStatus.Canceled)
+                case OrderStatus.New:
+                case OrderStatus.None:
+                case OrderStatus.Submitted:
+                    tickets = Transactions.GetOrderTickets(t => t.OrderId == orderId && t.Status == orderEvent.Status);
+                    
+                    break;
+                case OrderStatus.Canceled:
+                    tickets = Transactions.GetOrderTickets(t => t.OrderId == orderId && t.Status == orderEvent.Status);
+                    iTrendStrategy.orderFilled = false;
+                    break;
+                case OrderStatus.Filled:
+                case OrderStatus.PartiallyFilled:
+                    tickets = Transactions.GetOrderTickets(t => t.OrderId == orderId && t.Status == orderEvent.Status);
+                    if (tickets != null)
                     {
-                        iTrendStrategy.orderFilled = false;
-                    }
-                    if (ticket.Status == OrderStatus.Filled)
-                    {
-                        iTrendStrategy.orderFilled = true;
-
-                        #region logging
-
-                        OrderTransactionFactory transactionFactory = new OrderTransactionFactory((QCAlgorithm)this);
-                        var t = transactionFactory.Create(orderEvent, ticket, false);
-                        _transactions.Add(t);
-                        _tradecount++;
-                        #endregion
-
-
-                        if (Portfolio[orderEvent.Symbol].Invested)
+                        foreach (OrderTicket ticket in tickets)
                         {
-                            nEntryPrice = orderEvent.FillPrice;
-                            #region logging
-                            tradefees = Securities[symbol].Holdings.TotalFees - lasttradefees;
-                            nEntryPrice = orderEvent.FillPrice;
+                            iTrendStrategy.orderFilled = true;
+                            if (Portfolio[orderEvent.Symbol].Invested)
+                            {
+                                nEntryPrice = Portfolio[symbol].IsLong ? orderEvent.FillPrice : orderEvent.FillPrice * -1;
+                                nExitPrice = 0;
+                            }
+                            else
+                            {
+                                nExitPrice = nEntryPrice < 0 ? orderEvent.FillPrice : orderEvent.FillPrice * -1;
+                                nEntryPrice = 0;
+                            }
+
+                            #region "log the ticket as a OrderTransacton"
+
+                            var transactionFactory = new OrderTransactionFactory((QCAlgorithm)this);
+                            var t = transactionFactory.Create(orderEvent, ticket, false);
+                            _transactions.Add(t);
+                            _orderTransactionProcessor.ProcessTransaction(t);
+                            _tradecount++;
+                            if (_orderTransactionProcessor.TotalProfit != totalProfit)
+                            {
+                                CalculateTradeProfit();
+                            }
+                            totalProfit = _orderTransactionProcessor.TotalProfit;
 
                             #endregion
-
-
                         }
-                        #region logging
-                        else
-                        {
-                            tradefees += Securities[symbol].Holdings.TotalFees - lasttradefees;
-                            nExitPrice = orderEvent.FillPrice;
-                            CalculateTradeProfit(ticket);
-                        }
-                        #endregion
                     }
-                }
+
+                    break;
+
             }
+
         }
         #region "Profit Calculations for logging"
-        private void CalculateTradeProfit(OrderTicket ticket)
+        private void CalculateTradeProfit()
         {
-            tradeprofit = Securities[symbol].Holdings.LastTradeProfit;
-            tradenet = tradeprofit - tradefees;
-            lasttradefees = Securities[symbol].Holdings.TotalFees;
+            var lasttrade = _orderTransactionProcessor.Trades.LastOrDefault();
+            tradefees = _orderTransactionProcessor.LastTradeCommission;
+            if (lasttrade != null) tradeprofit = lasttrade.GainOrLoss;
         }
         private void CalculateDailyProfits()
         {
@@ -435,6 +460,21 @@ namespace QuantConnect.Algorithm.CSharp
             //}
 
             //SendOrderEventsToFile();
+            SendTradesToFile();
+        }
+
+        private void SendTradesToFile()
+        {
+            string filepath = AssemblyLocator.ExecutingDirectory() + "trades.csv";
+            if (File.Exists(filepath)) File.Delete(filepath);
+            var liststring = CsvSerializer.Serialize<MatchedTrade>(",", _orderTransactionProcessor.Trades, true);
+            using (StreamWriter fs = new StreamWriter(filepath, true))
+            {
+                foreach (var s in liststring)
+                    fs.WriteLine(s);
+                fs.Flush();
+                fs.Close();
+            }
         }
 
         private void SendTransactionsToFile()

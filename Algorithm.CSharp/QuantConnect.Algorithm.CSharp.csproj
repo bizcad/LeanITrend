@@ -49,6 +49,7 @@
   <ItemGroup>
     <Compile Include="BasicTemplateAlgorithm.cs" />
     <Compile Include="BizcadAlgorithm\AssemblyLocator.cs" />
+    <Compile Include="BizcadAlgorithm\BrokerSimulatorBack.cs" />
     <Compile Include="BizcadAlgorithm\ConsolidatorAlgorithm.cs" />
     <Compile Include="BizcadAlgorithm\CyberCycleAlgorithm.cs" />
     <Compile Include="BizcadAlgorithm\FisherTransformAlgorithm.cs" />
@@ -103,8 +104,9 @@
     <Compile Include="MarketOnOpenOnCloseAlgorithm.cs" />
     <Compile Include="MovingAverageCrossAlgorithm.cs" />
     <Compile Include="MultipleSymbolConsolidationAlgorithm.cs" />
-    <Compile Include="Proforma\ProformaSubmitOrderRequest.cs" />
     <Compile Include="Proforma\ProformaOrderTicket.cs" />
+    <Compile Include="Proforma\ProformaOrderTicketBack.cs" />
+    <Compile Include="Proforma\ProformaSubmitOrderRequest.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="QuandlFuturesDataAlgorithm.cs" />
     <Compile Include="QuandlImporterAlgorithm.cs" />

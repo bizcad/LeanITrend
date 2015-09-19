@@ -12,7 +12,7 @@ namespace QuantConnect.Algorithm.CSharp
     public class ProformaOrder : Order
     {
         public int OrderId;
-        public OrderType orderType = Orders.OrderType.Market;
+        public OrderType Order_Type = Orders.OrderType.Market;
         public decimal CurrentMarketPrice { get; set; }
         public decimal LimitPrice { get; set; }
         public new int Quantity { get; set; }
@@ -40,35 +40,31 @@ namespace QuantConnect.Algorithm.CSharp
 
         public override OrderType Type
         {
-            get { return orderType; }
+            get { return Order_Type; }
         }
 
         public override decimal Value
         {
             get
             {
-                decimal value = 0;
-                switch (orderType)
+                
+                switch (Order_Type)
                 {
                     case OrderType.Market:
                         return Quantity * CurrentMarketPrice;
                     case OrderType.Limit:
-                    case OrderType.StopLimit:
                         return Quantity * LimitPrice;
+                    case OrderType.StopLimit:
+                        return Quantity * StopPrice;
                     case OrderType.MarketOnClose:
                         return Math.Abs(Quantity)* Price;
-                        
                     case OrderType.MarketOnOpen:
                         return Math.Abs(Quantity)* Price;
-                    
-                        
                     case OrderType.StopMarket:
-                        break;
+                        return Quantity * CurrentMarketPrice;
                     default:
                         throw new ArgumentOutOfRangeException();
-
-                }
-                throw new ArgumentOutOfRangeException();
+                }                
             }
         }
 
@@ -80,11 +76,12 @@ namespace QuantConnect.Algorithm.CSharp
         /// <param name="tag">User defined data tag for this order</param>
         public ProformaOrder(ProformaSubmitOrderRequest request) : base (request.Symbol, request.SecurityType, request.Quantity, request.Time, request.Tag)
         {
-            
+            //SubmitOrderRequest sor = new SubmitOrderRequest();
+
             OrderId = request.OrderId;
             Quantity = request.Quantity;
             StopPrice = request.StopPrice;
-            orderType = request.OrderType;
+            Order_Type = request.OrderType;
             LimitPrice = request.LimitPrice;
             OrderStatus = request.OrderStatus;
             this.Tag = request.Tag;

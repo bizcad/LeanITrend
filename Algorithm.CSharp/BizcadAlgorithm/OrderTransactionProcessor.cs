@@ -20,6 +20,7 @@ namespace QuantConnect.Algorithm.CSharp
         public IList<IPositionInventory> OpenPositions { get; set; }
         public IList<MatchedTrade> Trades { get; set; }
 
+        public decimal LastTradeCommission { get; set; }
         public decimal TotalAmount { get; set; }
         public decimal TotalCommission { get; set; }
         public decimal TotalFees { get; set; }
@@ -246,6 +247,7 @@ namespace QuantConnect.Algorithm.CSharp
                 //if (trade.DateSoldOrDisposed.Year == 2014)
                 TotalCommission += buytrans.Commission;
                 TotalCommission += selltrans.Commission;
+                LastTradeCommission = buytrans.Commission + selltrans.Commission;
                 TotalProfit += trade.GainOrLoss;
                 if (Math.Abs(trade.GainOrLoss) > 1000)
                     throw new Exception("Invalid gain or loss");
@@ -259,6 +261,7 @@ namespace QuantConnect.Algorithm.CSharp
             throw new InvalidDataException("buy qty not equal to sell qty");
 
         }
+
 
         public IPositionInventory OpenPosition(OrderTransaction trans, PositionInventoryMethod positionResolution)
         {

@@ -86,7 +86,7 @@ namespace QuantConnect.Tests.TransactionProcessingTests
         public void MatchedAndUnmatchedTransactions()
         {
             string path = @"C:\Users\Nick\Documents\Visual Studio 2013\Projects\LeanITrend\Engine\bin\Debug\";
-            string pathname = path + "transactionsTest.csv";
+            string pathname = path + "transactions.csv";
             // This part of the test is just to look at the JsonConvert
             //string txt;
             //using (StreamReader sr = new StreamReader(pathname))
@@ -109,6 +109,7 @@ namespace QuantConnect.Tests.TransactionProcessingTests
                 while (!sr.EndOfStream)
                 {
                     line = sr.ReadLine();
+                    if (line != null && line.Contains("Symbol")) continue;
                     Assert.IsNotNull(line);
                     counter++;
                     OrderTransaction t = new OrderTransaction();

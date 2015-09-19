@@ -97,7 +97,7 @@ namespace QuantConnect.Algorithm.CSharp
             try
             {
                 var nTrig = 2 * trendHistory[0].Value - trendHistory[2].Value;
-                if (nStatus == 1 && nTrig < (nEntryPrice / RevPct))
+                if (nStatus == 1 && nTrig < (Math.Abs(nEntryPrice) / RevPct))
                 {
                     if(maketrade)
                     {
@@ -107,12 +107,12 @@ namespace QuantConnect.Algorithm.CSharp
                     }
                     bReverseTrade = true;
                     retval = OrderSignal.revertToShort;
-                    comment = string.Format("{0} nStatus == {1} && nTrig {2} < (nEntryPrice {3} * RevPct{4}, orderFilled {5})", retval, nStatus, nTrig, nEntryPrice, RevPct, orderFilled);
+                    comment = string.Format("{0} nStatus == {1} && nTrig {2} < (nEntryPrice {3} * RevPct{4} orderFilled {5})", retval, nStatus, nTrig, nEntryPrice, RevPct, orderFilled);
 
                 }
                 else
                 {
-                    if (nStatus == -1 && nTrig > (nEntryPrice * RevPct))
+                    if (nStatus == -1 && nTrig > (Math.Abs(nEntryPrice) * RevPct))
                     {
                         if (maketrade)
                         {

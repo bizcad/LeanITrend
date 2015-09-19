@@ -45,7 +45,9 @@ namespace QuantConnect.Algorithm.CSharp
                     try
                     {
                         var convertedvalue = converter.ConvertFrom(arr[i]);
-                        p.SetValue(inobj, convertedvalue);
+                        var setmethod = p.SetMethod;
+                        if (setmethod != null)
+                            p.SetValue(inobj, convertedvalue);
                     }
                     catch (Exception e)
                     {

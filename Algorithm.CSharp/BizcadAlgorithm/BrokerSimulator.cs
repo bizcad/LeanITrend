@@ -1,9 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.ComponentModel;
-using System.Diagnostics;
-using System.Linq;
-/*
+﻿/*
  * QUANTCONNECT.COM - Democratizing Finance, Empowering Individuals.
  * Lean Algorithmic Trading Engine v2.0. Copyright 2014 QuantConnect Corporation.
  * 
@@ -43,7 +38,6 @@ namespace QuantConnect.Algorithm
         private bool _sentNoDataError;
         private IBrokerage _brokerage;
 
-        private ConcurrentDictionary<int, ProformaOrder> _orders;
         public ConcurrentDictionary<int, ProformaOrderTicket> _orderTickets;
         public RollingWindow<TradeBars> PricesWindow;
 
@@ -53,7 +47,6 @@ namespace QuantConnect.Algorithm
         public BrokerSimulator(IAlgorithm algorithm)
         {
             _algorithm = algorithm;
-            _orders = new ConcurrentDictionary<int, ProformaOrder>();
             _orderTickets = new ConcurrentDictionary<int, ProformaOrderTicket>();
             PricesWindow = new RollingWindow<TradeBars>(2);
 
@@ -177,9 +170,9 @@ namespace QuantConnect.Algorithm
         /// <param name="asynchronous">Send the order asynchrously (false). Otherwise we'll block until it fills</param>
         /// <param name="tag">Place a custom order property or tag (e.g. indicator data).</param>
         /// <seealso cref="MarketOrder(string, int, bool, string)"/>
-        public ProformaOrderTicket Order(string symbol, int quantity, bool asynchronous = false, string tag = "")
+        public ProformaOrderTicket Order(string symbol, int quantity, string tag = "")
         {
-            return MarketOrder(symbol, quantity, asynchronous, tag);
+            return MarketOrder(symbol, quantity,  tag);
         }
 
         /// <summary>
@@ -190,79 +183,27 @@ namespace QuantConnect.Algorithm
         /// <param name="asynchronous">Send the order asynchrously (false). Otherwise we'll block until it fills</param>
         /// <param name="tag">Place a custom order property or tag (e.g. indicator data).</param>
         /// <returns>int Order id</returns>
-        public ProformaOrderTicket MarketOrder(string symbol, int quantity, bool asynchronous = false, string tag = "")
+        public ProformaOrderTicket MarketOrder(string symbol, int quantity, string tag = "")
         {
             var security = _algorithm.Securities[symbol];
-
-            // check the exchange is open before sending a market order, if it's not open
-            // then convert it into a market on open order
-            if (!security.Exchange.ExchangeOpen && _algorithm.LiveMode)
-            {
-                var mooTicket = MarketOnOpenOrder(symbol, quantity, tag);
-                if (security.SubscriptionDataConfig.Resolution != Resolution.Daily)
-                {
-                    _algorithm.Debug("Converted OrderID: " + mooTicket.OrderId + " into a MarketOnOpen order.");
-                }
-                return mooTicket;
-            }
-
-            ProformaSubmitOrderRequest request = CreateSubmitOrderRequest(OrderType.Market, security, quantity, tag);
-
-            //Initalize the Market order parameters:
-            var preOrderCheckResponse = PreOrderChecks(request);
-            if (preOrderCheckResponse.IsError)
-            {
-                request.OrderStatus = OrderStatus.Invalid;
-                //return OrderTicket.InvalidSubmitRequest((SecurityTransactionManager)Transactions, request, preOrderCheckResponse);
-                return new ProformaOrderTicket(_algorithm.Transactions, request);
-            }
-
-            // create an order request
-            request.OrderStatus = OrderStatus.Submitted;
-            request.SetOrderId(GetIncrementOrderId());
-
-            // Create an Order and add to the list.  We can get it by order id which is set next
-            var p = new ProformaOrder(request);
-            p.CurrentMarketPrice = PricesWindow[0][symbol].Close;
-            p.OrderStatus = OrderStatus.Filled;
-            var order = _orders.GetOrAdd(p.OrderId, p);
-            
-
-            //ProformaOrder porder = new ProformaOrder();
             // Assume the ticket is filled at the last close price
+
             // Create the ticket
-            var ticket = AddOrder(request);
-            ticket.QuantityFilled = ticket.Quantity;
-            ticket.AverageFillPrice = PricesWindow[0][symbol].Open;
-            ticket.OrderStatus = order.OrderStatus;
-            ticket._order = order;
-            
+            ProformaOrderTicket ticket = new ProformaOrderTicket();
+            ticket.OrderId = GetIncrementOrderId();
+            ticket.ErrorMessage = string.Empty;
+            ticket.AverageFillPrice = this.PricesWindow[0].Values.Count;
+            ticket.Status = OrderStatus.Filled;
+            ticket.Quantity = quantity;
+            ticket.QuantityFilled = quantity;
+            ticket.Security_Type = security.Type;
+            ticket.Tag = tag;
+            ticket.TickeOrderType = OrderType.Market;
+            ticket.TicketTime = _algorithm.Time;
 
             _orderTickets.AddOrUpdate(ticket.OrderId, ticket);
-            request.OrderStatus = OrderStatus.Filled;
-            
-            // do not send the order to be processed after creating the ticket
-            //  It is marked as filled at the Open
-            //System.Diagnostics.Debug.WriteLine("Market order ticket status " + ticket.OrderStatus);
 
             return ticket;
-        }
-
-        public ProformaOrderTicket PopTicket(int orderId)
-        {
-            ProformaOrderTicket ticket;
-            _orderTickets.TryRemove(orderId, out ticket);
-            return ticket;
-        }
-
-        public bool TicketExists(ProformaOrderTicket ticket)
-        {
-            return _orderTickets.ContainsKey(ticket.OrderId);
-        }
-
-        public void UpdateTicket(ProformaOrderTicket ticket)
-        {
-            _orderTickets.AddOrUpdate(ticket.OrderId, ticket);
         }
 
         /// <summary>
@@ -275,15 +216,20 @@ namespace QuantConnect.Algorithm
         public ProformaOrderTicket MarketOnOpenOrder(string symbol, int quantity, string tag = "")
         {
             var security = _algorithm.Securities[symbol];
-            var request = CreateSubmitOrderRequest(OrderType.MarketOnOpen, security, quantity, tag);
-            var response = PreOrderChecks(request);
-            if (response.IsError)
-            {
-                return ProformaOrderTicket.InvalidSubmitRequest(_algorithm.Transactions, request, response);
-            }
-            var ticket = new ProformaOrderTicket(_algorithm.Transactions, request);
-            ticket.OrderType = OrderType.MarketOnOpen;
-            _orderTickets.TryAdd(ticket.OrderId, ticket);
+            ProformaOrderTicket ticket = new ProformaOrderTicket();
+            ticket.OrderId = GetIncrementOrderId();
+            ticket.ErrorMessage = string.Empty;
+            ticket.AverageFillPrice = 0;
+            ticket.Status = OrderStatus.Submitted;
+            ticket.Quantity = quantity;
+            ticket.QuantityFilled = 0;
+            ticket.Security_Type = security.Type;
+            ticket.Tag = tag;
+            ticket.TickeOrderType = OrderType.MarketOnOpen;
+            ticket.TicketTime = _algorithm.Time;
+
+            _orderTickets.AddOrUpdate(ticket.OrderId, ticket);
+
             return ticket;
         }
 
@@ -297,16 +243,21 @@ namespace QuantConnect.Algorithm
         public ProformaOrderTicket MarketOnCloseOrder(string symbol, int quantity, string tag = "")
         {
             var security = _algorithm.Securities[symbol];
-            var request = CreateSubmitOrderRequest(OrderType.MarketOnClose, security, quantity, tag);
-            var response = PreOrderChecks(request);
-            if (response.IsError)
-            {
-                return ProformaOrderTicket.InvalidSubmitRequest(_algorithm.Transactions, request, response);
-            }
 
-            var ticket = new ProformaOrderTicket(_algorithm.Transactions, request);
-            ticket.OrderType = OrderType.MarketOnClose;
-            _orderTickets.TryAdd(ticket.OrderId, ticket);
+            ProformaOrderTicket ticket = new ProformaOrderTicket();
+            ticket.OrderId = GetIncrementOrderId();
+            ticket.ErrorMessage = string.Empty;
+            ticket.AverageFillPrice = 0;
+            ticket.Status = OrderStatus.Submitted;
+            ticket.Quantity = quantity;
+            ticket.QuantityFilled = 0;
+            ticket.Security_Type = security.Type;
+            ticket.Tag = tag;
+            ticket.TickeOrderType = OrderType.MarketOnClose;
+            ticket.TicketTime = _algorithm.Time;
+
+            _orderTickets.AddOrUpdate(ticket.OrderId, ticket);
+
             return ticket;
         }
 
@@ -321,33 +272,21 @@ namespace QuantConnect.Algorithm
         public ProformaOrderTicket LimitOrder(string symbol, int quantity, decimal limitPrice, string tag = "")
         {
             var security = _algorithm.Securities[symbol];
-            var request = CreateSubmitOrderRequest(OrderType.Limit, security, quantity, tag, limitPrice: limitPrice);
-            var response = PreOrderChecks(request);
-            if (response.IsError)
-            {
-                request.OrderStatus = OrderStatus.Invalid;
-                return new ProformaOrderTicket(_algorithm.Transactions, request);
-            }
+            ProformaOrderTicket ticket = new ProformaOrderTicket();
+            ticket.OrderId = GetIncrementOrderId();
+            ticket.ErrorMessage = string.Empty;
+            ticket.AverageFillPrice = 0;
+            ticket.Status = OrderStatus.Submitted;
+            ticket.Quantity = quantity;
+            ticket.QuantityFilled = 0;
+            ticket.Security_Type = security.Type;
+            ticket.Tag = tag;
+            ticket.TickeOrderType = OrderType.Limit;
+            ticket.LimitPrice = limitPrice;
+            ticket.TicketTime = _algorithm.Time;
 
-            // create an order request
-            request.OrderStatus = OrderStatus.Submitted;
-            request.SetOrderId(GetIncrementOrderId());
-
-            // Create an Order and add to the list.  We can get it by order id which is set next
-            var p = new ProformaOrder(request)
-            {
-                OrderStatus = OrderStatus.Submitted,
-                CurrentMarketPrice = PricesWindow[0][request.Symbol].Close
-            };
-            var order = _orders.GetOrAdd(p.OrderId, p);
-
-            // Create the ticket and add to list
-            var ticket = AddOrder(request);
-            ticket.OrderStatus = order.OrderStatus;
-            ticket._order = order;
             _orderTickets.AddOrUpdate(ticket.OrderId, ticket);
 
-            //System.Diagnostics.Debug.WriteLine("Limit order ticket status " + ticket.OrderStatus);
             return ticket;
         }
 
@@ -362,33 +301,46 @@ namespace QuantConnect.Algorithm
         public ProformaOrderTicket StopMarketOrder(string symbol, int quantity, decimal stopPrice, string tag = "")
         {
             var security = _algorithm.Securities[symbol];
-            var request = CreateSubmitOrderRequest(OrderType.StopMarket, security, quantity, tag, stopPrice: stopPrice);
-            var response = PreOrderChecks(request);
-            if (response.IsError)
-            {
-                return ProformaOrderTicket.InvalidSubmitRequest(_algorithm.Transactions, request, response);
-            }
+            ProformaOrderTicket ticket = new ProformaOrderTicket();
+            ticket.OrderId = GetIncrementOrderId();
+            ticket.ErrorMessage = string.Empty;
+            ticket.AverageFillPrice = 0;
+            ticket.Status = OrderStatus.Submitted;
+            ticket.Quantity = quantity;
+            ticket.QuantityFilled = 0;
+            ticket.Security_Type = security.Type;
+            ticket.Tag = tag;
+            ticket.TickeOrderType = OrderType.Market;
+            ticket.StopPrice = stopPrice;
+            ticket.TicketTime = _algorithm.Time;
 
-            // create an order request
-            request.OrderStatus = OrderStatus.Submitted;
-            request.SetOrderId(GetIncrementOrderId());
-
-            // Create an Order and add to the list.  We can get it by order id which is set next
-            var p = new ProformaOrder(request)
-            {
-                OrderStatus = OrderStatus.Submitted,
-                CurrentMarketPrice = PricesWindow[0][request.Symbol].Close
-            };
-            var order = _orders.GetOrAdd(p.OrderId, p);
-            
-            // Create the ticket and add to list
-            var ticket = AddOrder(request);
-            ticket.OrderStatus = order.OrderStatus;
-            ticket._order = order;
             _orderTickets.AddOrUpdate(ticket.OrderId, ticket);
 
             return ticket;
+        }
 
+        private ProformaOrderTicket ProformaSubmitOrderTicket(ProformaSubmitOrderRequest request)
+        {
+            throw new NotImplementedException();
+            //// MODIFT the order request
+            //request.OrderStatus = OrderStatus.Submitted;
+            //request.SetOrderId(GetIncrementOrderId());
+
+            //// Create an Order and add to the list.  We can get it by order id which is set next
+            //var p = new ProformaOrder(request)
+            //{
+            //    OrderStatus = OrderStatus.Submitted,
+            //    CurrentMarketPrice = PricesWindow[0][request.Symbol].Close
+            //};
+            //var order = _orders.GetOrAdd(p.OrderId, p);
+
+            //// Create the ticket and add to list
+            //var ticket = AddOrder(request);
+            //ticket.OrderStatus = order.OrderStatus;
+            //ticket._order = order;
+            //_orderTickets.AddOrUpdate(ticket.OrderId, ticket);
+
+            //return ticket;
         }
 
         /// <summary>
@@ -403,24 +355,25 @@ namespace QuantConnect.Algorithm
         public ProformaOrderTicket StopLimitOrder(string symbol, int quantity, decimal stopPrice, decimal limitPrice, string tag = "")
         {
             var security = _algorithm.Securities[symbol];
-            var request = CreateSubmitOrderRequest(OrderType.StopLimit, security, quantity, tag, stopPrice: stopPrice, limitPrice: limitPrice);
-            var response = PreOrderChecks(request);
-            if (response.IsError)
-            {
-                return ProformaOrderTicket.InvalidSubmitRequest(_algorithm.Transactions, request, response);
-            }
-
-            //Add the order and create a new order Id.
-            // return Transactions.AddOrder(request);
-            var ticket = new ProformaOrderTicket(_algorithm.Transactions, request);
-            ticket.OrderType = OrderType.StopLimit;
-            ticket.StopLimit = stopPrice;
+            ProformaOrderTicket ticket = new ProformaOrderTicket();
+            ticket.OrderId = GetIncrementOrderId();
+            ticket.ErrorMessage = string.Empty;
+            ticket.AverageFillPrice = 0;
+            ticket.Status = OrderStatus.Submitted;
+            ticket.Quantity = quantity;
+            ticket.QuantityFilled = 0;
+            ticket.Security_Type = security.Type;
             ticket.Tag = tag;
+            ticket.TickeOrderType = OrderType.StopLimit;
+            ticket.LimitPrice = limitPrice;
+            ticket.StopPrice = stopPrice;
+            ticket.TicketTime = _algorithm.Time;
 
+            _orderTickets.AddOrUpdate(ticket.OrderId, ticket);
 
             return ticket;
         }
-
+        #region PreOrderChecks
         /// <summary>
         /// Perform preorder checks to ensure we have sufficient capital, 
         /// the market is open, and we haven't exceeded maximum realistic orders per day.
@@ -521,7 +474,7 @@ namespace QuantConnect.Algorithm
             // passes all initial order checks
             return OrderResponse.Success(request);
         }
-
+        #endregion
         /// <summary>
         /// Liquidate all holdings. Called at the end of day for tick-strategies.
         /// </summary>
@@ -549,8 +502,8 @@ namespace QuantConnect.Algorithm
                 }
 
                 //Liquidate at market price.
-                var ticket = Order(symbol, quantity);
-                if (ticket.OrderStatus == OrderStatus.Filled)
+                var ticket = MarketOrder(symbol, quantity,"Liquidate Position");
+                if (ticket.Status == OrderStatus.Filled)
                 {
                     orderIdList.Add(ticket.OrderId);
                 }
@@ -637,7 +590,7 @@ namespace QuantConnect.Algorithm
                     if (holdingSymbol != symbol && security.Holdings.AbsoluteQuantity > 0)
                     {
                         //Go through all existing holdings [synchronously], market order the inverse quantity:
-                        Order(holdingSymbol, -security.Holdings.Quantity);
+                        MarketOrder(holdingSymbol, -security.Holdings.Quantity, "Set Holdings Liquidate - " + tag);
                     }
                 }
             }
@@ -646,7 +599,7 @@ namespace QuantConnect.Algorithm
             var quantity = CalculateOrderQuantity(symbol, percentage);
             if (Math.Abs(quantity) > 0)
             {
-                MarketOrder(symbol, quantity, false, tag);
+                MarketOrder(symbol, quantity, tag);
             }
         }
 
@@ -722,52 +675,13 @@ namespace QuantConnect.Algorithm
             return (direction == OrderDirection.Sell ? -1 : 1) * orderQuantity;
         }
 
-        /// <summary>
-        /// Obsolete implementation of Order method accepting a OrderType. This was deprecated since it 
-        /// was impossible to generate other orders via this method. Any calls to this method will always default to a Market Order.
-        /// </summary>
-        /// <param name="symbol">Symbol we want to purchase</param>
-        /// <param name="quantity">Quantity to buy, + is long, - short.</param>
-        /// <param name="type">Order Type</param>
-        /// <param name="asynchronous">Don't wait for the response, just submit order and move on.</param>
-        /// <param name="tag">Custom data for this order</param>
-        /// <returns>Integer Order ID.</returns>
-        [Obsolete("This Order method has been made obsolete, use Order(string, int, bool, string) method instead. Calls to the obsolete method will only generate market orders.")]
-        public ProformaOrderTicket Order(string symbol, int quantity, OrderType type, bool asynchronous = false, string tag = "")
-        {
-            return Order(symbol, quantity, asynchronous, tag);
-        }
 
-        /// <summary>
-        /// Obsolete method for placing orders. 
-        /// </summary>
-        /// <param name="symbol"></param>
-        /// <param name="quantity"></param>
-        /// <param name="type"></param>
-        [Obsolete("This Order method has been made obsolete, use the specialized Order helper methods instead. Calls to the obsolete method will only generate market orders.")]
-        public ProformaOrderTicket Order(string symbol, decimal quantity, OrderType type)
-        {
-            return Order(symbol, (int)quantity);
-        }
+        //public ProformaSubmitOrderRequest CreateSubmitOrderRequest(OrderType orderType, Security security, int quantity, string tag, decimal stopPrice = 0m, decimal limitPrice = 0m)
+        //{
 
-        /// <summary>
-        /// Obsolete method for placing orders.
-        /// </summary>
-        /// <param name="symbol"></param>
-        /// <param name="quantity"></param>
-        /// <param name="type"></param>
-        [Obsolete("This Order method has been made obsolete, use the specialized Order helper methods instead. Calls to the obsolete method will only generate market orders.")]
-        public ProformaOrderTicket Order(string symbol, int quantity, OrderType type)
-        {
-            return Order(symbol, quantity);
-        }
-
-        public ProformaSubmitOrderRequest CreateSubmitOrderRequest(OrderType orderType, Security security, int quantity, string tag, decimal stopPrice = 0m, decimal limitPrice = 0m)
-        {
-
-            return new ProformaSubmitOrderRequest(orderType, security.Type, security.Symbol, quantity,
-                stopPrice, limitPrice, DateTime.Now, tag);
-        }
+        //    return new ProformaSubmitOrderRequest(orderType, security.Type, security.Symbol, quantity,
+        //        stopPrice, limitPrice, DateTime.Now, tag);
+        //}
 
         public int GetTicketCount()
         {
@@ -790,15 +704,29 @@ namespace QuantConnect.Algorithm
         /// </summary>
         /// <param name="request">A request detailing the order to be submitted</param>
         /// <returns>New unique, increasing orderid</returns>
-        public ProformaOrderTicket AddOrder(ProformaSubmitOrderRequest request)
+        public ProformaOrderTicket AddOrder(string symbol, int quantity, string tag = "")
         {
-            request.SetResponse(OrderResponse.Success(request), OrderRequestStatus.Processing);
-            var ticket = new ProformaOrderTicket(_algorithm.Transactions, request);
-            _orderTickets.TryAdd(ticket.OrderId, ticket);
-
-            // send the order to be processed after creating the ticket
-            //_orderRequestQueue.Enqueue(request);
+            var ticket = MarketOrder(symbol, quantity, tag);
             return ticket;
         }
+        public ProformaOrderTicket PopTicket(int orderId)
+        {
+            ProformaOrderTicket ticket;
+            _orderTickets.TryRemove(orderId, out ticket);
+            return ticket;
+        }
+
+        public bool TicketExists(ProformaOrderTicket ticket)
+        {
+            return _orderTickets.ContainsKey(ticket.OrderId);
+        }
+
+        public void UpdateTicket(ProformaOrderTicket ticket)
+        {
+            _orderTickets.AddOrUpdate(ticket.OrderId, ticket);
+        }
+
     }
+
+
 }

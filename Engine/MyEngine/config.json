@@ -1,6 +1,6 @@
 {
     // this configuration file works by first loading all top-level
-    // configuration items and then will load the specified environment
+    // configuration it s and then will load the specified environment
     // on top, this provides a layering affect. environment names can be
     // anything, and just require definition in this file. There's
     // two predefined environments, 'backtesting' and 'live', feel free
@@ -8,10 +8,12 @@
 
     "environment": "backtesting",
 
-    // algorithm class selector LoggingITrendAlgorithm
-    "algorithm-type-name": "InstantaneousTrendAlgorithm",
+    // algorithm class selector
+    //"algorithm-type-name": "BasicTemplateAlgorithm",
+    //"algorithm-type-name": "LoggingITrendAlgorithm",     
+    "algorithm-type-name": "InstantaneousTrendAlgorithm", 
     //"algorithm-type-name": "ITrendAlgorithm",
-    
+    //"algorithm-type-name": "MultiITAlgorithm",
 
     // Algorithm language selector - options CSharp, FSharp, VisualBasic, Python, Java
     "algorithm-language": "CSharp",
@@ -24,7 +26,7 @@
     //"algorithm-location": "QuantConnect.Algorithm.Java.dll",
 
     // engine
-    "data-folder": "../../../Data/",
+    "data-folder": "H:\\GoogleFinanceData\\",
 
     // handlers
     "log-handler": "QuantConnect.Logging.CompositeLogHandler",
@@ -50,12 +52,6 @@
     "tradier-refresh-token": "",
     "tradier-issued-at": "",
     "trader-lifespan": "",
-
-    //Database Datafeed Connection:
-    "database-address": "localhost",
-    "database-user": "root",
-    "database-password": "",
-    "database-name": "lean",
 
     "environments": {
 

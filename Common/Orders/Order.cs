@@ -277,6 +277,7 @@ namespace QuantConnect.Orders
                 default:
                     throw new ArgumentOutOfRangeException();
             }
+            
             order.Status = OrderStatus.New;
             order.Id = request.OrderId;
             if (request.Tag != null)

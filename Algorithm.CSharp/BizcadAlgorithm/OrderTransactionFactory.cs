@@ -42,7 +42,7 @@ namespace QuantConnect.Algorithm
                 
                 #region "Create OrderTransaction"
 
-                var x = ticket.OrderEvents.FirstOrDefault();
+                var x = ticket.OrderEvents.FirstOrDefault(o => o.Status == OrderStatus.Filled);
                 //t.ActionId = x.Direction.ToString() == "Buy" ? 1 : 13;
                 t.ActionId = orderEvent.Direction.ToString() == "Buy" ? 1 : 13;
                 t.ActionNameUS = orderEvent.Direction.ToString();
@@ -52,7 +52,7 @@ namespace QuantConnect.Algorithm
                 t.Commission = orderFees;
                 t.Description = string.Format("{0} {1} shares of {2} at ${3}", orderEvent.Direction, ticket.Quantity, orderEvent.Symbol, order.Price);
                 t.Direction = orderEvent.Direction;
-                t.Direction = x.Direction;
+                //t.Direction = x.Direction;
                 t.Exchange = "";
                 t.Fees = 0;  // need to calculate based upon difference in Portfolio[symbol].HoldingsValue between buy and sell
                 t.Id = 0;
