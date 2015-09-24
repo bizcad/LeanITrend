@@ -53,6 +53,9 @@ namespace QuantConnect.Algorithm.CSharp.JJAlgorithms.SOLIDITrend
 
         // Dictionary used to store the portfolio sharesize for each symbol.
         private Dictionary<string, decimal> ShareSize = new Dictionary<string, decimal>();
+
+        // Dictionary used to store the last order sent for each symbol.
+        private Dictionary<string, Queue<OrderTicket>> OrderSent = new Dictionary<string, Queue<OrderTicket>>();
         
         // Dictionary used to store a account for each symbol. Used for testing stock's performance with a boundary.
         private Dictionary<string, decimal> StockAccount = new Dictionary<string, decimal>();  
@@ -239,22 +242,17 @@ namespace QuantConnect.Algorithm.CSharp.JJAlgorithms.SOLIDITrend
         private void CheckSentOrderStatus(string symbol)
         {
             int shares;
-            try
+            var ordersEnumerable = Transactions.GetOrderTickets(t => t.Symbol == symbol);
+            if (ordersEnumerable.Count() == 0) return;
+            
+            OrderTicket lastOrder = ordersEnumerable.Last();
+            // If the ticket isn't filled...
+            if (lastOrder.Status != OrderStatus.Filled)
             {
-                OrderTicket lastOrder = Transactions.GetOrderTickets(t => t.Symbol == symbol).Last();
-
-                // If the ticket isn't filled...
-                if (lastOrder.Status != OrderStatus.Filled)
-                {
-                    shares = lastOrder.Quantity;
-                    // cancel the limit order and send a new market order.
-                    lastOrder.Cancel();
-                    MarketOrder(symbol, shares);
-                }
-            } 
-            catch
-            {
-                return;
+                shares = lastOrder.Quantity;
+                // cancel the limit order and send a new market order.
+                lastOrder.Cancel();
+                MarketOrder(symbol, shares);
             }
         }
 
@@ -304,7 +302,9 @@ namespace QuantConnect.Algorithm.CSharp.JJAlgorithms.SOLIDITrend
         {
             decimal? entryPrice;
             StockState actualState;
-            try
+            
+            var ordersEnumerable = Transactions.GetOrderTickets(t => t.Symbol == symbol);
+            if (ordersEnumerable.Count() != 0) 
             {
                 OrderTicket lastOrder = Transactions.GetOrderTickets(t => t.Symbol == symbol).Last();
 
@@ -319,7 +319,7 @@ namespace QuantConnect.Algorithm.CSharp.JJAlgorithms.SOLIDITrend
                     entryPrice = null;
                 }
             } 
-            catch
+            else
             {
                 actualState = StockState.noInvested;
                 entryPrice = null;
@@ -358,8 +358,17 @@ namespace QuantConnect.Algorithm.CSharp.JJAlgorithms.SOLIDITrend
                                     (data[symbol].Close + (data[symbol].High - data[symbol].Low) * RngFac));
                     }
                     // Send the order.
-                    LimitOrder(symbol, shares, limitPrice);
-                    break;
+                    if (lastOrderSent.ContainsKey(symbol))
+                    {
+                        lastOrderSent[symbol] = LimitOrder(symbol, shares, limitPrice);
+                    }
+                    else
+                    {
+                        lastOrderSent.Add(symbol, LimitOrder(symbol, shares, limitPrice));
+                    }
+
+
+                        break;
 
                 case OrderSignal.closeLong:
                 case OrderSignal.closeShort:
