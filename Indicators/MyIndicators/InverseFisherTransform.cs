@@ -14,6 +14,9 @@
  *
 */
 using System;
+using System.Collections;
+using System.Collections.Generic;
+using System.Linq;
 
 namespace QuantConnect.Indicators
 {
@@ -22,12 +25,8 @@ namespace QuantConnect.Indicators
     public class InverseFisherTransform : WindowIndicator<IndicatorDataPoint>
     {
 
-        private readonly Minimum _minLow;
-        private readonly Maximum _maxHigh;
-        private RollingWindow<IndicatorDataPoint> value1;
-        private LinearWeightedMovingAverage value2;
-
-
+        private RollingWindow<IndicatorDataPoint> series;
+        
         /// <summary>
         /// A Fisher Transform of Prices
         /// </summary>
@@ -36,19 +35,7 @@ namespace QuantConnect.Indicators
         public InverseFisherTransform(string name, int period)
             : base(name, period)
         {
-            // Initialize the local variables
-            value1 = new RollingWindow<IndicatorDataPoint>(period);
-            value2 = new LinearWeightedMovingAverage(period);
-
-            // add two minimum values to the value1 to get things started
-            value1.Add(new IndicatorDataPoint(DateTime.MinValue, .0001m));
-            value1.Add(new IndicatorDataPoint(DateTime.MinValue, .0001m));
-
-            // Initialize the local variables
-            _maxHigh = new Maximum("MaxHigh", period);
-            _minLow = new Minimum("MinLow", period);
-            
-
+            series = new RollingWindow<IndicatorDataPoint>(period);
         }
 
         /// <summary>
@@ -73,44 +60,20 @@ namespace QuantConnect.Indicators
         /// <returns></returns>
         protected override decimal ComputeNextValue(IReadOnlyWindow<IndicatorDataPoint> window, IndicatorDataPoint input)
         {
-            //value1.Add(input);
-            //value2.Update(input);
+            double ifish = 0d;
 
-            _maxHigh.Update(input);
-            _minLow.Update(input);
-            if (IsReady)
+            if (this.IsReady)
             {
-                // get some local variables
-                var price = input.Value;
-                var minL = _minLow.Current.Value;
-                var maxH = _maxHigh.Current.Value;
-                if (price == 0)
-                {
-                    Current = new IndicatorDataPoint(input.EndTime, 0);
+                double mean = (double)window.Average(t => t.Value);
+                double sqrAvg = (double)window.Sum(t => t.Value * t.Value) / window.Size;
+                double sd = Math.Pow((sqrAvg - Math.Pow(mean, 2)), 0.5d);
 
-                }
-                else
-                {
-                    // get the value1 from the last time this function was called
-                    var v1 = value1[0].Value;
+                double normalized = 4 * ((double)input.Value - mean) / sd;
 
-                    // compute the EMA of the price and the last value1
-                    value1.Add(new IndicatorDataPoint(input.Time, .33m*2m*((price - minL)/(maxH - minL) - .5m) + .67m*v1));
-
-                    // limit the new value1 so that it falls within positive or negative unity
-                    if (value1[0].Value > .9999m)
-                        value1[0].Value = .9999m;
-                    if (value1[0].Value < -.9999m)
-                        value1[0].Value = -.9999m;
-                    var current = Current;
-
-                    var ifish = (Math.Exp(2*(double) value1[0].Value) - 1)/(Math.Exp(2*(double) value1[0].Value) + 1);
-                    Current = new IndicatorDataPoint(input.Time, (decimal) ifish);
-                }
+                ifish = (Math.Exp(2 * normalized) - 1) / (Math.Exp(2 * normalized) + 1);
             }
 
-
-
+            Current = new IndicatorDataPoint(input.Time, (decimal)ifish);
             return this.Current;
         }
     }
