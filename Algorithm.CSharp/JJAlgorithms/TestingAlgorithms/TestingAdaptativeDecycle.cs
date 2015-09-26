@@ -22,8 +22,8 @@ namespace QuantConnect
         int counter;
         int period = 5;
 
+        Decycle decycleAdaptive;
         Decycle decycle;
-        AdaptativeDecycle adaptativeDecycle;
         AutocorrelogramPeriodogram AP;
                 
         StringBuilder toFile = new StringBuilder();
@@ -40,8 +40,8 @@ namespace QuantConnect
             AddSecurity(SecurityType.Equity, symbol, Resolution.Minute);
             int decyclePeriod = 10;
             decycle = new Decycle(decyclePeriod);
-            adaptativeDecycle = new AdaptativeDecycle();
-            AP = new AutocorrelogramPeriodogram(10, 60, 3);
+            decycleAdaptive = new Decycle(decyclePeriod);
+            AP = new AutocorrelogramPeriodogram(30, 60, 15);
 
             toFile.AppendLine("Bar,Close,Decycle"+decyclePeriod+",AdaptativeDecycle,DominantCycle");
 
@@ -51,13 +51,12 @@ namespace QuantConnect
         public void OnData(TradeBars data)
         {
             decycle.Update(new IndicatorDataPoint(Time, data[symbol].Value));
-            adaptativeDecycle.Update(new IndicatorDataPoint(Time, data[symbol].Value));
             AP.Update(new IndicatorDataPoint(Time, data[symbol].Value));
+            decycleAdaptive.AdaptativePeriod = (AP.IsReady) ? (int)AP.Current.Value : 10;
 
-            adaptativeDecycle.AdaptativePeriod = (AP.IsReady) ? (int)AP.Current.Value : 10;
-        
-            string newLine = string.Format("{0}, {1}, {2}, {3}, {4}", counter, data[symbol].Close, decycle.Current.Value,
-                adaptativeDecycle.Current.Value, AP.Current.Value);
+            decycleAdaptive.Update(new IndicatorDataPoint(Time, data[symbol].Value));
+
+            string newLine = string.Format("{0}, {1}, {2}, {3}, {4}", counter, data[symbol].Close, decycle.Current.Value, decycleAdaptive.Current.Value, AP.Current.Value);
             toFile.AppendLine(newLine);
             counter++;
         }

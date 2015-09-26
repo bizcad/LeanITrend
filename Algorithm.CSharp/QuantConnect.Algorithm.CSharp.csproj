@@ -81,10 +81,10 @@
     <Compile Include="JJAlgorithms\LaguerreBasic.cs" />
     <Compile Include="JJAlgorithms\LaguerreEMA.cs" />
     <Compile Include="Common\IStrategy.cs" />
-    <Compile Include="JJAlgorithms\SOLIDITrend\SOLIDITrendAlgo.cs" />
     <Compile Include="JJAlgorithms\MultiStrategyAlgo\MultiStrategyAlgo.cs" />
     <Compile Include="JJAlgorithms\MultiStrategyAlgo\SimpleMomentumStrategy.cs" />
     <Compile Include="JJAlgorithms\SOLIDITrend\SimpleMomentumStrategy.cs" />
+    <Compile Include="JJAlgorithms\TestingAlgorithms\TestingAdaptativeDecycle.cs" />
     <Compile Include="JJAlgorithms\TestingAlgorithms\TestingAP.cs" />
     <Compile Include="LimitFillRegressionAlgorithm.cs" />
     <Compile Include="BasicTemplateFillForwardAlgorithm.cs" />
