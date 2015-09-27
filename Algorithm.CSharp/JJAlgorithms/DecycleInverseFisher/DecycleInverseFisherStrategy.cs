@@ -38,7 +38,7 @@ namespace QuantConnect.Algorithm.CSharp.JJAlgorithms.DecycleInverseFisher
 
         #endregion Constructor
 
-        #region Override methods
+        #region Overriden methods
 
         public override OrderSignal CheckSignal()
         {

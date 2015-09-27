@@ -67,6 +67,7 @@
     <Compile Include="BizcadAlgorithm\PositionInventoryFifo.cs" />
     <Compile Include="BizcadAlgorithm\PositionInventoryLifo.cs" />
     <Compile Include="Common\IStrategy.cs" />
+    <Compile Include="JJAlgorithms\DecycleInverseFisher\DecycleInverseFisherAlgorithm.cs" />
     <Compile Include="JJAlgorithms\DecycleInverseFisher\DecycleInverseFisherStrategy.cs" />
     <Compile Include="Proforma\ProformaOrder.cs" />
     <Compile Include="BizcadAlgorithm\RateOfChangePercentStrategy.cs" />
