@@ -14,6 +14,8 @@
  *
 */
 
+using System.Collections.Generic;
+using System.Threading;
 using NUnit.Framework;
 using QuantConnect.Util;
 
@@ -28,6 +30,7 @@ namespace QuantConnect.Tests.Common.Util
             var collection = new BusyBlockingCollection<int>();
             Assert.IsFalse(collection.IsBusy);
         }
+
         [Test]
         public void IsBusyWithItemsWaiting()
         {

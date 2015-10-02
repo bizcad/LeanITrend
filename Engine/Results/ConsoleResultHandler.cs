@@ -1,4 +1,4 @@
-﻿/*
+/*
  * QUANTCONNECT.COM - Democratizing Finance, Empowering Individuals.
  * Lean Algorithmic Trading Engine v2.0. Copyright 2014 QuantConnect Corporation.
  * 
@@ -27,6 +27,8 @@ using QuantConnect.Lean.Engine.TransactionHandlers;
 using QuantConnect.Logging;
 using QuantConnect.Orders;
 using QuantConnect.Packets;
+using QuantConnect.Notifications;  
+using QuantConnect.Statistics;
 
 namespace QuantConnect.Lean.Engine.Results
 {
@@ -42,6 +44,7 @@ namespace QuantConnect.Lean.Engine.Results
         private IAlgorithm _algorithm;
         private readonly object _chartLock;
         private IConsoleStatusHandler _algorithmNode;
+        private IMessagingHandler _messagingHandler; 
 
         //Sampling Periods:
         private DateTime _nextSample;
@@ -50,6 +53,9 @@ namespace QuantConnect.Lean.Engine.Results
         private string _chartDirectory;
         private readonly Dictionary<string, List<string>> _equityResults;
 
+        /// <summary>
+        /// A dictionary containing summary statistics
+        /// </summary>
         public Dictionary<string, string> FinalStatistics { get; private set; }
 
         /// <summary>
@@ -173,6 +179,8 @@ namespace QuantConnect.Lean.Engine.Results
                 Directory.Delete(_chartDirectory, true);
             }
             Directory.CreateDirectory(_chartDirectory);
+            _messagingHandler = messagingHandler; 
+
         }
         
         /// <summary>
@@ -352,7 +360,7 @@ namespace QuantConnect.Lean.Engine.Results
         /// <param name="symbol">Symbol we're sampling.</param>
         /// <param name="time">Time of sample</param>
         /// <param name="value">Value of the asset price</param>
-        public void SampleAssetPrices(string symbol, DateTime time, decimal value)
+        public void SampleAssetPrices(Symbol symbol, DateTime time, decimal value)
         { 
             //NOP. Don't sample asset prices in console.
         }
@@ -396,21 +404,26 @@ namespace QuantConnect.Lean.Engine.Results
         /// <param name="orders">Collection of orders from the algorithm</param>
         /// <param name="profitLoss">Collection of time-profit values for the algorithm</param>
         /// <param name="holdings">Current holdings state for the algorithm</param>
-        /// <param name="statistics">Statistics information for the algorithm (empty if not finished)</param>
+        /// <param name="statisticsResults">Statistics information for the algorithm (empty if not finished)</param>
         /// <param name="banner">Runtime statistics banner information</param>
-        public void SendFinalResult(AlgorithmNodePacket job, Dictionary<int, Order> orders, Dictionary<DateTime, decimal> profitLoss, Dictionary<string, Holding> holdings, Dictionary<string, string> statistics, Dictionary<string, string> banner)
+        public void SendFinalResult(AlgorithmNodePacket job, Dictionary<int, Order> orders, Dictionary<DateTime, decimal> profitLoss, Dictionary<string, Holding> holdings, StatisticsResults statisticsResults, Dictionary<string, string> banner)
         {
             // uncomment these code traces to help write regression tests
-            //Log.Trace("var statistics = new Dictionary<string, string>();");
+            //Console.WriteLine("var statistics = new Dictionary<string, string>();");
             
             // Bleh. Nicely format statistical analysis on your algorithm results. Save to file etc.
-            foreach (var pair in statistics) 
+            foreach (var pair in statisticsResults.Summary) 
             {
                 Log.Trace("STATISTICS:: " + pair.Key + " " + pair.Value);
-                //Log.Trace(string.Format("statistics.Add(\"{0}\",\"{1}\");", pair.Key, pair.Value));
+                //Console.WriteLine(string.Format("statistics.Add(\"{0}\",\"{1}\");", pair.Key, pair.Value));
             }
 
-            FinalStatistics = statistics;
+            //foreach (var pair in statisticsResults.RollingPerformances) 
+            //{
+            //    Log.Trace("ROLLINGSTATS:: " + pair.Key + " SharpeRatio: " + Math.Round(pair.Value.PortfolioStatistics.SharpeRatio, 3));
+            //}
+
+            FinalStatistics = statisticsResults.Summary;
         }
 
         /// <summary>
@@ -610,6 +623,46 @@ namespace QuantConnect.Lean.Engine.Results
             foreach (var pair in _algorithm.RuntimeStatistics)
             {
                 RuntimeStatistic(pair.Key, pair.Value);
+            }
+            // Dequeue and processes notification messages
+            //Send all the notification messages but timeout within a second
+            var start = DateTime.Now;
+            while (_algorithm.Notify.Messages.Count > 0 && DateTime.Now < start.AddSeconds(1))
+            {
+                Notification message;
+                if (_algorithm.Notify.Messages.TryDequeue(out message))
+                {
+                    //Process the notification messages:
+                    Log.Trace("ConsoleResultHandler.ProcessSynchronousEvents(): Processing Notification...");
+
+                    switch (message.GetType().Name)
+                    {
+                        case "NotificationEmail":
+                            _messagingHandler.Email(message as NotificationEmail);
+                            break;
+
+                        case "NotificationSms":
+                            _messagingHandler.Sms(message as NotificationSms);
+                            break;
+
+                        case "NotificationWeb":
+                            _messagingHandler.Web(message as NotificationWeb);
+                            break;
+
+                        default:
+                            try
+                            {
+                                //User code.
+                                message.Send();
+                            }
+                            catch (Exception err)
+                            {
+                                Log.Error("ConsoleResultHandler.ProcessSynchronousEvents(): Custom send notification: " + err.Message);
+                                ErrorMessage("Custom send notification: " + err.Message, err.StackTrace);
+                            }
+                            break;
+                    }
+                }
             }
         }
 

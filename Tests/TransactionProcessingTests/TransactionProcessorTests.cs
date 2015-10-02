@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 using Newtonsoft.Json;
 using NUnit.Framework;
 using QuantConnect.Algorithm.CSharp;
-using QuantConnect.Algorithm.CSharp.Common;
+
 using QuantConnect.Data.Market;
 using QuantConnect.Orders;
 

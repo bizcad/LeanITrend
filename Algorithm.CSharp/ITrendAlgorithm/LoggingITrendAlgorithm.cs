@@ -7,7 +7,7 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Text;
-using QuantConnect.Algorithm.CSharp.Common;
+
 using QuantConnect.Algorithm.Examples;
 using QuantConnect.Data.Market;
 using QuantConnect.Logging;
@@ -17,7 +17,7 @@ using QuantConnect.Securities;
 using QuantConnect.Indicators;
 using QuantConnect.Util;
 
-namespace QuantConnect.Algorithm.CSharp.ITrendAlgorithm
+namespace QuantConnect.Algorithm.CSharp
 {
     internal class LoggingITrendAlgorithm : QCAlgorithm
     {

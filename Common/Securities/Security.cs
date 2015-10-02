@@ -14,7 +14,6 @@
 */
 
 using System;
-using System.Text.RegularExpressions;
 using QuantConnect.Data;
 using QuantConnect.Data.Market;
 using QuantConnect.Securities.Equity;
@@ -34,18 +33,16 @@ namespace QuantConnect.Securities
     {
         private LocalTimeKeeper _localTimeKeeper;
 
-        private readonly string _symbol;
-        private readonly bool _isDynamicallyLoadedData;
         private readonly SubscriptionDataConfig _config;
 
         /// <summary>
-        /// String symbol for the asset.
+        /// <see cref="Symbol"/> for the asset.
         /// </summary>
-        public string Symbol 
+        public Symbol Symbol 
         {
             get 
             {
-                return _symbol;
+                return _config.Symbol;
             }
         }
         
@@ -206,11 +203,9 @@ namespace QuantConnect.Securities
         /// <summary>
         /// Construct a new security vehicle based on the user options.
         /// </summary>
-        public Security(SecurityExchangeHours exchangeHours, SubscriptionDataConfig config, decimal leverage, bool isDynamicallyLoadedData = false) 
+        public Security(SecurityExchangeHours exchangeHours, SubscriptionDataConfig config, decimal leverage) 
         {
             _config = config;
-            _symbol = config.Symbol;
-            _isDynamicallyLoadedData = isDynamicallyLoadedData;
 
             Cache = new SecurityCache();
             Exchange = new SecurityExchange(exchangeHours);
@@ -284,17 +279,6 @@ namespace QuantConnect.Securities
             get
             {
                 return Holdings.Leverage;
-            }
-        }
-
-        /// <summary>
-        /// Use QuantConnect data source flag, or is the security a user imported object
-        /// </summary>
-        public virtual bool IsDynamicallyLoadedData 
-        {
-            get
-            {
-                return _isDynamicallyLoadedData;
             }
         }
 
@@ -441,7 +425,7 @@ namespace QuantConnect.Securities
         /// <filterpriority>2</filterpriority>
         public override string ToString()
         {
-            return Symbol;
+            return Symbol.Permtick;
         }
     }
 }

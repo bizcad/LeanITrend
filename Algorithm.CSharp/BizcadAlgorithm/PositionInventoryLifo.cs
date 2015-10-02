@@ -1,4 +1,5 @@
 ﻿using System.Collections.Concurrent;
+using System.Linq;
 using QuantConnect.Orders;
 
 namespace QuantConnect.Algorithm.CSharp
@@ -9,7 +10,7 @@ namespace QuantConnect.Algorithm.CSharp
         public ConcurrentStack<OrderTransaction> Sells { get; set; }
         public const string Buy = "Buy";
         public const string Sell = "Sell";
-        public string Symbol { set; get; }
+        public Symbol Symbol { set; get; }
 
         public PositionInventoryLifo()
         {
@@ -67,9 +68,25 @@ namespace QuantConnect.Algorithm.CSharp
             return Sells.Count;
         }
 
-        public string GetSymbol()
+        public Symbol GetSymbol()
         {
             return Symbol;
+        }
+        public int GetBuysQuantity(Symbol symbol)
+        {
+            if (!Buys.IsEmpty)
+            {
+                return Buys.Sum(b => b.Quantity);
+            }
+            return 0;
+        }
+        public int GetSellsQuantity(Symbol symbol)
+        {
+            if (!Sells.IsEmpty)
+            {
+                return Sells.Sum(b => b.Quantity);
+            }
+            return 0;
         }
     }
 }

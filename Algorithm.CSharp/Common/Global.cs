@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace QuantConnect.Algorithm.CSharp.Common
+namespace QuantConnect.Algorithm.CSharp
 {
     public enum StockState
     {

@@ -12,11 +12,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
 */
+
 using System;
 using System.Diagnostics;
-using System.Threading;
 using QuantConnect.Data;
-using QuantConnect.Data.Consolidators;
 
 namespace QuantConnect.Indicators
 {
@@ -107,6 +106,7 @@ namespace QuantConnect.Indicators
         public virtual void Reset()
         {
             Samples = 0;
+            _previousInput = null;
             Current = new IndicatorDataPoint(DateTime.MinValue, default(decimal));
         }
 

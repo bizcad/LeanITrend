@@ -16,14 +16,11 @@
 
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
-using System.Linq;
+using NodaTime;
 using QuantConnect.Data;
 using QuantConnect.Data.Fundamental;
 using QuantConnect.Data.Market;
-using QuantConnect.Interfaces;
 using QuantConnect.Securities;
-using QuantConnect.Util;
 
 namespace QuantConnect.Lean.Engine.DataFeeds
 {
@@ -96,22 +93,23 @@ namespace QuantConnect.Lean.Engine.DataFeeds
         /// <summary>
         /// Creates a new <see cref="TimeSlice"/> for the specified time using the specified data
         /// </summary>
-        /// <param name="algorithm">The algorithm we're creating <see cref="TimeSlice"/> instances for</param>
         /// <param name="utcDateTime">The UTC frontier date time</param>
+        /// <param name="algorithmTimeZone">The algorithm's time zone, required for computing algorithm and slice time</param>
+        /// <param name="cashBook">The algorithm's cash book, required for generating cash update pairs</param>
         /// <param name="data">The data in this <see cref="TimeSlice"/></param>
         /// <param name="changes">The new changes that are seen in this time slice as a result of universe selection</param>
         /// <returns>A new <see cref="TimeSlice"/> containing the specified data</returns>
-        public static TimeSlice Create(IAlgorithm algorithm, DateTime utcDateTime, List<KeyValuePair<Security, List<BaseData>>> data, SecurityChanges changes)
+        public static TimeSlice Create(DateTime utcDateTime, DateTimeZone algorithmTimeZone, CashBook cashBook, List<KeyValuePair<Security, List<BaseData>>> data, SecurityChanges changes)
         {
             int count = 0;
             var security = new List<KeyValuePair<Security, BaseData>>();
             var custom = new List<KeyValuePair<Security, List<BaseData>>>();
             var consolidator = new List<KeyValuePair<SubscriptionDataConfig, List<BaseData>>>();
             var allDataForAlgorithm = new List<BaseData>(data.Count);
-            var cash = new List<KeyValuePair<Cash, BaseData>>(algorithm.Portfolio.CashBook.Count);
+            var cash = new List<KeyValuePair<Cash, BaseData>>(cashBook.Count);
 
-            var cashSecurities = new HashSet<string>();
-            foreach (var cashItem in algorithm.Portfolio.CashBook.Values)
+            var cashSecurities = new HashSet<Symbol>();
+            foreach (var cashItem in cashBook.Values)
             {
                 cashSecurities.Add(cashItem.SecuritySymbol);
             }
@@ -119,13 +117,15 @@ namespace QuantConnect.Lean.Engine.DataFeeds
             Split split;
             Dividend dividend;
             Delisting delisting;
+            SymbolChangedEvent symbolChange;
 
-            var algorithmTime = utcDateTime.ConvertFromUtc(algorithm.TimeZone);
+            var algorithmTime = utcDateTime.ConvertFromUtc(algorithmTimeZone);
             var tradeBars = new TradeBars(algorithmTime);
             var ticks = new Ticks(algorithmTime);
             var splits = new Splits(algorithmTime);
             var dividends = new Dividends(algorithmTime);
             var delistings = new Delistings(algorithmTime);
+            var symbolChanges = new SymbolChangedEvents(algorithmTime);
 
             foreach (var kvp in data)
             {
@@ -137,7 +137,7 @@ namespace QuantConnect.Lean.Engine.DataFeeds
 
                 BaseData update = null;
                 var consolidatorUpdate = new List<BaseData>(list.Count);
-                for (int i = list.Count - 1; i > -1; i--)
+                for (int i = 0; i < list.Count; i++)
                 {
                     var baseData = list[i];
                     if (!kvp.Key.SubscriptionDataConfig.IsInternalFeed)
@@ -145,36 +145,38 @@ namespace QuantConnect.Lean.Engine.DataFeeds
                         // this is all the data that goes into the algorithm
                         allDataForAlgorithm.Add(baseData);
                     }
-                    if (kvp.Key.IsDynamicallyLoadedData)
+                    if (kvp.Key.SubscriptionDataConfig.IsCustomData)
                     {
                         // this is all the custom data
                         custom.Add(kvp);
                     }
+                    // don't add internal feed data to ticks/bars objects
                     if (baseData.DataType != MarketDataType.Auxiliary)
                     {
-                        // populate ticks and tradebars dictionaries with no aux data
-                        if (baseData.DataType == MarketDataType.Tick)
+                        if (!kvp.Key.SubscriptionDataConfig.IsInternalFeed)
                         {
-                            List<Tick> ticksList;
-                            if (!ticks.TryGetValue(symbol, out ticksList))
+                            // populate ticks and tradebars dictionaries with no aux data
+                            if (baseData.DataType == MarketDataType.Tick)
                             {
-                                ticksList = new List<Tick> {(Tick) baseData};
-                                ticks[symbol] = ticksList;
+                                List<Tick> ticksList;
+                                if (!ticks.TryGetValue(symbol, out ticksList))
+                                {
+                                    ticksList = new List<Tick> {(Tick) baseData};
+                                    ticks[symbol] = ticksList;
+                                }
+                                ticksList.Add((Tick) baseData);
                             }
-                            ticksList.Add((Tick) baseData);
-                        }
-                        else if (baseData.DataType == MarketDataType.TradeBar)
-                        {
-                            tradeBars[symbol] = (TradeBar) baseData;
+                            else if (baseData.DataType == MarketDataType.TradeBar)
+                            {
+                                tradeBars[symbol] = (TradeBar) baseData;
+                            }
+
+                            // this is data used to update consolidators
+                            consolidatorUpdate.Add(baseData);
                         }
 
-                        // this is data used to update consolidators
-                        consolidatorUpdate.Add(baseData);
-                        if (update == null)
-                        {
-                            // this is the data used set market prices
-                            update = baseData;
-                        }
+                        // this is the data used set market prices
+                        update = baseData;
                     }
                     // include checks for various aux types so we don't have to construct the dictionaries in Slice
                     else if ((delisting = baseData as Delisting) != null)
@@ -189,6 +191,11 @@ namespace QuantConnect.Lean.Engine.DataFeeds
                     {
                         splits[symbol] = split;
                     }
+                    else if ((symbolChange = baseData as SymbolChangedEvent) != null)
+                    {
+                        // symbol changes is keyed by the requested symbol
+                        symbolChanges[kvp.Key.SubscriptionDataConfig.Symbol] = symbolChange;
+                    }
                 }
 
                 // check for 'cash securities' if we found valid update data for this symbol
@@ -197,7 +204,7 @@ namespace QuantConnect.Lean.Engine.DataFeeds
                 // patch through calls to conversion rate to compue it on the fly using Security.Price
                 if (update != null && cashSecurities.Contains(kvp.Key.Symbol))
                 {
-                    foreach (var cashKvp in algorithm.Portfolio.CashBook)
+                    foreach (var cashKvp in cashBook)
                     {
                         if (cashKvp.Value.SecuritySymbol == kvp.Key.Symbol)
                         {
@@ -210,7 +217,7 @@ namespace QuantConnect.Lean.Engine.DataFeeds
                 consolidator.Add(new KeyValuePair<SubscriptionDataConfig, List<BaseData>>(kvp.Key.SubscriptionDataConfig, consolidatorUpdate));
             }
 
-            var slice = new Slice(utcDateTime.ConvertFromUtc(algorithm.TimeZone), allDataForAlgorithm, tradeBars, ticks, splits, dividends, delistings);
+            var slice = new Slice(utcDateTime.ConvertFromUtc(algorithmTimeZone), allDataForAlgorithm, tradeBars, ticks, splits, dividends, delistings, symbolChanges);
 
             return new TimeSlice(utcDateTime, count, slice, data, cash, security, consolidator, custom, changes);
         }

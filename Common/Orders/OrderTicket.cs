@@ -31,7 +31,7 @@ namespace QuantConnect.Orders
         private readonly object _setCancelRequestLock = new object();
 
         private Order _order;
-        public OrderStatus? _orderStatusOverride { get; set; }
+        private OrderStatus? _orderStatusOverride;
         private CancelOrderRequest _cancelRequest;
 
         private int _quantityFilled;
@@ -68,7 +68,7 @@ namespace QuantConnect.Orders
         /// <summary>
         /// Gets the symbol being ordered
         /// </summary>
-        public string Symbol
+        public Symbol Symbol
         {
             get { return _submitRequest.Symbol; }
         }
@@ -360,7 +360,7 @@ namespace QuantConnect.Orders
         /// </summary>
         public static OrderTicket InvalidCancelOrderId(SecurityTransactionManager transactionManager, CancelOrderRequest request)
         {
-            var submit = new SubmitOrderRequest(OrderType.Market, SecurityType.Base, string.Empty, 0, 0, 0, DateTime.MaxValue, string.Empty);
+            var submit = new SubmitOrderRequest(OrderType.Market, SecurityType.Base, Symbol.Empty, 0, 0, 0, DateTime.MaxValue, string.Empty);
             submit.SetResponse(OrderResponse.UnableToFindOrder(request));
             var ticket = new OrderTicket(transactionManager, submit);
             request.SetResponse(OrderResponse.UnableToFindOrder(request));
@@ -374,7 +374,7 @@ namespace QuantConnect.Orders
         /// </summary>
         public static OrderTicket InvalidUpdateOrderId(SecurityTransactionManager transactionManager, UpdateOrderRequest request)
         {
-            var submit = new SubmitOrderRequest(OrderType.Market, SecurityType.Base, string.Empty, 0, 0, 0, DateTime.MaxValue, string.Empty);
+            var submit = new SubmitOrderRequest(OrderType.Market, SecurityType.Base, Symbol.Empty, 0, 0, 0, DateTime.MaxValue, string.Empty);
             submit.SetResponse(OrderResponse.UnableToFindOrder(request));
             var ticket = new OrderTicket(transactionManager, submit);
             request.SetResponse(OrderResponse.UnableToFindOrder(request));
@@ -390,6 +390,17 @@ namespace QuantConnect.Orders
         {
             request.SetResponse(response);
             return new OrderTicket(transactionManager, request) { _orderStatusOverride = OrderStatus.Invalid };
+        }
+
+        /// <summary>
+        /// Creates a new <see cref="OrderTicket"/> that is invalidated because the algorithm was in the middle of warm up still
+        /// </summary>
+        public static OrderTicket InvalidWarmingUp(SecurityTransactionManager transactionManager, SubmitOrderRequest submit)
+        {
+            submit.SetResponse(OrderResponse.WarmingUp(submit));
+            var ticket = new OrderTicket(transactionManager, submit);
+            ticket._orderStatusOverride = OrderStatus.Invalid;
+            return ticket;
         }
 
         /// <summary>

@@ -39,9 +39,14 @@ namespace QuantConnect.Lean.Engine.DataFeeds
         private IAlgorithm _algorithm;
         private IResultHandler _resultHandler;
         private Resolution _fillForwardResolution;
-        private UniverseSelection _universeSelection;
+        private SecurityChanges _changes = SecurityChanges.None;
         private ConcurrentDictionary<SymbolSecurityType, Subscription> _subscriptions;
         private CancellationTokenSource _cancellationTokenSource = new CancellationTokenSource();
+
+        /// <summary>
+        /// Event fired when the data feed encounters new fundamental data
+        /// </summary>
+        public event EventHandler<FundamentalEventArgs> Fundamental;
 
         /// <summary>
         /// Gets all of the current subscriptions this data feed is processing
@@ -75,7 +80,6 @@ namespace QuantConnect.Lean.Engine.DataFeeds
             _resultHandler = resultHandler;
             _subscriptions = new ConcurrentDictionary<SymbolSecurityType, Subscription>();
             _cancellationTokenSource = new CancellationTokenSource();
-            _universeSelection = new UniverseSelection(this, algorithm, false);
 
             IsActive = true;
             Bridge = new BusyBlockingCollection<TimeSlice>(100);
@@ -116,9 +120,8 @@ namespace QuantConnect.Lean.Engine.DataFeeds
                 return null;
             }
 
-            var symbolResolutionDate = userDefined ? (DateTime?)null : start;
             // ReSharper disable once PossibleMultipleEnumeration
-            IEnumerator<BaseData> enumerator = new SubscriptionDataReader(config, security, start, end, resultHandler, tradeableDates, false, symbolResolutionDate);
+            IEnumerator<BaseData> enumerator = new SubscriptionDataReader(config, start, end, resultHandler, tradeableDates, false);
 
             // optionally apply fill forward logic, but never for tick data
             if (config.FillDataForward && config.Resolution != Resolution.Tick)
@@ -152,6 +155,8 @@ namespace QuantConnect.Lean.Engine.DataFeeds
 
             // prime the pump, run method checks current before move next calls
             PrimeSubscriptionPump(subscription, true);
+
+            _changes += new SecurityChanges(new List<Security> {security}, new List<Security>());
         }
 
         /// <summary>
@@ -165,6 +170,8 @@ namespace QuantConnect.Lean.Engine.DataFeeds
             {
                 Log.Error("FileSystemDataFeed.RemoveSubscription(): Unable to remove: " + security.Symbol);
             }
+
+            _changes += new SecurityChanges(new List<Security>(), new List<Security> {security});
         }
 
         /// <summary>
@@ -194,11 +201,17 @@ namespace QuantConnect.Lean.Engine.DataFeeds
                 // continue to loop over each subscription, enqueuing data in time order
                 while (!_cancellationTokenSource.IsCancellationRequested)
                 {
-                    var changes = SecurityChanges.None;
+                    // each time step reset our security changes
+                    _changes = SecurityChanges.None;
                     var earlyBirdTicks = long.MaxValue;
                     var data = new List<KeyValuePair<Security, List<BaseData>>>();
 
-                    foreach (var subscription in Subscriptions)
+                    // we union subscriptions with itself so if subscriptions changes on the first
+                    // iteration we will pick up those changes in the union call, this is used in
+                    // universe selection. an alternative is to extract this into a method and check
+                    // to see if changes != SecurityChanges.None, and re-run all subscriptions again,
+                    // This was added as quick fix due to an issue found in universe selection regression alg
+                    foreach (var subscription in Subscriptions.Union(Subscriptions))
                     {
                         if (subscription.EndOfStream)
                         {
@@ -209,13 +222,15 @@ namespace QuantConnect.Lean.Engine.DataFeeds
                         var cache = new KeyValuePair<Security, List<BaseData>>(subscription.Security, new List<BaseData>());
                         data.Add(cache);
 
-                        var currentOffsetTicks = subscription.OffsetProvider.GetOffsetTicks(frontier);
+                        var configuration = subscription.Configuration;
+                        var offsetProvider = subscription.OffsetProvider;
+                        var currentOffsetTicks = offsetProvider.GetOffsetTicks(frontier);
                         while (subscription.Current.EndTime.Ticks - currentOffsetTicks <= frontier.Ticks)
                         {
                             // we want bars rounded using their subscription times, we make a clone
                             // so we don't interfere with the enumerator's internal logic
                             var clone = subscription.Current.Clone(subscription.Current.IsFillForward);
-                            clone.Time = clone.Time.RoundDown(subscription.Configuration.Increment);
+                            clone.Time = clone.Time.ExchangeRoundDown(configuration.Increment, subscription.Security.Exchange.Hours, configuration.ExtendedMarketHours);
                             cache.Value.Add(clone);
                             if (!subscription.MoveNext())
                             {
@@ -232,13 +247,14 @@ namespace QuantConnect.Lean.Engine.DataFeeds
                             {
                                 break;
                             }
-
-                            changes += _universeSelection.ApplyUniverseSelection(cache.Value[0].EndTime.Date, cache.Value.OfType<CoarseFundamental>());
+                            
+                            OnFundamental(FundamentalType.Coarse, frontier, configuration, cache.Value);
                         }
 
                         if (subscription.Current != null)
                         {
-                            earlyBirdTicks = Math.Min(earlyBirdTicks, subscription.Current.EndTime.Ticks - currentOffsetTicks);
+                            // take the earliest between the next piece of data or the next tz discontinuity
+                            earlyBirdTicks = Math.Min(earlyBirdTicks, Math.Min(subscription.Current.EndTime.Ticks - currentOffsetTicks, offsetProvider.GetNextDiscontinuity()));
                         }
                     }
 
@@ -249,7 +265,7 @@ namespace QuantConnect.Lean.Engine.DataFeeds
                     }
 
                     // enqueue our next time slice and set the frontier for the next
-                    Bridge.Add(TimeSlice.Create(_algorithm, frontier, data, changes), _cancellationTokenSource.Token);
+                    Bridge.Add(TimeSlice.Create(frontier, _algorithm.TimeZone, _algorithm.Portfolio.CashBook, data, _changes), _cancellationTokenSource.Token);
 
                     // never go backwards in time, so take the max between early birds and the current frontier
                     frontier = new DateTime(Math.Max(earlyBirdTicks, frontier.Ticks), DateTimeKind.Utc);
@@ -320,9 +336,9 @@ namespace QuantConnect.Lean.Engine.DataFeeds
         private void AddSubscriptionForUniverseSelectionMarket(string market)
         {
             var exchangeHours = SecurityExchangeHoursProvider.FromDataFolder().GetExchangeHours(market, null, SecurityType.Equity);
-            var symbolName = market + "-market";
+            var symbolName = new Symbol(market + "-coarse");
             var subscriptionDataConfig = new SubscriptionDataConfig(typeof (CoarseFundamental), SecurityType.Equity, symbolName, Resolution.Daily, market, exchangeHours.TimeZone,
-                true, false, true);
+                true, false, true, false);
             var security = new Security(exchangeHours, subscriptionDataConfig, 1);
             
             var cf = new CoarseFundamental();
@@ -379,6 +395,15 @@ namespace QuantConnect.Lean.Engine.DataFeeds
                 }
                 _subscriptions.TryRemove(new SymbolSecurityType(subscription), out subscription);
             }
+        }
+
+        /// <summary>
+        /// Event invocator for the <see cref="Fundamental"/> event
+        /// </summary>
+        protected virtual void OnFundamental(FundamentalType fundamentalType, DateTime dateTimeUtc, SubscriptionDataConfig configuration, IReadOnlyList<BaseData> data)
+        {
+            var handler = Fundamental;
+            if (handler != null) handler(this, new FundamentalEventArgs(fundamentalType, configuration, dateTimeUtc, data));
         }
     }
 }

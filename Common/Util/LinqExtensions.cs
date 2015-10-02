@@ -115,5 +115,114 @@ namespace QuantConnect.Util
         {
             return collection.Select(selector).Median();
         }
+
+        /// <summary>
+        /// Performs a binary search on the specified collection.
+        /// </summary>
+        /// <typeparam name="TItem">The type of the item.</typeparam>
+        /// <typeparam name="TSearch">The type of the searched item.</typeparam>
+        /// <param name="list">The list to be searched.</param>
+        /// <param name="value">The value to search for.</param>
+        /// <param name="comparer">The comparer that is used to compare the value with the list items.</param>
+        /// <returns>The index of the item if found, otherwise the bitwise complement where the value should be per MSDN specs</returns>
+        public static int BinarySearch<TItem, TSearch>(this IList<TItem> list, TSearch value, Func<TSearch, TItem, int> comparer)
+        {
+            if (list == null)
+            {
+                throw new ArgumentNullException("list");
+            }
+            if (comparer == null)
+            {
+                throw new ArgumentNullException("comparer");
+            }
+
+            var lower = 0;
+            var upper = list.Count - 1;
+
+            while (lower <= upper)
+            {
+                var middle = lower + (upper - lower) / 2;
+                var comparisonResult = comparer(value, list[middle]);
+                if (comparisonResult < 0)
+                {
+                    upper = middle - 1;
+                }
+                else if (comparisonResult > 0)
+                {
+                    lower = middle + 1;
+                }
+                else
+                {
+                    return middle;
+                }
+            }
+
+            return ~lower;
+        }
+
+        /// <summary>
+        /// Performs a binary search on the specified collection.
+        /// </summary>
+        /// <typeparam name="TItem">The type of the item.</typeparam>
+        /// <param name="list">The list to be searched.</param>
+        /// <param name="value">The value to search for.</param>
+        /// <returns>The index of the item if found, otherwise the bitwise complement where the value should be per MSDN specs</returns>
+        public static int BinarySearch<TItem>(this IList<TItem> list, TItem value)
+        {
+            return BinarySearch(list, value, Comparer<TItem>.Default);
+        }
+
+        /// <summary>
+        /// Performs a binary search on the specified collection.
+        /// </summary>
+        /// <typeparam name="TItem">The type of the item.</typeparam>
+        /// <param name="list">The list to be searched.</param>
+        /// <param name="value">The value to search for.</param>
+        /// <param name="comparer">The comparer that is used to compare the value with the list items.</param>
+        /// <returns>The index of the item if found, otherwise the bitwise complement where the value should be per MSDN specs</returns>
+        public static int BinarySearch<TItem>(this IList<TItem> list, TItem value, IComparer<TItem> comparer)
+        {
+            return list.BinarySearch(value, comparer.Compare);
+        }
+
+        /// <summary>
+        /// Wraps the specified enumerable such that it will only be enumerated once
+        /// </summary>
+        /// <typeparam name="T">The enumerable's element type</typeparam>
+        /// <param name="enumerable">The source enumerable to be wrapped</param>
+        /// <returns>A new enumerable that can be enumerated multiple times without re-enumerating the source enumerable</returns>
+        public static IEnumerable<T> Memoize<T>(this IEnumerable<T> enumerable)
+        {
+            return new MemoizingEnumerable<T>(enumerable);
+        }
+
+        /// <summary>
+        /// Produces the an enumerable of the range of values between start and end using the specified
+        /// incrementing function
+        /// </summary>
+        /// <typeparam name="T">The enumerable item type</typeparam>
+        /// <param name="start">The start of the range</param>
+        /// <param name="end">The end of the range, non-inclusive by default</param>
+        /// <param name="incrementer">The incrementing function, with argument of the current item</param>
+        /// <returns>An enumerable of the range of items between start and end</returns>
+        public static IEnumerable<T> Range<T>(T start, T end, Func<T, T> incrementer, bool includeEndPoint = false)
+            where T : IComparable
+        {
+            var current = start;
+            if (includeEndPoint)
+            {
+                while (current.CompareTo(end) <= 0)
+                {
+                    yield return current = incrementer(current);
+                }
+            }
+            else
+            {
+                while (current.CompareTo(end) < 0)
+                {
+                    yield return current = incrementer(current);
+                }
+            }
+        }
     }
 }

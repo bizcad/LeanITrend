@@ -23,6 +23,7 @@ using QuantConnect.Notifications;
 using QuantConnect.Orders;
 using QuantConnect.Scheduling;
 using QuantConnect.Securities;
+using QuantConnect.Statistics;
 
 namespace QuantConnect.Interfaces
 {
@@ -90,6 +91,23 @@ namespace QuantConnect.Interfaces
         /// Gets schedule manager for adding/removing scheduled events
         /// </summary>
         ScheduleManager Schedule
+        {
+            get;
+        }
+
+        /// <summary>
+        /// Gets or sets the history provider for the algorithm
+        /// </summary>
+        IHistoryProvider HistoryProvider
+        {
+            get; 
+            set;
+        }
+
+        /// <summary>
+        /// Gets whether or not this algorithm is still warming up
+        /// </summary>
+        bool IsWarmingUp
         {
             get;
         }
@@ -226,6 +244,11 @@ namespace QuantConnect.Interfaces
         }
 
         /// <summary>
+        /// Gets the Trade Builder to generate trades from executions
+        /// </summary>
+        TradeBuilder TradeBuilder { get; }
+
+        /// <summary>
         /// Initialise the Algorithm and Prepare Required Data:
         /// </summary>
         void Initialize();
@@ -303,7 +326,7 @@ namespace QuantConnect.Interfaces
         /// <summary>
         /// Call this method at the end of each day of data.
         /// </summary>
-        void OnEndOfDay(string symbol);
+        void OnEndOfDay(Symbol symbol);
 
         /// <summary>
         /// Call this event at the end of the algorithm running.
@@ -356,7 +379,7 @@ namespace QuantConnect.Interfaces
         /// <param name="fillDataForward">If true, returns the last available data even if none in that timeslice.</param>
         /// <param name="leverage">leverage for this security</param>
         /// <param name="extendedMarketHours">ExtendedMarketHours send in data from 4am - 8pm, not used for FOREX</param>
-        void AddSecurity(SecurityType securityType, string symbol, Resolution resolution, string market, bool fillDataForward, decimal leverage, bool extendedMarketHours);
+        void AddSecurity(SecurityType securityType, Symbol symbol, Resolution resolution, string market, bool fillDataForward, decimal leverage, bool extendedMarketHours);
 
         /// <summary>
         /// Set the starting capital for the strategy
@@ -377,13 +400,24 @@ namespace QuantConnect.Interfaces
         /// </summary>
         /// <param name="symbolToLiquidate">Specific asset to liquidate, defaults to all.</param>
         /// <returns>list of order ids</returns>
-        List<int> Liquidate(string symbolToLiquidate = "");
+        List<int> Liquidate(Symbol symbolToLiquidate = null);
 
         /// <summary>
         /// Set live mode state of the algorithm run: Public setter for the algorithm property LiveMode.
         /// </summary>
         /// <param name="live">Bool live mode flag</param>
         void SetLiveMode(bool live);
+
+        /// <summary>
+        /// Sets <see cref="IsWarmingUp"/> to false to indicate this algorithm has finished its warm up
+        /// </summary>
+        void SetFinishedWarmingUp();
+
+        /// <summary>
+        /// Gets the date/time warmup should begin
+        /// </summary>
+        /// <returns></returns>
+        IEnumerable<HistoryRequest> GetWarmupHistoryRequests();
 
         /// <summary>
         /// Set the maximum number of orders the algortihm is allowed to process.

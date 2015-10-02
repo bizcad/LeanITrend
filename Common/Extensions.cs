@@ -14,15 +14,17 @@
 */
 
 using System;
-using System.IO;
-using System.Text;
-using System.Collections.Generic;
-using System.Security.Cryptography;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.Globalization;
+using System.IO;
 using System.Linq;
+using System.Security.Cryptography;
+using System.Text;
 using System.Timers;
 using NodaTime;
+using QuantConnect.Data;
+using QuantConnect.Securities;
 
 namespace QuantConnect 
 {
@@ -230,6 +232,15 @@ namespace QuantConnect
         }
 
         /// <summary>
+        /// Check if a number is NaN or equal to zero
+        /// </summary>
+        /// <param name="value">The double value to check</param>
+        public static bool IsNaNOrZero(this double value)
+        {
+            return double.IsNaN(value) || Math.Abs(value) < double.Epsilon;
+        }
+
+        /// <summary>
         /// Gets the smallest positive number that can be added to a decimal instance and return
         /// a new value that does not == the old value
         /// </summary>
@@ -317,6 +328,28 @@ namespace QuantConnect
                 return dateTime;
             }
             return dateTime.AddTicks(-(dateTime.Ticks % interval.Ticks));
+        }
+
+        /// <summary>
+        /// Extension method to round a datetime down by a timespan interval until it's
+        /// within the specified exchange's open hours. This works by first rounding down
+        /// the specified time using the interval, then producing a bar between that
+        /// rounded time and the interval plus the rounded time and incrementally walking
+        /// backwards until the exchange is open
+        /// </summary>
+        /// <param name="dateTime">Time to be rounded down</param>
+        /// <param name="interval">Timespan interval to round to.</param>
+        /// <param name="exchangeHours">The exchange hours to determine open times</param>
+        /// <param name="extendedMarket">True for extended market hours, otherwise false</param>
+        /// <returns>Rounded datetime</returns>
+        public static DateTime ExchangeRoundDown(this DateTime dateTime, TimeSpan interval, SecurityExchangeHours exchangeHours, bool extendedMarket)
+        {
+            var rounded = dateTime.RoundDown(interval);
+            while (!exchangeHours.IsOpen(rounded, rounded + interval, extendedMarket))
+            {
+                rounded -= interval;
+            }
+            return rounded;
         }
 
         /// <summary>

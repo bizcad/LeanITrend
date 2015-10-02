@@ -96,7 +96,7 @@ namespace QuantConnect.Lean.Engine.Setup
 
                 // if there's more than one then check configuration for which one we should use
                 var algorithmName = Config.Get("algorithm-type-name");
-                return names.Single(x => x.Contains(algorithmName));
+                return names.Single(x => x.Contains("." + algorithmName));
             });
 
             var complete = loader.TryCreateAlgorithmInstanceWithIsolator(assemblyPath, out algorithm, out error);
@@ -149,9 +149,11 @@ namespace QuantConnect.Lean.Engine.Setup
             {
                 Log.Trace("BrokerageSetupHandler.Setup(): Initializing algorithm...");
 
+                resultHandler.SendStatusUpdate(job.AlgorithmId, AlgorithmStatus.Initializing, "Initializing algorithm...");
+
                 //Execute the initialize code:
                 var isolator = new Isolator();
-                var initializeComplete = isolator.ExecuteWithTimeLimit(TimeSpan.FromSeconds(10), () =>
+                var initializeComplete = isolator.ExecuteWithTimeLimit(TimeSpan.FromSeconds(300), () =>
                 {
                     try
                     {
@@ -285,15 +287,16 @@ namespace QuantConnect.Lean.Engine.Setup
                     var minResolution = new Lazy<Resolution>(() => algorithm.Securities.Min(x => x.Value.Resolution));
                     foreach (var holding in holdings)
                     {
+                        var symbol = new Symbol(holding.Symbol);
                         Log.Trace("BrokerageSetupHandler.Setup(): Has existing holding: " + holding);
-                        if (!algorithm.Portfolio.ContainsKey(holding.Symbol))
+                        if (!algorithm.Portfolio.ContainsKey(symbol))
                         {
                             Log.Trace("BrokerageSetupHandler.Setup(): Adding unrequested security: " + holding.Symbol);
                             // for items not directly requested set leverage to 1 and at the min resolution
-                            algorithm.AddSecurity(holding.Type, holding.Symbol, minResolution.Value, null, true, 1.0m, false);
+                            algorithm.AddSecurity(holding.Type, symbol, minResolution.Value, null, true, 1.0m, false);
                         }
-                        algorithm.Portfolio[holding.Symbol].SetHoldings(holding.AveragePrice, (int) holding.Quantity);
-                        algorithm.Securities[holding.Symbol].SetMarketPrice(new TradeBar
+                        algorithm.Portfolio[symbol].SetHoldings(holding.AveragePrice, (int) holding.Quantity);
+                        algorithm.Securities[symbol].SetMarketPrice(new TradeBar
                         {
                             Time = DateTime.Now,
                             Open = holding.MarketPrice,
@@ -301,7 +304,7 @@ namespace QuantConnect.Lean.Engine.Setup
                             Low = holding.MarketPrice,
                             Close = holding.MarketPrice,
                             Volume = 0,
-                            Symbol = holding.Symbol,
+                            Symbol = symbol,
                             DataType = MarketDataType.TradeBar
                         });
                     }

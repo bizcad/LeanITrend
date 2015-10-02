@@ -23,7 +23,7 @@ namespace QuantConnect.Algorithm.CSharp
         //private OrderType _orderType { get; set; }
         //public decimal LimitPrice { get; set; }
         //public decimal StopPrice { get; set; }
-        
+
 
         //private int _quantityFilled;
         //private decimal _averageFillPrice;
@@ -42,11 +42,13 @@ namespace QuantConnect.Algorithm.CSharp
         public decimal AverageFillPrice { get; set; }
         public int QuantityFilled { get; set; }
         public DateTime TicketTime { get; set; }
-        public OrderType TickeOrderType { get; set; }
+        public OrderType TicketOrderType { get; set; }
         public string Tag { get; set; }
         public string ErrorMessage { get; set; }
         public decimal LimitPrice { get; set; }
         public decimal StopPrice { get; set; }
+        public OrderDirection Direction { get; set; }
+        public string Source { get; set; }
 
 
         /// <summary>
@@ -63,7 +65,7 @@ namespace QuantConnect.Algorithm.CSharp
         //    }
         //}
 
-        
+
         #region Commented
         ///// <summary>
         ///// Adds an order event to this ticket

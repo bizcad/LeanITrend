@@ -20,12 +20,13 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using QuantConnect.Configuration;
 using QuantConnect.Data;
 using QuantConnect.Data.Fundamental;
-using QuantConnect.Interfaces;
-using QuantConnect.Logging;
 using QuantConnect.Data.Market;
+using QuantConnect.Interfaces;
 using QuantConnect.Lean.Engine.Results;
+using QuantConnect.Logging;
 using QuantConnect.Packets;
 using QuantConnect.Securities;
 using QuantConnect.Util;
@@ -43,9 +44,13 @@ namespace QuantConnect.Lean.Engine.DataFeeds
         private IAlgorithm _algorithm;
         private IDataQueueHandler _dataQueue;
         private IResultHandler _resultHandler;
-        private UniverseSelection _universeSelection;
         private ConcurrentDictionary<SymbolSecurityType, LiveSubscription> _subscriptions;
         private CancellationTokenSource _cancellationTokenSource = new CancellationTokenSource();
+
+        /// <summary>
+        /// Event fired when the data feed encounters new fundamental data
+        /// </summary>
+        public event EventHandler<FundamentalEventArgs> Fundamental;
 
         /// <summary>
         /// Gets all of the current subscriptions this data feed is processing
@@ -88,8 +93,7 @@ namespace QuantConnect.Lean.Engine.DataFeeds
             _algorithm = algorithm;
             _resultHandler = resultHandler;
             _cancellationTokenSource = new CancellationTokenSource();
-            _universeSelection = new UniverseSelection(this, algorithm, true);
-            _dataQueue = Composer.Instance.GetExportedValueByTypeName<IDataQueueHandler>(Configuration.Config.Get("data-queue-handler", "LiveDataQueue"));
+            _dataQueue = Composer.Instance.GetExportedValueByTypeName<IDataQueueHandler>(Config.Get("data-queue-handler", "LiveDataQueue"));
             
             Bridge = new BusyBlockingCollection<TimeSlice>();
             _subscriptions = new ConcurrentDictionary<SymbolSecurityType, LiveSubscription>();
@@ -179,11 +183,10 @@ namespace QuantConnect.Lean.Engine.DataFeeds
                     var onDay = onHour && localTime.Hour == 0;
 
                     // perform universe selection if requested on day changes (don't perform multiple times per market)
-                    if (onDay && _algorithm.Universe != null && !performedUniverseSelection.Contains(subscription.Configuration.Symbol))
+                    if (onDay && _algorithm.Universe != null && performedUniverseSelection.Add(subscription.Configuration.Market))
                     {
-                        performedUniverseSelection.Add(subscription.Configuration.Symbol);
                         var coarse = UniverseSelection.GetCoarseFundamentals(subscription.Configuration.Market, subscription.TimeZone, localTime.Date, true);
-                        changes = _universeSelection.ApplyUniverseSelection(localTime.Date, coarse);
+                        OnFundamental(FundamentalType.Coarse, utcTriggerTime, subscription.Configuration, coarse.ToList());
                     }
 
                     var triggerArchive = false;
@@ -205,21 +208,17 @@ namespace QuantConnect.Lean.Engine.DataFeeds
 
                     if (triggerArchive)
                     {
-                        subscription.StreamStore.TriggerArchive(utcTriggerTime, subscription.Configuration.FillDataForward);
-
-                        BaseData data;
-                        var dataPoints = new List<BaseData>();
-                        while (subscription.StreamStore.Queue.TryDequeue(out data))
+                        var data = subscription.StreamStore.TriggerArchive(utcTriggerTime);
+                        if (data != null)
                         {
-                            dataPoints.Add(data);
+                            items.Add(new KeyValuePair<Security, List<BaseData>>(subscription.Security, new List<BaseData> {data}));
                         }
-                        items.Add(new KeyValuePair<Security, List<BaseData>>(subscription.Security, dataPoints));
                     }
                 }
 
                 // don't try to add if we're already cancelling
                 if (_cancellationTokenSource.IsCancellationRequested) return;
-                Bridge.Add(TimeSlice.Create(_algorithm, utcTriggerTime, items, changes));
+                Bridge.Add(TimeSlice.Create(utcTriggerTime, _algorithm.TimeZone, _algorithm.Portfolio.CashBook, items, changes));
             });
 
             //Start the realtime sampler above
@@ -251,8 +250,8 @@ namespace QuantConnect.Lean.Engine.DataFeeds
             Log.Trace("LiveTradingDataFeed.Stream(): Waiting for updated market hours...", true);
 
             var symbols = (from security in _algorithm.Securities.Values
-                           where !security.IsDynamicallyLoadedData && (security.Type == SecurityType.Equity || security.Type == SecurityType.Forex)
-                           select security.Symbol).ToList<string>();
+                           where !security.SubscriptionDataConfig.IsCustomData && (security.Type == SecurityType.Equity || security.Type == SecurityType.Forex)
+                           select security.Symbol.Permtick).ToList<string>();
 
             Log.Trace("LiveTradingDataFeed.Stream(): Market open, starting stream for " + string.Join(",", symbols));
 
@@ -467,18 +466,16 @@ namespace QuantConnect.Lean.Engine.DataFeeds
             DateTime periodEnd)
         {
             IEnumerator<BaseData> enumerator = null;
-            if (security.IsDynamicallyLoadedData)
+            if (security.SubscriptionDataConfig.IsCustomData)
             {
                 //Subscription managers for downloading user data:
                 // TODO: Update this when warmup comes in, we back up so we can get data that should have emitted at midnight today
                 var subscriptionDataReader = new SubscriptionDataReader(
                     security.SubscriptionDataConfig,
-                    security,
                     periodStart, Time.EndOfTime,
                     resultHandler,
                     Time.EachTradeableDay(algorithm.Securities.Values, periodStart, periodEnd),
-                    true,
-                    DateTime.UtcNow.ConvertFromUtc(algorithm.TimeZone).Date
+                    true
                     );
 
                 // wrap the subscription data reader with a filter enumerator
@@ -501,7 +498,7 @@ namespace QuantConnect.Lean.Engine.DataFeeds
                 if (security.Type == SecurityType.Equity || security.Type == SecurityType.Forex)
                 {
                     if (!symbols.ContainsKey(security.Type)) symbols.Add(security.Type, new List<string>());
-                    symbols[security.Type].Add(security.Symbol);
+                    symbols[security.Type].Add(security.Symbol.Permtick);
                 }
             }
             return symbols;
@@ -511,10 +508,19 @@ namespace QuantConnect.Lean.Engine.DataFeeds
         {
             // don't try to add if we're already cancelling
             if (_cancellationTokenSource.IsCancellationRequested) return;
-            Bridge.Add(TimeSlice.Create(_algorithm, tick.EndTime.ConvertToUtc(subscription.TimeZone), new List<KeyValuePair<Security, List<BaseData>>>
+            Bridge.Add(TimeSlice.Create(tick.EndTime.ConvertToUtc(subscription.TimeZone), _algorithm.TimeZone, _algorithm.Portfolio.CashBook, new List<KeyValuePair<Security, List<BaseData>>>
             {
                 new KeyValuePair<Security, List<BaseData>>(subscription.Security, new List<BaseData> {tick})
             }, SecurityChanges.None));
+        }
+
+        /// <summary>
+        /// Event invocator for the <see cref="Fundamental"/> event
+        /// </summary>
+        protected virtual void OnFundamental(FundamentalType fundamentalType, DateTime dateTimeUtc, SubscriptionDataConfig configuration, IReadOnlyList<BaseData> data)
+        {
+            var handler = Fundamental;
+            if (handler != null) handler(this, new FundamentalEventArgs(fundamentalType, configuration, dateTimeUtc, data));
         }
     }
 }
