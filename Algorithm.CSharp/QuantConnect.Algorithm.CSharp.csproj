@@ -71,6 +71,7 @@
     <Compile Include="BizcadAlgorithm\PositionInventoryLifo.cs" />
     <Compile Include="BizcadAlgorithm\RateOfChangePercentStrategy.cs" />
     <Compile Include="BizcadAlgorithm\RVIAlgorithm.cs" />
+    <Compile Include="BizcadAlgorithm\SigDaily\MultiSigDailyAlgorithm.cs" />
     <Compile Include="BizcadAlgorithm\Signals\InstantTrendStrategy.cs" />
     <Compile Include="BizcadAlgorithm\Signals\InstantTrendStrategyOriginal.cs" />
     <Compile Include="BizcadAlgorithm\Signals\ISig.cs" />
@@ -88,6 +89,7 @@
     <Compile Include="BizcadAlgorithm\Signals\SigC.cs" />
     <Compile Include="BizcadAlgorithm\Signals\SignalInfo.cs" />
     <Compile Include="BizcadAlgorithm\Signals\SignalSerializationAlgorithm.cs" />
+    <Compile Include="CustomAlgorithms\SimpleSystemAlgorithm.cs" />
     <Compile Include="BizcadAlgorithm\TradeBarReporter.cs" />
     <Compile Include="Common\CsvSerializer.cs" />
     <Compile Include="Common\Global.cs" />
@@ -176,6 +178,7 @@
   <ItemGroup>
     <None Include="packages.config" />
   </ItemGroup>
+  <ItemGroup />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
        Other similar extension points exist, see Microsoft.Common.targets.

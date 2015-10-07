@@ -215,7 +215,7 @@ namespace QuantConnect.Algorithm.CSharp
                 Id = ++tradeId,
                 Symbol = buytrans.Symbol,
                 DescriptionOfProperty = string.Format("{0} {1}", buytrans.Quantity, buytrans.Symbol),
-                DateAcquired = buytrans.SettledDate,
+                DateAcquired = buytrans.TradeDate,
                 DateSoldOrDisposed = selltrans.SettledDate,
                 AdjustmentAmount = 0,
                 ReportedToIrs = true,

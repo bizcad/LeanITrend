@@ -17,13 +17,13 @@ using QuantConnect.Util;
 
 namespace QuantConnect.Algorithm.CSharp
 {
-    public class MultiSignalAlgorithm : QCAlgorithm
+    public class MultiSigDailyAlgorithm : QCAlgorithm
     {
         private int LiveSignalIndex = 8;
 
         #region "Variables"
 
-        private DateTime _startDate = new DateTime(2015, 8, 11);
+        private DateTime _startDate = new DateTime(2013, 8, 11);
         private DateTime _endDate = new DateTime(2015, 8, 14);
         private decimal _portfolioAmount = 10000;
         private decimal _transactionSize = 15000;
@@ -167,7 +167,7 @@ namespace QuantConnect.Algorithm.CSharp
             SetCash(_portfolioAmount);
 
             //Add as many securities as you like. All the data will be passed into the event handler:
-            AddSecurity(SecurityType.Equity, symbol, Resolution.Minute);
+            AddSecurity(SecurityType.Equity, symbol, Resolution.Daily);
 
             // Indicators
             Price = new RollingWindow<IndicatorDataPoint>(14);      // The price history
@@ -194,15 +194,15 @@ namespace QuantConnect.Algorithm.CSharp
                 SignalType = typeof(Sig8)
             });
 
-            signalInfos.Add(new SignalInfo
-            {
-                Id = 7,
-                IsActive = false,
-                SignalJson = string.Empty,
-                Value = OrderSignal.doNothing,
-                InternalState = string.Empty,
-                SignalType = typeof(Sig7)
-            });
+            //signalInfos.Add(new SignalInfo
+            //{
+            //    Id = 7,
+            //    IsActive = false,
+            //    SignalJson = string.Empty,
+            //    Value = OrderSignal.doNothing,
+            //    InternalState = string.Empty,
+            //    SignalType = typeof(Sig7)
+            //});
 
             foreach (SignalInfo s in signalInfos)
             {
@@ -607,8 +607,8 @@ namespace QuantConnect.Algorithm.CSharp
             tradefees = _orderTransactionProcessor.LastTradeCommission;
             if (lasttrade != null)
             {
-                tradeprofit = lasttrade.GainOrLoss;
-                tradenet = tradeprofit + tradefees;
+                tradenet = lasttrade.GainOrLoss;
+                tradeprofit = tradenet - tradefees;
             }
         }
         private void CalculateDailyProfits()
@@ -619,7 +619,7 @@ namespace QuantConnect.Algorithm.CSharp
                                                                       && t.DateAcquired.Day == tradingDate.Day);
 
             var todayNet = trades.Sum(t => t.GainOrLoss);
-            var xtn = Portfolio[symbol].NetProfit;
+
             #region logging
             string message = String.Format("{0},{1},{2}",
                 tradingDate.ToShortDateString(),
