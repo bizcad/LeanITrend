@@ -37,7 +37,9 @@ namespace QuantConnect.Algorithm
 
             if (order != null)
             {
-                var orderDateTime = order.Time;
+                var orderDateTime = _algorithm.Time;
+                DateTime settleDate = orderDateTime.AddDays(orderDateTime.DayOfWeek < DayOfWeek.Wednesday ? 3 : 5);
+
                 // Order Fees are a cost and negative to my account, therefore a negative number
                 var orderFees = security.TransactionModel.GetOrderFee(security, order) * -1;
 
@@ -61,10 +63,10 @@ namespace QuantConnect.Algorithm
                 t.Price = ticket.AverageFillPrice;
                 t.Quantity = ticket.Quantity;
                 t.RecordType = "Trade";
-                t.SettledDate = ticket.Time.AddDays(4);
+                t.SettledDate = settleDate;
                 t.Symbol = ticket.Symbol;
                 t.TaxLotNumber = String.Empty;
-                t.TradeDate = ticket.Time;
+                t.TradeDate = orderDateTime;
                 t.TradeNumber = 0;
                 #endregion
             }

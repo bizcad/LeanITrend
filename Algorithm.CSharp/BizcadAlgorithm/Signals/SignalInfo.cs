@@ -11,5 +11,6 @@ namespace QuantConnect.Algorithm.CSharp
         public string SignalJson { get; set; }
         public string InternalState { get; set; }
         public string Comment { get; set; }
+        public string Name { get; set; }
     }
 }

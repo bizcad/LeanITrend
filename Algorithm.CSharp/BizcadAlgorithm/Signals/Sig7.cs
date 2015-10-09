@@ -392,6 +392,18 @@ namespace QuantConnect.Algorithm.CSharp
             return OrderSignal.doNothing;
         }
 
+        public OrderSignal CheckSignal(KeyValuePair<Symbol, TradeBar> data, IndicatorDataPoint trendCurrent, out string current)
+        {
+            TradeBars tb = new TradeBars();
+            tb.Add(data.Key, data.Value);
+            return CheckSignal(tb, trendCurrent, out current);
+        }
+
+        public OrderSignal CheckSignal(KeyValuePair<Symbol, TradeBar> data, Dictionary<string, string> paramlist, out string current)
+        {
+            throw new NotImplementedException();
+        }
+
         //private void UpdatePriceArray(IndicatorDataPoint priceCurrent)
         //{
         //    for (int i = priceArray.Length - 2; i >= 0; i--)

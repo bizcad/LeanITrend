@@ -1,5 +1,11 @@
-﻿/*  This class adds a parameter list.  Takes up where Sig7 left off. 
- *  It completely disconnects the Signal from the algorithm.
+﻿
+/*  This class adds a parameter list.  Takes up where Sig8 left off. 
+ *  The difference it that this class handles the signal for one KeyValuePair<Symbol, TradeBar>
+ *    instead of the collection of TradeBars from OnData
+ *    
+ *  Removes try/catch blocks
+ *  
+ *  Completely disconnects the Signal from the algorithm.
  *  
  *  There are three kinds of variables in this class:
  *  1. Variables (fields) which are private to the class and used internally.
@@ -22,7 +28,7 @@
  *      *** Important ***
  *      The names of the keys in the parameter list must match the names of the variable they are to replace
  *      
- *  Nick Stein 10/1/1015
+ *  Nick Stein 10/7/1015
  *  
  *  Possible enhancements:
  *  1.  Add RevPct and RngFac to inputs from the outside (type 3)
@@ -44,7 +50,7 @@ using QuantConnect.Indicators;
 namespace QuantConnect.Algorithm.CSharp
 {
 
-    public class Sig8 : ISigSerializable
+    public class Sig9 : ISigSerializable
     {
         #region "fields"
 
@@ -55,7 +61,7 @@ namespace QuantConnect.Algorithm.CSharp
         //private QCAlgorithm _algorithm;   // no algorithm needed
         //private ILimitPriceCalculator priceCalculator = new InstantTrendLimitPriceCalculator();  // no price calculator needed
         private int period = 4;     // used to size the length of the trendArray
-        
+
         #endregion
 
 
@@ -131,10 +137,10 @@ namespace QuantConnect.Algorithm.CSharp
 
         #endregion
 
-        public Sig8()
+        public Sig9()
         {
             trendArray = new decimal[period + 1];       // initialized to 0.  Add a period for Deserialize to make IsReady true
-            Id = 8;
+            Id = 9;
             orderFilled = true;
         }
         /// <summary>
@@ -142,13 +148,13 @@ namespace QuantConnect.Algorithm.CSharp
         /// </summary>
         /// <param name="symbol">the symbol to track</param>
         [JsonConstructor]
-        public Sig8(Symbol _symbol)
+        public Sig9(Symbol _symbol)
         {
             symbol = _symbol;
             orderFilled = true;
             //maketrade = true;
             trendArray = new decimal[period + 1];       // initialized to 0.  Add a period for Deserialize to make IsReady true
-            Id = 8;
+            Id = 9;
 
 
         }
@@ -160,26 +166,19 @@ namespace QuantConnect.Algorithm.CSharp
         /// <param name="context">The stream to store the data</param>
         public void GetObjectData(SerializationInfo info, StreamingContext context)
         {
-            try
-            {
-                info.AddValue("Symbol", symbol.ToString(), typeof(string));
-                info.AddValue("Id", Id, typeof(int));
-                info.AddValue("nEntryPrice", nEntryPrice);
-                info.AddValue("xOver", xOver);
-                //info.AddValue("maketrade", maketrade);
-                info.AddValue("trendArray", trendArray, typeof(IndicatorDataPoint[]));
-            }
-            catch (Exception ex)
-            {
-                throw new Exception(ex.Message);
-            }
+            info.AddValue("Symbol", symbol.ToString(), typeof(string));
+            info.AddValue("Id", Id, typeof(int));
+            info.AddValue("nEntryPrice", nEntryPrice);
+            info.AddValue("xOver", xOver);
+            //info.AddValue("maketrade", maketrade);
+            info.AddValue("trendArray", trendArray, typeof(IndicatorDataPoint[]));
         }
         /// <summary>
         /// The Deserializing constuctor
         /// </summary>
         /// <param name="info">the bag into which the serialized data was put</param>
         /// <param name="context">the stream to get the data from.</param>
-        public Sig8(SerializationInfo info, StreamingContext context)
+        public Sig9(SerializationInfo info, StreamingContext context)
         {
             string s = (string)info.GetValue("Symbol", typeof(string));
             symbol = new Symbol(s);
@@ -200,7 +199,7 @@ namespace QuantConnect.Algorithm.CSharp
 
 
 
-        public OrderSignal CheckSignal(TradeBars data, Dictionary<string, string> paramlist, out string comment)
+        public OrderSignal CheckSignal(KeyValuePair<Symbol, TradeBar> data, Dictionary<string, string> paramlist, out string comment)
         {
             PropertyInfo[] properties = GetType().GetProperties();
 
@@ -210,7 +209,7 @@ namespace QuantConnect.Algorithm.CSharp
             {
                 symbol = new Symbol(paramlist["symbol"], paramlist["symbol"]);
             }
-            IndicatorDataPoint trendCurrent = new IndicatorDataPoint(data[symbol].EndTime,0); ;
+            IndicatorDataPoint trendCurrent = new IndicatorDataPoint(data.Value.EndTime, 0); ;
             string trend = paramlist["trend"];
             trendCurrent.Value = System.Convert.ToDecimal(trend);
 
@@ -223,17 +222,10 @@ namespace QuantConnect.Algorithm.CSharp
                     {
                         {
                             var converter = TypeDescriptor.GetConverter(p.PropertyType);
-                            try
-                            {
-                                var convertedvalue = converter.ConvertFrom(item.Value);
-                                var setmethod = p.SetMethod;
-                                if (setmethod != null)
-                                    p.SetValue(this, convertedvalue);
-                            }
-                            catch (Exception e)
-                            {
-                                Debug.WriteLine(e.Message);
-                            }
+                            var convertedvalue = converter.ConvertFrom(item.Value);
+                            var setmethod = p.SetMethod;
+                            if (setmethod != null)
+                                p.SetValue(this, convertedvalue);
                         }
                     }
                 }
@@ -242,18 +234,6 @@ namespace QuantConnect.Algorithm.CSharp
             OrderSignal retval = CheckSignal(data, trendCurrent, out current);
             comment = current;
             return retval;
-        }
-
-        public OrderSignal CheckSignal(KeyValuePair<Symbol, TradeBar> data, IndicatorDataPoint trendCurrent, out string current)
-        {
-            throw new NotImplementedException();
-        }
-
-        public OrderSignal CheckSignal(KeyValuePair<Symbol, TradeBar> data, Dictionary<string, string> paramlist, out string current)
-        {
-            TradeBars tb = new TradeBars();
-            tb.Add(data.Key, data.Value);
-            return CheckSignal(tb, paramlist, out current);
         }
 
         public OrderSignal CheckSignal(TradeBars data, IndicatorDataPoint trendCurrent, out string comment)
@@ -286,19 +266,39 @@ namespace QuantConnect.Algorithm.CSharp
 
                 #region "Selection Logic Reversals"
 
-                try
+                if (nTrig < (Math.Abs(nEntryPrice) / RevPct))
                 {
-
-                    if (nTrig < (Math.Abs(nEntryPrice) / RevPct))
+                    NTrigLTEP = true;
+                    if (IsLong)
                     {
-                        NTrigLTEP = true;
-                        if (IsLong)
+                        retval = OrderSignal.revertToShort;
+                        bReverseTrade = true;
+                        ReverseTrade = true;
+                        comment =
+                            string.Format("nTrig {0} < (nEntryPrice {1} * RevPct {2}) {3} IsLong {4} )",
+                                Math.Round(nTrig, 4),
+                                nEntryPrice,
+                                RevPct,
+                                NTrigLTEP,
+                                IsLong);
+                    }
+                    else
+                    {
+                        NTrigLTEP = false;
+                    }
+                }
+                else
+                {
+                    if (nTrig > (Math.Abs(nEntryPrice) * RevPct))
+                    {
+                        NTrigGTEP = true;
+                        if (IsShort)
                         {
-                            retval = OrderSignal.revertToShort;
+                            retval = OrderSignal.revertToLong;
                             bReverseTrade = true;
                             ReverseTrade = true;
                             comment =
-                                string.Format("nTrig {0} < (nEntryPrice {1} * RevPct {2}) {3} IsLong {4} )",
+                                string.Format("nTrig {0} > (nEntryPrice {1} * RevPct {2}) {3} IsLong {4} )",
                                     Math.Round(nTrig, 4),
                                     nEntryPrice,
                                     RevPct,
@@ -307,144 +307,337 @@ namespace QuantConnect.Algorithm.CSharp
                         }
                         else
                         {
-                            NTrigLTEP = false;
+                            NTrigGTEP = false;
                         }
                     }
-                    else
-                    {
-                        if (nTrig > (Math.Abs(nEntryPrice) * RevPct))
-                        {
-                            NTrigGTEP = true;
-                            if (IsShort)
-                            {
-                                retval = OrderSignal.revertToLong;
-                                bReverseTrade = true;
-                                ReverseTrade = true;
-                                comment =
-                                    string.Format("nTrig {0} > (nEntryPrice {1} * RevPct {2}) {3} IsLong {4} )",
-                                        Math.Round(nTrig, 4),
-                                        nEntryPrice,
-                                        RevPct,
-                                        NTrigLTEP,
-                                        IsLong);
-                            }
-                            else
-                            {
-                                NTrigGTEP = false;
-                            }
-                        }
-                    }
-                }
-                catch (Exception ex)
-                {
-                    System.Diagnostics.Debug.WriteLine(ex.StackTrace);
                 }
 
                 #endregion
                 #region "selection logic buy/sell"
 
-                try
-                {
-                    if (!bReverseTrade)
-                    {
-                        if (nTrig > trendArray[0])
-                        {
-                            NTrigGTTA0 = true;
-                            if (xOver == -1)
-                            {
-                                #region "If Not Long"
-                                if (!IsLong)
-                                {
 
+                if (!bReverseTrade)
+                {
+                    if (nTrig > trendArray[0])
+                    {
+                        NTrigGTTA0 = true;
+                        if (xOver == -1)
+                        {
+                            #region "If Not Long"
+                            if (!IsLong)
+                            {
+
+                                if (!orderFilled)
+                                {
+                                    retval = OrderSignal.goLong;
+                                    comment =
+                                        string.Format(
+                                            "nTrig {0} > trend {1} xOver {2} !IsLong {3} !orderFilled {4}",
+                                            Math.Round(nTrig, 4),
+                                            Math.Round(trendArray[0], 4),
+                                            xOver,
+                                            !IsLong,
+                                            !orderFilled);
+                                }
+                                else
+                                {
+                                    retval = OrderSignal.goLongLimit;
+                                    comment =
+                                        string.Format(
+                                            "nTrig {0} > trend {1} xOver {2} !IsLong {3} !orderFilled {4}",
+                                            Math.Round(nTrig, 4),
+                                            Math.Round(trendArray[0], 4),
+                                            xOver,
+                                            !IsLong,
+                                            !orderFilled);
+
+                                }
+                            }
+                            #endregion
+                        }
+
+                        if (comment.Length == 0)
+                            comment = "Trigger over trend - setting xOver to 1";
+                        xOver = 1;
+                        xOverisNegative = xOver < 0;
+                        xOverIsPositive = xOver > 0;
+                    }
+                    else
+                    {
+                        if (nTrig < trendArray[0])
+                        {
+                            NTrigLTTA0 = true;
+                            if (xOver == 1)
+                            {
+                                #region "If Not Short"
+                                if (!IsShort)
+                                {
                                     if (!orderFilled)
                                     {
-                                        retval = OrderSignal.goLong;
+                                        retval = OrderSignal.goShort;
                                         comment =
                                             string.Format(
-                                                "nTrig {0} > trend {1} xOver {2} !IsLong {3} !orderFilled {4}",
+                                                "nTrig {0} < trend {1} xOver {2} !isShort {3} orderFilled {4}",
                                                 Math.Round(nTrig, 4),
                                                 Math.Round(trendArray[0], 4),
                                                 xOver,
-                                                !IsLong,
+                                                !IsShort,
                                                 !orderFilled);
+
                                     }
                                     else
                                     {
-                                        retval = OrderSignal.goLongLimit;
+                                        retval = OrderSignal.goShortLimit;
                                         comment =
                                             string.Format(
-                                                "nTrig {0} > trend {1} xOver {2} !IsLong {3} !orderFilled {4}",
+                                                "nTrig {0} < trend {1} xOver {2} !isShort {3} orderFilled {4}",
                                                 Math.Round(nTrig, 4),
                                                 Math.Round(trendArray[0], 4),
                                                 xOver,
-                                                !IsLong,
+                                                !IsShort,
                                                 !orderFilled);
 
                                     }
                                 }
                                 #endregion
                             }
-
                             if (comment.Length == 0)
-                                comment = "Trigger over trend - setting xOver to 1";
-                            xOver = 1;
+                                comment = "Trigger under trend - setting xOver to -1";
+                            xOver = -1;
                             xOverisNegative = xOver < 0;
                             xOverIsPositive = xOver > 0;
                         }
-                        else
+
+
+
+                    }
+                }
+
+                #endregion
+            }
+            StringBuilder sb = new StringBuilder();
+            sb.Append(comment);
+            sb.Append(",");
+            sb.Append(retval.ToString());
+            sb.Append(",");
+            //sb.Append(ToInt32());
+            sb.Append(",");
+            //sb.Append(ToIntCsv());
+            comment = sb.ToString();
+            return retval;
+        }
+
+        public OrderSignal CheckSignal(TradeBars data, Dictionary<string, string> paramlist, out string comment)
+        {
+            PropertyInfo[] properties = GetType().GetProperties();
+
+            // make sure symbol is set first for getting trendCurrent
+            PropertyInfo s = properties.FirstOrDefault(x => x.Name == "symbol");
+            if (s != null)
+            {
+                symbol = new Symbol(paramlist["symbol"], paramlist["symbol"]);
+            }
+            IndicatorDataPoint trendCurrent = new IndicatorDataPoint(data[symbol].EndTime, 0); ;
+            string trend = paramlist["trend"];
+            trendCurrent.Value = System.Convert.ToDecimal(trend);
+
+            foreach (var item in paramlist)
+            {
+                PropertyInfo p = properties.FirstOrDefault(x => x.Name == item.Key);
+                if (p != null)
+                {
+                    if (item.Key != "symbol")
+                    {
                         {
-                            if (nTrig < trendArray[0])
-                            {
-                                NTrigLTTA0 = true;
-                                if (xOver == 1)
-                                {
-                                    #region "If Not Short"
-                                    if (!IsShort)
-                                    {
-                                        if (!orderFilled)
-                                        {
-                                            retval = OrderSignal.goShort;
-                                            comment =
-                                                string.Format(
-                                                    "nTrig {0} < trend {1} xOver {2} !isShort {3} orderFilled {4}",
-                                                    Math.Round(nTrig, 4),
-                                                    Math.Round(trendArray[0], 4),
-                                                    xOver,
-                                                    !IsShort,
-                                                    !orderFilled);
-
-                                        }
-                                        else
-                                        {
-                                            retval = OrderSignal.goShortLimit;
-                                            comment =
-                                                string.Format(
-                                                    "nTrig {0} < trend {1} xOver {2} !isShort {3} orderFilled {4}",
-                                                    Math.Round(nTrig, 4),
-                                                    Math.Round(trendArray[0], 4),
-                                                    xOver,
-                                                    !IsShort,
-                                                    !orderFilled);
-
-                                        }
-                                    }
-                                    #endregion
-                                }
-                                if (comment.Length == 0)
-                                    comment = "Trigger under trend - setting xOver to -1";
-                                xOver = -1;
-                                xOverisNegative = xOver < 0;
-                                xOverIsPositive = xOver > 0;
-                            }
-
-
-
+                            var converter = TypeDescriptor.GetConverter(p.PropertyType);
+                            var convertedvalue = converter.ConvertFrom(item.Value);
+                            var setmethod = p.SetMethod;
+                            if (setmethod != null)
+                                p.SetValue(this, convertedvalue);
                         }
                     }
                 }
-                catch (Exception ex)
+            }
+            string current;
+            OrderSignal retval = CheckSignal(data, trendCurrent, out current);
+            comment = current;
+            return retval;
+        }
+
+        public OrderSignal CheckSignal(KeyValuePair<Symbol, TradeBar> data, IndicatorDataPoint trendCurrent, out string comment)
+        {
+            OrderSignal retval = OrderSignal.doNothing;
+            comment = string.Empty;
+
+            UpdateTrendArray(trendCurrent.Value);
+
+            bReverseTrade = false;
+            ReverseTrade = false;
+
+            NTrigGTEP = false;
+            NTrigLTEP = false;
+            NTrigGTTA0 = false;
+            NTrigLTTA0 = false;
+            BarcountLT4 = false;
+            OrderFilled = orderFilled;
+
+            if (Barcount < 4)
+            {
+                BarcountLT4 = true;
+                comment = "Barcount < 4";
+                retval = OrderSignal.doNothing;
+            }
+            else
+            {
+                nTrig = 2m * trendArray[0] - trendArray[2];
+
+
+                #region "Selection Logic Reversals"
+
+
+                if (nTrig < (Math.Abs(nEntryPrice) / RevPct))
                 {
-                    System.Diagnostics.Debug.WriteLine(ex.StackTrace);
+                    NTrigLTEP = true;
+                    if (IsLong)
+                    {
+                        retval = OrderSignal.revertToShort;
+                        bReverseTrade = true;
+                        ReverseTrade = true;
+                        comment =
+                            string.Format("nTrig {0} < (nEntryPrice {1} * RevPct {2}) {3} IsLong {4} )",
+                                Math.Round(nTrig, 4),
+                                nEntryPrice,
+                                RevPct,
+                                NTrigLTEP,
+                                IsLong);
+                    }
+                    else
+                    {
+                        NTrigLTEP = false;
+                    }
+                }
+                else
+                {
+                    if (nTrig > (Math.Abs(nEntryPrice) * RevPct))
+                    {
+                        NTrigGTEP = true;
+                        if (IsShort)
+                        {
+                            retval = OrderSignal.revertToLong;
+                            bReverseTrade = true;
+                            ReverseTrade = true;
+                            comment =
+                                string.Format("nTrig {0} > (nEntryPrice {1} * RevPct {2}) {3} IsLong {4} )",
+                                    Math.Round(nTrig, 4),
+                                    nEntryPrice,
+                                    RevPct,
+                                    NTrigLTEP,
+                                    IsLong);
+                        }
+                        else
+                        {
+                            NTrigGTEP = false;
+                        }
+                    }
+                }
+                #endregion
+                #region "selection logic buy/sell"
+
+                if (!bReverseTrade)
+                {
+                    if (nTrig > trendArray[0])
+                    {
+                        NTrigGTTA0 = true;
+                        if (xOver == -1)
+                        {
+                            #region "If Not Long"
+                            if (!IsLong)
+                            {
+
+                                if (!orderFilled)
+                                {
+                                    retval = OrderSignal.goLong;
+                                    comment =
+                                        string.Format(
+                                            "nTrig {0} > trend {1} xOver {2} !IsLong {3} !orderFilled {4}",
+                                            Math.Round(nTrig, 4),
+                                            Math.Round(trendArray[0], 4),
+                                            xOver,
+                                            !IsLong,
+                                            !orderFilled);
+                                }
+                                else
+                                {
+                                    retval = OrderSignal.goLongLimit;
+                                    comment =
+                                        string.Format(
+                                            "nTrig {0} > trend {1} xOver {2} !IsLong {3} !orderFilled {4}",
+                                            Math.Round(nTrig, 4),
+                                            Math.Round(trendArray[0], 4),
+                                            xOver,
+                                            !IsLong,
+                                            !orderFilled);
+
+                                }
+                            }
+                            #endregion
+                        }
+
+                        if (comment.Length == 0)
+                            comment = "Trigger over trend - setting xOver to 1";
+                        xOver = 1;
+                        xOverisNegative = xOver < 0;
+                        xOverIsPositive = xOver > 0;
+                    }
+                    else
+                    {
+                        if (nTrig < trendArray[0])
+                        {
+                            NTrigLTTA0 = true;
+                            if (xOver == 1)
+                            {
+                                #region "If Not Short"
+                                if (!IsShort)
+                                {
+                                    if (!orderFilled)
+                                    {
+                                        retval = OrderSignal.goShort;
+                                        comment =
+                                            string.Format(
+                                                "nTrig {0} < trend {1} xOver {2} !isShort {3} orderFilled {4}",
+                                                Math.Round(nTrig, 4),
+                                                Math.Round(trendArray[0], 4),
+                                                xOver,
+                                                !IsShort,
+                                                !orderFilled);
+
+                                    }
+                                    else
+                                    {
+                                        retval = OrderSignal.goShortLimit;
+                                        comment =
+                                            string.Format(
+                                                "nTrig {0} < trend {1} xOver {2} !isShort {3} orderFilled {4}",
+                                                Math.Round(nTrig, 4),
+                                                Math.Round(trendArray[0], 4),
+                                                xOver,
+                                                !IsShort,
+                                                !orderFilled);
+
+                                    }
+                                }
+                                #endregion
+                            }
+                            if (comment.Length == 0)
+                                comment = "Trigger under trend - setting xOver to -1";
+                            xOver = -1;
+                            xOverisNegative = xOver < 0;
+                            xOverIsPositive = xOver > 0;
+                        }
+
+
+
+                    }
                 }
 
                 #endregion
@@ -519,23 +712,16 @@ namespace QuantConnect.Algorithm.CSharp
         /// <param name="json">the json string</param>
         public void Deserialize(string json)
         {
-            try
-            {
-                object v = JsonConvert.DeserializeObject(json, new JsonSerializerSettings { TypeNameHandling = TypeNameHandling.All });
+            object v = JsonConvert.DeserializeObject(json, new JsonSerializerSettings { TypeNameHandling = TypeNameHandling.All });
 
-                PropertyInfo[] properties = GetType().GetProperties();
-                foreach (PropertyInfo p in properties)
-                {
-                    PropertyInfo v1 = GetType().GetProperties().FirstOrDefault(n => n.Name == p.Name);
-                    if (v1 != null)
-                    {
-                        p.SetValue(this, v1.GetValue(v));
-                    }
-                }
-            }
-            catch (Exception e)
+            PropertyInfo[] properties = GetType().GetProperties();
+            foreach (PropertyInfo p in properties)
             {
-                Debug.WriteLine(e.Message);
+                PropertyInfo v1 = GetType().GetProperties().FirstOrDefault(n => n.Name == p.Name);
+                if (v1 != null)
+                {
+                    p.SetValue(this, v1.GetValue(v));
+                }
             }
         }
         /// <summary>

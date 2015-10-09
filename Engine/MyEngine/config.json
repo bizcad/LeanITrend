@@ -11,19 +11,21 @@
     // algorithm class selector
     //"algorithm-type-name": "BasicTemplateAlgorithm",
     //"algorithm-type-name": "LoggingITrendAlgorithm",
+    //"algorithm-type-name": "InstantTrendAlgorithmOriginal",
     //"algorithm-type-name": "InstantaneousTrendAlgorithm",
-    //"algorithm-type-name": "ITrendAlgorithm",    
+    //"algorithm-type-name": "ITrendAlgorithm",
     //"algorithm-type-name": "SigTestAlgorithm",
     //"algorithm-type-name": "RollingWindowTestAlgorithm",
     "algorithm-type-name": "MultiSignalAlgorithm",
     //"algorithm-type-name": "QCLive",
+    //"algorithm-type-name": "MultiSigDailyAlgorithm",
     
-    
+
+
 
 
     // Algorithm language selector - options CSharp, FSharp, VisualBasic, Python, Java
-    "algorithm-language"
-    : "CSharp",
+    "algorithm-language": "CSharp",
 
     //Physical DLL location
     "algorithm-location": "QuantConnect.Algorithm.CSharp.dll",

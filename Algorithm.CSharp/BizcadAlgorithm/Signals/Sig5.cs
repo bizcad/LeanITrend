@@ -391,6 +391,16 @@ namespace QuantConnect.Algorithm.CSharp
             throw new NotImplementedException();
         }
 
+        public OrderSignal CheckSignal(KeyValuePair<Symbol, TradeBar> data, IndicatorDataPoint trendCurrent, out string current)
+        {
+            throw new NotImplementedException();
+        }
+
+        public OrderSignal CheckSignal(KeyValuePair<Symbol, TradeBar> data, Dictionary<string, string> paramlist, out string current)
+        {
+            throw new NotImplementedException();
+        }
+
         private void UpdateTrendArray(IndicatorDataPoint trendCurrent)
         {
             trendArray[2] = trendArray[1];

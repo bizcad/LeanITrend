@@ -245,8 +245,8 @@ namespace QuantConnect.Algorithm.CSharp
                 TotalCommission += selltrans.Commission;
                 LastTradeCommission = buytrans.Commission + selltrans.Commission;
                 TotalProfit += trade.GainOrLoss;
-                if (Math.Abs(trade.GainOrLoss) > 1000)
-                    throw new Exception("Invalid gain or loss");
+                //if (Math.Abs(trade.GainOrLoss) > 1000)
+                //    throw new Exception("Invalid gain or loss");
                 trade.CumulativeProfit = TotalProfit;
                 Trades.Add(trade);
 

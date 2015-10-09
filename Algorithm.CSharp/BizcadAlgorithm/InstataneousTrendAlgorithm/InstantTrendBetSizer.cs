@@ -1,10 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using QuantConnect.Interfaces;
-using QuantConnect.Securities;
 
 namespace QuantConnect.Algorithm.CSharp
 {
@@ -34,6 +28,18 @@ namespace QuantConnect.Algorithm.CSharp
 
         public decimal BetSize(Symbol symbol, decimal currentPrice, decimal transactionSize)
         {
+            return (int)(transactionSize / currentPrice);
+        }
+
+        public decimal BetSize(Symbol symbol, decimal currentPrice, decimal transactionSize, SignalInfo signalInfo)
+        {
+            if (signalInfo.IsActive)
+            {
+                if (_algorithm.Portfolio[symbol].Invested)
+                {
+                    return Math.Abs(_algorithm.Portfolio[symbol].Quantity);
+                }
+            }
             return (int)(transactionSize / currentPrice);
         }
 

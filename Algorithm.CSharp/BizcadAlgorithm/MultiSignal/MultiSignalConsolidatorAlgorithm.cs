@@ -18,7 +18,7 @@ using QuantConnect.Util;
 
 namespace QuantConnect.Algorithm.CSharp
 {
-    public class MultiSignalAlgorithm : QCAlgorithm
+    public class MultiSignalConsolidatorAlgorithm : QCAlgorithm
     {
         private int LiveSignalIndex = 9;
 
@@ -475,7 +475,7 @@ namespace QuantConnect.Algorithm.CSharp
         /// Run the strategy associated with this algorithm
         /// </summary>
         /// <param name="data">TradeBars - the data received by the OnData event</param>
-        public void GetOrderSignals(KeyValuePair<Symbol, TradeBar> data, List<SignalInfo> signalInfos)
+        private void GetOrderSignals(KeyValuePair<Symbol, TradeBar> data, List<SignalInfo> signalInfos)
         {
 
             // ToDo:  Handle Partial Fills

@@ -23,8 +23,8 @@ namespace QuantConnect.Algorithm.CSharp
 
         #region "Variables"
 
-        private DateTime _startDate = new DateTime(2013, 8, 11);
-        private DateTime _endDate = new DateTime(2015, 8, 14);
+        private DateTime _startDate = new DateTime(2015, 1, 11);
+        private DateTime _endDate = new DateTime(2015, 10, 4);
         private decimal _portfolioAmount = 10000;
         private decimal _transactionSize = 15000;
         //+----------------------------------------------------------------------------------------+
@@ -102,15 +102,6 @@ namespace QuantConnect.Algorithm.CSharp
         private List<OrderEvent> _orderEvents = new List<OrderEvent>();
         private int _tradecount = 0;
         #endregion
-
-        // GetOrderSignals
-
-        private ISigSerializable sig5;
-        //private ISigSerializable sig4;
-        //private ISigSerializable sig3;
-        //private ISigSerializable sig2;
-        //private ISigSerializable sig1;
-        //private InstantTrendStrategy iTrendStrategy;
 
 
         private bool shouldSellOutAtEod = true;
@@ -194,16 +185,7 @@ namespace QuantConnect.Algorithm.CSharp
                 SignalType = typeof(Sig8)
             });
 
-            //signalInfos.Add(new SignalInfo
-            //{
-            //    Id = 7,
-            //    IsActive = false,
-            //    SignalJson = string.Empty,
-            //    Value = OrderSignal.doNothing,
-            //    InternalState = string.Empty,
-            //    SignalType = typeof(Sig7)
-            //});
-
+           
             foreach (SignalInfo s in signalInfos)
             {
                 s.IsActive = false;
@@ -249,8 +231,8 @@ namespace QuantConnect.Algorithm.CSharp
             GetOrderSignals(data);
             if (SoldOutAtEndOfDay(data))
             {
-                if (signalInfos[0].Value != signalInfos[1].Value)
-                    comment = "Signals did not match";
+                //if (signalInfos[0].Value != signalInfos[1].Value)
+                //    comment = "Signals did not match";
                 // Execute only the selected strategy with it's orderSignal
                 foreach (SignalInfo signal in signalInfos)
                 {
@@ -293,13 +275,13 @@ namespace QuantConnect.Algorithm.CSharp
                     data[symbol].Value,
                     data[symbol].Price,
                     "",
-                    time.ToShortTimeString(),
+                    time.ToShortDateString(),
                     Price[0].Value,
                     trend.Current.Value,
 
                     signalInfos[0].InternalState,
-
-                    signalInfos[1].InternalState,
+                    "",
+                //signalInfos[1].InternalState,
                     comment,
                     "",
                     nEntryPrice,
@@ -354,31 +336,11 @@ namespace QuantConnect.Algorithm.CSharp
 
             //    );
             mylog.Debug(logmsg);
-
-            // reset the trade profit
-            tradeprofit = 0;
-            tradefees = 0;
-            tradenet = 0;
+            
             #endregion
 
-            // At the end of day, reset the trend and trendHistory
-            if (time.Hour == 16)
-            {
-                //trend.Reset();
-                trendHistory.Reset();
-                #region lists
-                //iTrendStrategy.Reset();
-                //sig1.Reset();
-                //sig2.Reset();
-                //sig3.Reset();
-                //sig4.Reset();
-                //sig5.Reset();
-                //sig6.Reset();
-                #endregion
 
-                barcount = 0;
-                Plot("GetOrderSignals Equity", "Portfolio", Portfolio.TotalPortfolioValue);
-            }
+            //Plot("GetOrderSignals Equity", "Portfolio", Portfolio.TotalPortfolioValue);
 
         }
 
@@ -607,8 +569,8 @@ namespace QuantConnect.Algorithm.CSharp
             tradefees = _orderTransactionProcessor.LastTradeCommission;
             if (lasttrade != null)
             {
-                tradenet = lasttrade.GainOrLoss;
-                tradeprofit = tradenet - tradefees;
+                tradeprofit = lasttrade.GainOrLoss;
+                tradenet = tradeprofit + tradefees;
             }
         }
         private void CalculateDailyProfits()
@@ -813,7 +775,7 @@ namespace QuantConnect.Algorithm.CSharp
             IBetSizer allocator = new InstantTrendBetSizer(this);
             //if (!signalInfo.IsActive)
             //    return allocator.BetSize(symbol, Price[0].Value, _transactionSize, signalInfo, _proformaProcessor);
-            return allocator.BetSize(symbol, Price[0].Value, _transactionSize, signalInfo, null);
+            return allocator.BetSize(symbol, Price[0].Value, _transactionSize, signalInfo);
         }
 
         /// <summary>
