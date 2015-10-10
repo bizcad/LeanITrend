@@ -7,7 +7,11 @@
         OrderTransaction RemoveBuy();
         OrderTransaction RemoveSell();
         int BuysCount();
-        int SellsCount();
-        string GetSymbol();
+        int SellsCount();   
+        int GetBuysQuantity(Symbol symbol);
+        int GetSellsQuantity(Symbol symbol);
+        Symbol GetSymbol();
+
+        Symbol Symbol { get; set; }
     }
 }

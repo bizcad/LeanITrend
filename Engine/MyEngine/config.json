@@ -1,6 +1,6 @@
 {
     // this configuration file works by first loading all top-level
-    // configuration it s and then will load the specified environment
+    // configuration items and then will load the specified environment
     // on top, this provides a layering affect. environment names can be
     // anything, and just require definition in this file. There's
     // two predefined environments, 'backtesting' and 'live', feel free
@@ -10,10 +10,19 @@
 
     // algorithm class selector
     //"algorithm-type-name": "BasicTemplateAlgorithm",
-    //"algorithm-type-name": "LoggingITrendAlgorithm",     
-    "algorithm-type-name": "InstantaneousTrendAlgorithm", 
+    //"algorithm-type-name": "LoggingITrendAlgorithm",
+    //"algorithm-type-name": "InstantTrendAlgorithmOriginal",
+    //"algorithm-type-name": "InstantaneousTrendAlgorithm",
     //"algorithm-type-name": "ITrendAlgorithm",
-    //"algorithm-type-name": "MultiITAlgorithm",
+    //"algorithm-type-name": "SigTestAlgorithm",
+    //"algorithm-type-name": "RollingWindowTestAlgorithm",
+    "algorithm-type-name": "MultiSignalAlgorithm",
+    //"algorithm-type-name": "QCLive",
+    //"algorithm-type-name": "MultiSigDailyAlgorithm",
+    
+
+
+
 
     // Algorithm language selector - options CSharp, FSharp, VisualBasic, Python, Java
     "algorithm-language": "CSharp",
@@ -26,6 +35,7 @@
     //"algorithm-location": "QuantConnect.Algorithm.Java.dll",
 
     // engine
+    //"data-folder": "../../../Data/",
     "data-folder": "H:\\GoogleFinanceData\\",
 
     // handlers

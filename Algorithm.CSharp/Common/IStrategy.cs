@@ -1,14 +1,8 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using QuantConnect.Indicators;
-using QuantConnect.Data.Market;
 
-namespace QuantConnect.Algorithm.CSharp.Common
+namespace QuantConnect.Algorithm.CSharp
 {
-    interface IStrategy
+    public interface IStrategy
     {
         /// <summary>
         /// Checks the signal.

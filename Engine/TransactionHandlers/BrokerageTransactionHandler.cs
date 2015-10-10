@@ -25,7 +25,7 @@ using QuantConnect.Lean.Engine.Results;
 using QuantConnect.Logging;
 using QuantConnect.Orders;
 using QuantConnect.Securities;
-using QuantConnect.Util;
+using QuantConnect.Securities.Forex;
 
 namespace QuantConnect.Lean.Engine.TransactionHandlers
 {
@@ -49,23 +49,23 @@ namespace QuantConnect.Lean.Engine.TransactionHandlers
         /// OrderQueue holds the newly updated orders from the user algorithm waiting to be processed. Once
         /// orders are processed they are moved into the Orders queue awaiting the brokerage response.
         /// </summary>
-        private ConcurrentQueue<OrderRequest> _orderRequestQueue;
+        private readonly ConcurrentQueue<OrderRequest> _orderRequestQueue = new ConcurrentQueue<OrderRequest>();
 
         /// <summary>
         /// The orders dictionary holds orders which are sent to exchange, partially filled, completely filled or cancelled.
         /// Once the transaction thread has worked on them they get put here while witing for fill updates.
         /// </summary>
-        private ConcurrentDictionary<int, Order> _orders;
+        private readonly ConcurrentDictionary<int, Order> _orders = new ConcurrentDictionary<int, Order>();
 
         /// <summary>
         /// The orders tickets dictionary holds order tickets that the algorithm can use to reference a specific order. This
         /// includes invoking update and cancel commands. In the future, we can add more features to the ticket, such as events
         /// and async events (such as run this code when this order fills)
         /// </summary>
-        private ConcurrentDictionary<int, OrderTicket> _orderTickets;
+        private readonly ConcurrentDictionary<int, OrderTicket> _orderTickets = new ConcurrentDictionary<int, OrderTicket>();
 
         private IResultHandler _resultHandler;
-        private ManualResetEventSlim _processingCompletedEvent;
+        private readonly ManualResetEventSlim _processingCompletedEvent = new ManualResetEventSlim(false);
 
         /// <summary>
         /// Gets the permanent storage for all orders
@@ -120,12 +120,6 @@ namespace QuantConnect.Lean.Engine.TransactionHandlers
             IsActive = true;
 
             _algorithm = algorithm;
-
-            // also save off the various order data structures locally
-            _orders = new ConcurrentDictionary<int, Order>();
-            _orderRequestQueue = new ConcurrentQueue<OrderRequest>();
-            _orderTickets = new ConcurrentDictionary<int, OrderTicket>();
-            _processingCompletedEvent = new ManualResetEventSlim(true);
         }
 
         /// <summary>
@@ -173,12 +167,28 @@ namespace QuantConnect.Lean.Engine.TransactionHandlers
         /// <returns>New unique, increasing orderid</returns>
         public OrderTicket AddOrder(SubmitOrderRequest request)
         {
-            request.SetResponse(OrderResponse.Success(request), OrderRequestStatus.Processing);
+            var response = !_algorithm.IsWarmingUp
+                ? OrderResponse.Success(request) 
+                : OrderResponse.WarmingUp(request);
+
+            request.SetResponse(response);
             var ticket = new OrderTicket(_algorithm.Transactions, request);
             _orderTickets.TryAdd(ticket.OrderId, ticket);
 
             // send the order to be processed after creating the ticket
-            _orderRequestQueue.Enqueue(request);
+            if (response.IsSuccess)
+            {
+                _orderRequestQueue.Enqueue(request);
+            }
+            else
+            {
+                // add it to the orders collection for recall later
+                var order = Order.CreateOrder(request);
+                order.Status = OrderStatus.Invalid;
+                order.Tag = "Algorithm warming up.";
+                ticket.SetOrder(order);
+                _orders.TryAdd(request.OrderId, order);
+            }
             return ticket;
         }
 
@@ -214,6 +224,10 @@ namespace QuantConnect.Lean.Engine.TransactionHandlers
                 else if (request.Quantity.HasValue && request.Quantity.Value == 0)
                 {
                     request.SetResponse(OrderResponse.ZeroQuantity(request));
+                }
+                else if (_algorithm.IsWarmingUp)
+                {
+                    request.SetResponse(OrderResponse.WarmingUp(request));
                 }
                 else
                 {
@@ -256,6 +270,10 @@ namespace QuantConnect.Lean.Engine.TransactionHandlers
 
                 //Error check
                 var order = GetOrderByIdInternal(request.OrderId);
+                if (order != null && request.Tag != null)
+                {
+                    order.Tag = request.Tag;
+                }
                 if (order == null)
                 {
                     Log.Error("BrokerageTransactionHandler.CancelOrder(): Cannot find this id.");
@@ -265,6 +283,10 @@ namespace QuantConnect.Lean.Engine.TransactionHandlers
                 {
                     Log.Error("BrokerageTransactionHandler.CancelOrder(): Order already " + order.Status);
                     request.SetResponse(OrderResponse.InvalidStatus(request, order));
+                }
+                else if (_algorithm.IsWarmingUp)
+                {
+                    request.SetResponse(OrderResponse.WarmingUp(request));
                 }
                 else
                 {
@@ -780,11 +802,21 @@ namespace QuantConnect.Lean.Engine.TransactionHandlers
                 try
                 {
                     _algorithm.Portfolio.ProcessFill(fill);
+
+                    var conversionRate = 1m;
+                    if (order.SecurityType == SecurityType.Forex)
+                    {
+                        string baseCurrency, quoteCurrency;
+                        Forex.DecomposeCurrencyPair(fill.Symbol, out baseCurrency, out quoteCurrency);
+                        conversionRate = _algorithm.Portfolio.CashBook[quoteCurrency].ConversionRate;
+                    }
+
+                    _algorithm.TradeBuilder.ProcessFill(fill, conversionRate);
                 }
                 catch (Exception err)
                 {
                     Log.Error(err);
-                    _algorithm.Error(string.Format("Order Error: id: {0}, Eror in Portfolio.ProcessFill: {1}", order.Id, err.Message));
+                    _algorithm.Error(string.Format("Order Error: id: {0}, Error in Portfolio.ProcessFill: {1}", order.Id, err.Message));
                 }
             }
 
@@ -812,6 +844,8 @@ namespace QuantConnect.Lean.Engine.TransactionHandlers
                 catch (Exception err)
                 {
                     _algorithm.Error("Order Event Handler Error: " + err.Message);
+                    // kill the algorithm
+                    _algorithm.RunTimeError = err;
                 }
             }
         }
@@ -842,7 +876,7 @@ namespace QuantConnect.Lean.Engine.TransactionHandlers
         private void HandleSecurityHoldingUpdated(SecurityEvent holding)
         {
             // how close are we?
-            var securityHolding = _algorithm.Portfolio[holding.Symbol];
+            var securityHolding = _algorithm.Portfolio[new Symbol(holding.Symbol)];
             var deltaQuantity = securityHolding.Quantity - holding.Quantity;
             var deltaAvgPrice = securityHolding.AveragePrice - holding.AveragePrice;
             if (deltaQuantity != 0 || deltaAvgPrice != 0)

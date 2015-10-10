@@ -16,7 +16,7 @@ namespace QuantConnect.Algorithm.CSharp
         public ConcurrentQueue<OrderTransaction> Sells { get; set; }
         public const string Buy = "Buy";
         public const string Sell = "Sell";
-        public string Symbol { get; set; }
+        public Symbol Symbol { get; set; }
 
         public PositionInventoryFifo()
         {
@@ -69,9 +69,26 @@ namespace QuantConnect.Algorithm.CSharp
             return Sells.Count;
         }
 
-        public string GetSymbol()
+        public Symbol GetSymbol()
         {
             return Symbol;
+        }
+
+        public int GetBuysQuantity(Symbol symbol)
+        {
+            if (BuysCount() > 0)
+            {
+                return Buys.Sum(b => b.Quantity);
+            }
+            return 0;
+        }
+        public int GetSellsQuantity(Symbol symbol)
+        {
+            if (SellsCount() > 0)
+            {
+                return Sells.Sum(b => b.Quantity);
+            }
+            return 0;
         }
     }
 }

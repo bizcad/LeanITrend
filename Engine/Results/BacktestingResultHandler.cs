@@ -27,6 +27,7 @@ using QuantConnect.Lean.Engine.TransactionHandlers;
 using QuantConnect.Logging;
 using QuantConnect.Orders;
 using QuantConnect.Packets;
+using QuantConnect.Statistics;
 using QuantConnect.Util;
 
 namespace QuantConnect.Lean.Engine.Results
@@ -353,7 +354,7 @@ namespace QuantConnect.Lean.Engine.Results
                 if (progress > 0.999m) progress = 0.999m;
 
                 //1. Cloud Upload -> Upload the whole packet to S3  Immediately:
-                var completeResult = new BacktestResult(Charts, _transactionHandler.Orders, Algorithm.Transactions.TransactionRecord, new Dictionary<string, string>());
+                var completeResult = new BacktestResult(Charts, _transactionHandler.Orders, Algorithm.Transactions.TransactionRecord, new Dictionary<string, string>(), new Dictionary<string, AlgorithmPerformance>());
                 var complete = new BacktestResultPacket(_job, completeResult, progress);
 
                 if (DateTime.Now > _nextS3Update)
@@ -452,9 +453,9 @@ namespace QuantConnect.Lean.Engine.Results
         /// <param name="orders">Collection of orders from the algorithm</param>
         /// <param name="profitLoss">Collection of time-profit values for the algorithm</param>
         /// <param name="holdings">Current holdings state for the algorithm</param>
-        /// <param name="statistics">Statistics information for the algorithm (empty if not finished)</param>
+        /// <param name="statisticsResults">Statistics information for the algorithm (empty if not finished)</param>
         /// <param name="banner">Runtime statistics banner information</param>
-        public void SendFinalResult(AlgorithmNodePacket job, Dictionary<int, Order> orders, Dictionary<DateTime, decimal> profitLoss, Dictionary<string, Holding> holdings, Dictionary<string, string> statistics, Dictionary<string, string> banner)
+        public void SendFinalResult(AlgorithmNodePacket job, Dictionary<int, Order> orders, Dictionary<DateTime, decimal> profitLoss, Dictionary<string, Holding> holdings, StatisticsResults statisticsResults, Dictionary<string, string> banner)
         { 
             try 
             {
@@ -464,7 +465,7 @@ namespace QuantConnect.Lean.Engine.Results
 
                 //Create a result packet to send to the browser.
                 BacktestResultPacket result = new BacktestResultPacket((BacktestNodePacket) job,
-                    new BacktestResult(charts, orders, profitLoss, statistics), 1m)
+                    new BacktestResult(charts, orders, profitLoss, statisticsResults.Summary, statisticsResults.RollingPerformances), 1m)
                 {
                     ProcessingTime = (DateTime.Now - _startTime).TotalSeconds,
                     DateFinished = DateTime.Now,
@@ -738,7 +739,7 @@ namespace QuantConnect.Lean.Engine.Results
         /// <param name="symbol">Symbol we're sampling.</param>
         /// <param name="time">Time of sample</param>
         /// <param name="value">Value of the asset price</param>
-        public void SampleAssetPrices(string symbol, DateTime time, decimal value)
+        public void SampleAssetPrices(Symbol symbol, DateTime time, decimal value)
         {
             //NOP. Don't sample asset prices in console.
         }

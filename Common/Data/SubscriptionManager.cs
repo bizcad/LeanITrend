@@ -15,7 +15,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using NodaTime;
 using QuantConnect.Data.Consolidators;
 using QuantConnect.Data.Market;
@@ -62,10 +61,11 @@ namespace QuantConnect.Data
         /// <param name="resolution">Resolution of Asset Required</param>
         /// <param name="market">The market this security resides in</param>
         /// <param name="timeZone">The time zone the subscription's data is time stamped in</param>
+        /// <param name="isCustomData">True if this is custom user supplied data, false for normal QC data</param>
         /// <param name="fillDataForward">when there is no data pass the last tradebar forward</param>
         /// <param name="extendedMarketHours">Request premarket data as well when true </param>
         /// <returns>The newly created <see cref="SubscriptionDataConfig"/></returns>
-        public SubscriptionDataConfig Add(SecurityType security, string symbol, Resolution resolution, string market, DateTimeZone timeZone, bool fillDataForward = true, bool extendedMarketHours = false)
+        public SubscriptionDataConfig Add(SecurityType security, Symbol symbol, Resolution resolution, string market, DateTimeZone timeZone, bool isCustomData = false, bool fillDataForward = true, bool extendedMarketHours = false)
         {
             //Set the type: market data only comes in two forms -- ticks(trade by trade) or tradebar(time summaries)
             var dataType = typeof(TradeBar);
@@ -73,7 +73,7 @@ namespace QuantConnect.Data
             {
                 dataType = typeof(Tick);
             }
-            return Add(dataType, security, symbol, resolution, market, timeZone, fillDataForward, extendedMarketHours, false);
+            return Add(dataType, security, symbol, resolution, market, timeZone, isCustomData, fillDataForward, extendedMarketHours, false);
         }
 
         /// <summary>
@@ -85,22 +85,20 @@ namespace QuantConnect.Data
         /// <param name="resolution">Resolution of Asset Required</param>
         /// <param name="market">The market this security resides in</param>
         /// <param name="timeZone">The time zone the subscription's data is time stamped in</param>
+        /// <param name="isCustomData">True if this is custom user supplied data, false for normal QC data</param>
         /// <param name="fillDataForward">when there is no data pass the last tradebar forward</param>
         /// <param name="extendedMarketHours">Request premarket data as well when true </param>
         /// <param name="isInternalFeed">Set to true to prevent data from this subscription from being sent into the algorithm's OnData events</param>
         /// <returns>The newly created <see cref="SubscriptionDataConfig"/></returns>
-        public SubscriptionDataConfig Add(Type dataType, SecurityType security, string symbol, Resolution resolution, string market, DateTimeZone timeZone, bool fillDataForward = true, bool extendedMarketHours = false, bool isInternalFeed = false) 
+        public SubscriptionDataConfig Add(Type dataType, SecurityType security, Symbol symbol, Resolution resolution, string market, DateTimeZone timeZone, bool isCustomData, bool fillDataForward = true, bool extendedMarketHours = false, bool isInternalFeed = false) 
         {
-            //Clean:
-            symbol = symbol.ToUpper();
-
             if (timeZone == null)
             {
                 throw new ArgumentNullException("timeZone", "TimeZone is a required parameter for new subscriptions.  Set to the time zone the raw data is time stamped in.");
             }
             
             //Create:
-            var newConfig = new SubscriptionDataConfig(dataType, security, symbol, resolution, market, timeZone, fillDataForward, extendedMarketHours, isInternalFeed);
+            var newConfig = new SubscriptionDataConfig(dataType, security, symbol, resolution, market, timeZone, fillDataForward, extendedMarketHours, isInternalFeed, isCustomData);
 
             //Add to subscription list: make sure we don't have his symbol:
             Subscriptions.Add(newConfig);
@@ -116,10 +114,8 @@ namespace QuantConnect.Data
         /// </summary>
         /// <param name="symbol">Symbol of the asset to consolidate</param>
         /// <param name="consolidator">The consolidator</param>
-        public void AddConsolidator(string symbol, IDataConsolidator consolidator)
+        public void AddConsolidator(Symbol symbol, IDataConsolidator consolidator)
         {
-            symbol = symbol.ToUpper();
-
             //Find the right subscription and add the consolidator to it
             for (var i = 0; i < Subscriptions.Count; i++)
             {

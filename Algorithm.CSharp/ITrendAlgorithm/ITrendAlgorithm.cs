@@ -1,6 +1,4 @@
-﻿using System.Reflection;
-using QuantConnect.Algorithm.CSharp.Common;
-using QuantConnect.Data.Market;
+﻿using QuantConnect.Data.Market;
 using QuantConnect.Indicators;
 using QuantConnect.Orders;
 using QuantConnect.Securities.Equity;
@@ -10,7 +8,7 @@ using System.IO;
 using System.Linq;
 using System.Text;
 
-namespace QuantConnect.Algorithm.CSharp.ITrendAlgorithm
+namespace QuantConnect.Algorithm.CSharp
 {
     public class ITrendAlgorithm : QCAlgorithm
     {

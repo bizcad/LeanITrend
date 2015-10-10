@@ -31,6 +31,7 @@ using QuantConnect.Notifications;
 using QuantConnect.Orders;
 using QuantConnect.Packets;
 using QuantConnect.Securities;
+using QuantConnect.Statistics;
 using QuantConnect.Util;
 
 namespace QuantConnect.Lean.Engine.Results
@@ -228,21 +229,21 @@ namespace QuantConnect.Lean.Engine.Results
                             //Send log messages to the browser as well for live trading:
                             case PacketType.Log:
                                 var log = packet as LogPacket;
-                                Log.Trace("LiveTradingResultHandler.Run(): Log Packet: " + log.Message);
+                                Log.Debug("LiveTradingResultHandler.Run(): Log Packet: " + log.Message);
                                 _messagingHandler.LogMessage(_deployId, log.Message);
                                 break;
 
                             //Send log messages to the browser as well for live trading:
                             case PacketType.SecurityTypes:
                                 var securityPacket = packet as SecurityTypesPacket;
-                                Log.Trace("LiveTradingResultHandler.Run(): Security Types Packet: " + securityPacket.TypesCSV);
+                                Log.Debug("LiveTradingResultHandler.Run(): Security Types Packet: " + securityPacket.TypesCSV);
                                 _messagingHandler.SecurityTypes(securityPacket);
                                 break;
 
                             //Status Update
                             case PacketType.AlgorithmStatus:
                                 var statusPacket = packet as AlgorithmStatusPacket;
-                                Log.Trace("LiveTradingResultHandler.Run(): Algorithm Status Packet:" + statusPacket.Status + " " + statusPacket.AlgorithmId);
+                                Log.Debug("LiveTradingResultHandler.Run(): Algorithm Status Packet:" + statusPacket.Status + " " + statusPacket.AlgorithmId);
                                 _messagingHandler.AlgorithmStatus(statusPacket.AlgorithmId, statusPacket.Status, statusPacket.Message);
                                 break;
 
@@ -339,9 +340,9 @@ namespace QuantConnect.Lean.Engine.Results
                     var serverStatistics = OS.GetServerStatistics();
 
                     // only send holdings updates when we have changes in orders, except for first time, then we want to send all
-                    foreach (var asset in _algorithm.Securities.Values.OrderBy(x => x.Symbol))
+                    foreach (var asset in _algorithm.Securities.Values.OrderBy(x => x.Symbol.Value))
                     {
-                        holdings.Add(asset.Symbol, new Holding(asset.Holdings));
+                        holdings.Add(asset.Symbol.Value, new Holding(asset.Holdings));
                     }
 
                     //Add the algorithm statistics first.
@@ -463,11 +464,9 @@ namespace QuantConnect.Lean.Engine.Results
             }
             catch (Exception err)
             {
-                Log.Error("LiveTradingResultHandler().Update(): " + err.Message, true);
+                Log.Error(err, "LiveTradingResultHandler().Update(): " + err.Message, true);
             }
         }
-
-
 
 
 
@@ -652,7 +651,7 @@ namespace QuantConnect.Lean.Engine.Results
         /// <param name="time">Time of sample</param>
         /// <param name="value">Value of the asset price</param>
         /// <seealso cref="Sample(string,ChartType,string,SeriesType,DateTime,decimal,string)"/>
-        public void SampleAssetPrices(string symbol, DateTime time, decimal value)
+        public void SampleAssetPrices(Symbol symbol, DateTime time, decimal value)
         {
             // don't send stockplots for internal feeds
             Security security;
@@ -663,7 +662,7 @@ namespace QuantConnect.Lean.Engine.Results
                 var close = now.Date + security.Exchange.MarketClose;
                 if (now > open && now < close)
                 {
-                    Sample("Stockplot: " + symbol, ChartType.Overlay, "Stockplot: " + symbol, SeriesType.Line, time, value);
+                    Sample("Stockplot: " + symbol.Value, ChartType.Overlay, "Stockplot: " + symbol.Value, SeriesType.Line, time, value);
                 }
             }
         }
@@ -790,9 +789,9 @@ namespace QuantConnect.Lean.Engine.Results
         /// <param name="orders">Collection of orders from the algorithm</param>
         /// <param name="profitLoss">Collection of time-profit values for the algorithm</param>
         /// <param name="holdings">Current holdings state for the algorithm</param>
-        /// <param name="statistics">Statistics information for the algorithm (empty if not finished)</param>
+        /// <param name="statisticsResults">Statistics information for the algorithm (empty if not finished)</param>
         /// <param name="runtime">Runtime statistics banner information</param>
-        public void SendFinalResult(AlgorithmNodePacket job, Dictionary<int, Order> orders, Dictionary<DateTime, decimal> profitLoss, Dictionary<string, Holding> holdings, Dictionary<string, string> statistics, Dictionary<string, string> runtime)
+        public void SendFinalResult(AlgorithmNodePacket job, Dictionary<int, Order> orders, Dictionary<DateTime, decimal> profitLoss, Dictionary<string, Holding> holdings, StatisticsResults statisticsResults, Dictionary<string, string> runtime)
         {
             try
             {
@@ -800,7 +799,7 @@ namespace QuantConnect.Lean.Engine.Results
                 var charts = new Dictionary<string, Chart>(Charts);
 
                 //Create a packet:
-                var result = new LiveResultPacket((LiveNodePacket)job, new LiveResult(charts, orders, profitLoss, holdings, statistics, runtime));
+                var result = new LiveResultPacket((LiveNodePacket)job, new LiveResult(charts, orders, profitLoss, holdings, statisticsResults.Summary, runtime));
 
                 //Save the processing time:
                 result.ProcessingTime = (DateTime.Now - _startTime).TotalSeconds;

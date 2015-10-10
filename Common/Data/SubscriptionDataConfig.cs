@@ -29,6 +29,10 @@ namespace QuantConnect.Data
     /// </summary>
     public class SubscriptionDataConfig
     {
+        private Symbol _symbol;
+        private string _mappedSymbol;
+        private readonly string _sid;
+
         /// <summary>
         /// Type of data
         /// </summary>
@@ -40,9 +44,12 @@ namespace QuantConnect.Data
         public readonly SecurityType SecurityType;
 
         /// <summary>
-        /// Symbol of the asset we're requesting.
+        /// Symbol of the asset we're requesting: this is really a perm tick!!
         /// </summary>
-        public readonly string Symbol;
+        public Symbol Symbol
+        {
+            get { return _symbol; }
+        }
 
         /// <summary>
         /// Resolution of the asset we're requesting, second minute or tick
@@ -70,6 +77,11 @@ namespace QuantConnect.Data
         public readonly bool IsInternalFeed;
 
         /// <summary>
+        /// True if this subscription is for custom user data, false for QC data
+        /// </summary>
+        public readonly bool IsCustomData;
+
+        /// <summary>
         /// The sum of dividends accrued in this subscription, used for scaling total return prices
         /// </summary>
         public decimal SumOfDividends;
@@ -87,7 +99,15 @@ namespace QuantConnect.Data
         /// <summary>
         /// Symbol Mapping: When symbols change over time (e.g. CHASE-> JPM) need to update the symbol requested.
         /// </summary>
-        public string MappedSymbol;
+        public string MappedSymbol
+        {
+            get { return _mappedSymbol; }
+            set
+            {
+                _mappedSymbol = value;
+                _symbol = new Symbol(_sid, value);
+            }
+        }
 
         /// <summary>
         /// Gets the market / scope of the symbol
@@ -117,25 +137,28 @@ namespace QuantConnect.Data
         /// <param name="extendedHours">Equities only - send in data from 4am - 8pm</param>
         /// <param name="isInternalFeed">Set to true if this subscription is added for the sole purpose of providing currency conversion rates,
         /// setting this flag to true will prevent the data from being sent into the algorithm's OnData methods</param>
+        /// <param name="isCustom">True if this is user supplied custom data, false for normal QC data</param>
         public SubscriptionDataConfig(Type objectType, 
             SecurityType securityType, 
-            string symbol, 
+            Symbol symbol, 
             Resolution resolution, 
             string market, 
             DateTimeZone timeZone,
             bool fillForward, 
             bool extendedHours,
-            bool isInternalFeed)
+            bool isInternalFeed,
+            bool isCustom = false)
         {
             Type = objectType;
             SecurityType = securityType;
             Resolution = resolution;
-            Symbol = symbol.ToUpper();
+            _sid = symbol.Permtick;
             FillDataForward = fillForward;
             ExtendedMarketHours = extendedHours;
             PriceScaleFactor = 1;
-            MappedSymbol = symbol;
+            MappedSymbol = symbol.Value;
             IsInternalFeed = isInternalFeed;
+            IsCustomData = isCustom;
             Market = market;
             TimeZone = timeZone;
             Consolidators = new HashSet<IDataConsolidator>();

@@ -5,7 +5,7 @@ using System.IO;
 using System.Text;
 using System.Threading.Tasks;
 
-using QuantConnect.Algorithm.CSharp.Common;
+using QuantConnect.Algorithm.CSharp;
 using QuantConnect.Data.Market;
 using QuantConnect.Data.Consolidators;
 using QuantConnect.Indicators;
@@ -19,29 +19,29 @@ namespace QuantConnect.Algorithm.CSharp.JJAlgorithms.DecycleInverseFisher
     public class DecycleInverseFisherAlgorithm : QCAlgorithm
     {
         #region Algorithm Globals
-        private DateTime _startDate = new DateTime(2013, 10, 7);
-        private DateTime _endDate = new DateTime(2013, 10, 11);
+        private DateTime _startDate = new DateTime(2015, 08, 07);
+        private DateTime _endDate = new DateTime(2015, 09, 04);
         private decimal _portfolioAmount = 25000;
         #endregion
 
         #region Fields
 
-        /* +-------------------------------------------------+
+    /* +-------------------------------------------------+
      * |Algorithm Control Panel                          |
      * +-------------------------------------------------+*/
-        private static int DecyclePeriod = 20;
-        private static int InvFisherPeriod = 40;
+        private static int DecyclePeriod = 10;
+        private static int InvFisherPeriod = 270;
         private static decimal Threshold = 0.9m;
         private static decimal Tolerance = 0.001m;
 
         private static decimal maxLeverage = 1m;        // Maximum Leverage.
         private decimal leverageBuffer = 0.00m;         // Percentage of Leverage left unused.
 
-        private bool resetAtEndOfDay = true;            // Reset the strategies at EOD.
+        private bool resetAtEndOfDay = false;            // Reset the strategies at EOD.
         private bool noOvernight = true;                // Close all positions before market close.
-        /* +-------------------------------------------------+*/
+    /* +-------------------------------------------------+*/
 
-        private static string[] Symbols = { "AIG", "BAC", "IBM", "SPY" };
+        private static string[] Symbols = { "SBUX" };
 
         // Dictionary used to store the ITrendStrategy object for each symbol.
         private Dictionary<string, DIFStrategy> Strategy = new Dictionary<string, DIFStrategy>();
@@ -84,7 +84,7 @@ namespace QuantConnect.Algorithm.CSharp.JJAlgorithms.DecycleInverseFisher
                 #region Logging stuff - Initializing Stock Logging
 
                 stockLogging.Add(new StringBuilder());
-                stockLogging[i].AppendLine("Counter, Time, Close, Decycle, InvFisher, OrderSignal, StateFromStrategy, StateFromPorfolio");
+                stockLogging[i].AppendLine("Counter,Time,Close,Decycle,InvFisher,OrderSignal,OrderSignal,StateFromStrategy,StateFromPorfolio");
                 i++;
 
                 #endregion Logging stuff - Initializing Stock Logging
@@ -94,13 +94,17 @@ namespace QuantConnect.Algorithm.CSharp.JJAlgorithms.DecycleInverseFisher
 
         public void OnData(TradeBars data)
         {
+            bool isMarketJustOpen;
             bool isMarketAboutToClose;
             OrderSignal actualOrder = OrderSignal.doNothing;
 
             int i = 0;
             foreach (string symbol in Symbols)
             {
-                isMarketAboutToClose = !theMarket.DateTimeIsOpen(Time.AddMinutes(10));
+                isMarketJustOpen = !theMarket.DateTimeIsOpen(Time.AddMinutes(-15)); // Avoid to trade the first 15 minutes.
+                
+                isMarketAboutToClose = !theMarket.DateTimeIsOpen(Time.AddMinutes(10)); // 
+
 
                 if (theMarket.DateTimeIsOpen(Time))
                 {
@@ -118,13 +122,14 @@ namespace QuantConnect.Algorithm.CSharp.JJAlgorithms.DecycleInverseFisher
                     ExecuteStrategy(symbol, actualOrder, data);
                 }
                 #region Logging stuff - Filling the data StockLogging
-                //Counter, Time, Close, Decycle, InvFisher, OrderSignal, StateFromStrategy, StateFromPorfolio
-                string newLine = string.Format("{0},{1},{2},{3},{4},{5},{6},{7}",
+                //Counter, Time, Close, Decycle, InvFisher, OrderSignal, OrderSignal, StateFromStrategy, StateFromPorfolio
+                string newLine = string.Format("{0},{1},{2},{3},{4},{5},{6},{7},{8}",
                                                barCounter,
-                                               Time,
+                                               Time.ToString("u"),
                                                data[symbol].Close,
                                                Strategy[symbol].DecycleTrend.Current.Value,
                                                Strategy[symbol].InverseFisher.Current.Value,
+                                               actualOrder,
                                                (actualOrder == OrderSignal.goLong || actualOrder == OrderSignal.closeShort) ? 1 :
                                                (actualOrder == OrderSignal.goShort || actualOrder == OrderSignal.closeLong) ? -1 : 0,
                                                Strategy[symbol].Position.ToString(),
@@ -166,15 +171,13 @@ namespace QuantConnect.Algorithm.CSharp.JJAlgorithms.DecycleInverseFisher
             int i = 0;
             foreach (string symbol in Symbols)
             {
-                string filename = string.Format("LittleWing{0}.csv", symbol);
-                // JJ do not delete this line it locates my engine\bin\debug folder
-                //  I just uncomment it when I run on my local machine
+                string filename = string.Format("LittleWing_{0}.csv", symbol);
                 string filePath = AssemblyLocator.ExecutingDirectory() + filename;
 
                 if (File.Exists(filePath)) File.Delete(filePath);
                 File.AppendAllText(filePath, stockLogging[i].ToString());
                 Debug(string.Format("\nSymbol Name: {0}, Ending Value: {1} ", symbol, Portfolio[symbol].Profit));
-
+                i++;
             }
 
             Debug(string.Format("\nAlgorithm Name: {0}\n Ending Portfolio Value: {1} ", this.GetType().Name, Portfolio.TotalPortfolioValue));
@@ -237,7 +240,7 @@ namespace QuantConnect.Algorithm.CSharp.JJAlgorithms.DecycleInverseFisher
 
                 case OrderSignal.goShort:
                     operationQuantity = CalculateOrderQuantity(symbol, ShareSize[symbol]);
-                    quantity = operationQuantity;
+                    quantity = -operationQuantity;
                     break;
 
                 default:

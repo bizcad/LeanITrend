@@ -19,7 +19,6 @@ using System.Linq;
 using NodaTime;
 using QuantConnect.Data;
 using QuantConnect.Data.Fundamental;
-using QuantConnect.Data.Market;
 using QuantConnect.Interfaces;
 using QuantConnect.Orders;
 using QuantConnect.Securities;
@@ -34,7 +33,6 @@ namespace QuantConnect.Lean.Engine.DataFeeds
     {
         private readonly IDataFeed _dataFeed;
         private readonly IAlgorithm _algorithm;
-        private readonly bool _isLiveMode;
         private readonly SecurityExchangeHoursProvider _hoursProvider = SecurityExchangeHoursProvider.FromDataFolder();
 
         /// <summary>
@@ -47,15 +45,15 @@ namespace QuantConnect.Lean.Engine.DataFeeds
         {
             _dataFeed = dataFeed;
             _algorithm = algorithm;
-            _isLiveMode = isLiveMode;
         }
 
         /// <summary>
         /// Applies universe selection the the data feed and algorithm
         /// </summary>
         /// <param name="date">The date used to get the current universe data</param>
+        /// <param name="market">The market undergoing universe selection</param>
         /// <param name="coarse">The coarse data used to perform a first pass at universe selection</param>
-        public SecurityChanges ApplyUniverseSelection(DateTime date, IEnumerable<CoarseFundamental> coarse)
+        public SecurityChanges ApplyUniverseSelection(DateTime date, string market, IEnumerable<CoarseFundamental> coarse)
         {
             var selector = _algorithm.Universe;
             if (selector == null)
@@ -92,16 +90,16 @@ namespace QuantConnect.Lean.Engine.DataFeeds
             // perform initial filtering and limit the result
             var initialSelections = selector.SelectCoarse(coarse).Take(limit).ToList();
 
-            var existingSubscriptions = _dataFeed.Subscriptions.ToHashSet(
-                x => Tuple.Create(x.Configuration.Symbol, x.Configuration.Market)
-                );
+            // create a hash set of our existing subscriptions by sid
+            var existingSubscriptions = _dataFeed.Subscriptions.ToHashSet(x => x.Security.Symbol);
 
-            // create a hash so we can detect removed subscriptions
-            var selectedSubscriptions = initialSelections.ToHashSet(x => Tuple.Create(x.Symbol, x.Market));
+            // create a map of each selection to its 'unique' first symbol/date
+            var selectedSubscriptions = initialSelections.ToHashSet();
 
             var additions = new List<Security>();
             var removals = new List<Security>();
 
+            // determine which data subscriptions need to be removed for this market
             foreach (var subscription in _dataFeed.Subscriptions)
             {
                 // never remove subscriptions set explicitly by the user
@@ -112,60 +110,57 @@ namespace QuantConnect.Lean.Engine.DataFeeds
                 // never remove internal feeds
                 if (config.IsInternalFeed) continue;
 
-                // define the key for our hash
-                var key = Tuple.Create(config.Symbol, config.Market);
+                // don't remove subscriptions for different markets and non-equity types
+                if (config.Market != market || config.SecurityType != SecurityType.Equity) continue;
 
-                // if the subscription isn't currently selected, remove it from our data feed
-                // but we can never remove subscriptions for which we hold stock currently
-                if (!selectedSubscriptions.Contains(key))
+                // if we've selected this subscription again, keep it
+                if (selectedSubscriptions.Contains(config.Symbol)) continue;
+
+                // let the algorithm know this security has been removed from the universe
+                removals.Add(subscription.Security);
+
+                // but don't physically remove it from the algorithm if we hold stock or have open orders against it
+                var openOrders = _algorithm.Transactions.GetOrders(x => x.Status.IsOpen() && x.Symbol == config.Symbol);
+                if (!subscription.Security.HoldStock && !openOrders.Any())
                 {
-                    // let the algorithm know this security has been removed from the universe
-                    removals.Add(subscription.Security);
+                    // we need to mark this security as untradeable while it has no data subscription
+                    // it is expected that this function is called while in sync with the algo thread,
+                    // so we can make direct edits to the security here
+                    subscription.Security.Cache.Reset();
 
-                    // but don't physically remove it from the algorithm if we hold stock or have open orders against it
-                    var openOrders = _algorithm.Transactions.GetOrders(x => x.Status.IsOpen() && x.Symbol == config.Symbol);
-                    if (!subscription.Security.HoldStock && !openOrders.Any())
-                    {
-                        // we need to mark this security as untradeable while it has no data subscription
-                        // it is expected that this function is called while in sync with the algo thread,
-                        // so we can make direct edits to the security here
-                        subscription.Security.Cache.Reset();
-
-                        _dataFeed.RemoveSubscription(subscription.Security);
-                    }
+                    _dataFeed.RemoveSubscription(subscription.Security);
                 }
             }
 
             var settings = _algorithm.UniverseSettings;
 
             // find new selections and add them to the algorithm
-            foreach (var selection in initialSelections.Where(x => !existingSubscriptions.Contains(Tuple.Create(x.Symbol, x.Market))))
+            foreach (var sid in selectedSubscriptions)
             {
-                Security security;
-                if (!_algorithm.Securities.TryGetValue(selection.Symbol, out security))
-                {
-                    // create the new security, the algorithm thread will add this at the appropriate time
-                    security = SecurityManager.CreateSecurity(_algorithm.Portfolio, _algorithm.SubscriptionManager, _hoursProvider,
-                        SecurityType.Equity, 
-                        selection.Symbol,
-                        settings.Resolution,
-                        selection.Market,
-                        settings.FillForward,
-                        settings.Leverage,
-                        settings.ExtendedMarketHours,
-                        false
-                        );
-                }
+                // we already have a subscription for this symbol so don't re-add it
+                if (existingSubscriptions.Contains(sid)) continue;
+                
+                // create the new security, the algorithm thread will add this at the appropriate time
+                var security = SecurityManager.CreateSecurity(_algorithm.Portfolio, _algorithm.SubscriptionManager, _hoursProvider,
+                    SecurityType.Equity,
+                    sid,
+                    settings.Resolution,
+                    market,
+                    settings.FillForward,
+                    settings.Leverage,
+                    settings.ExtendedMarketHours,
+                    false,
+                    false);
 
-                additions.Add(security);
+                additions.Add(security);;
 
                 // add the new subscriptions to the data feed
                 _dataFeed.AddSubscription(security, date, _algorithm.EndDate);
             }
 
             // return None if there's no changes, otherwise return what we've modified
-            return additions.Count + removals.Count != 0 
-                ? new SecurityChanges(additions, removals) 
+            return additions.Count + removals.Count != 0
+                ? new SecurityChanges(additions, removals)
                 : SecurityChanges.None;
         }
 
@@ -175,7 +170,7 @@ namespace QuantConnect.Lean.Engine.DataFeeds
         public static IEnumerable<CoarseFundamental> GetCoarseFundamentals(string market, DateTimeZone timeZone, DateTime date, bool isLiveMode)
         {
             var factory = new CoarseFundamental();
-            var config = new SubscriptionDataConfig(typeof(CoarseFundamental), SecurityType.Equity, string.Empty, Resolution.Daily, market, timeZone, true, false, true);
+            var config = new SubscriptionDataConfig(typeof(CoarseFundamental), SecurityType.Equity, new Symbol(market + "-coarse"), Resolution.Daily, market, timeZone, true, false, true, false);
             var reader = new BaseDataSubscriptionFactory(config, date, isLiveMode);
             var source = factory.GetSource(config, date, isLiveMode);
             return reader.Read(source).OfType<CoarseFundamental>();

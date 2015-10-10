@@ -49,40 +49,66 @@
   <ItemGroup>
     <Compile Include="BasicTemplateAlgorithm.cs" />
     <Compile Include="BizcadAlgorithm\AssemblyLocator.cs" />
-    <Compile Include="BizcadAlgorithm\BrokerSimulatorBack.cs" />
     <Compile Include="BizcadAlgorithm\ConsolidatorAlgorithm.cs" />
     <Compile Include="BizcadAlgorithm\CyberCycleAlgorithm.cs" />
     <Compile Include="BizcadAlgorithm\FisherTransformAlgorithm.cs" />
     <Compile Include="BizcadAlgorithm\HullMovingAverageAlgorithm.cs" />
-    <Compile Include="BizcadAlgorithm\InstantaneousTrendAlgorithm.cs" />
-    <Compile Include="BizcadAlgorithm\InstantTrendStrategy.cs" />
+    <Compile Include="BizcadAlgorithm\InstataneousTrendAlgorithm\IBetSizer.cs" />
+    <Compile Include="BizcadAlgorithm\InstataneousTrendAlgorithm\ILimitPriceCalculator.cs" />
+    <Compile Include="BizcadAlgorithm\InstataneousTrendAlgorithm\InstantaneousTrendAlgorithm.cs" />
+    <Compile Include="BizcadAlgorithm\InstataneousTrendAlgorithm\InstantTrendAlgorithmOriginal.cs" />
+    <Compile Include="BizcadAlgorithm\InstataneousTrendAlgorithm\InstantTrendBetSizer.cs" />
+    <Compile Include="BizcadAlgorithm\InstataneousTrendAlgorithm\InstantTrendLimitPriceCalculator.cs" />
     <Compile Include="BizcadAlgorithm\IPositionInventory.cs" />
     <Compile Include="BizcadAlgorithm\MatchedTrade.cs" />
     <Compile Include="BizcadAlgorithm\MeanReversionAlgorithm.cs" />
-    <Compile Include="BizcadAlgorithm\MultiITAlgorithm.cs" />
-    <Compile Include="BizcadAlgorithm\MultiITStrategy.cs" />
+    <Compile Include="BizcadAlgorithm\MultiSignal\MultiSignalConsolidatorAlgorithm.cs" />
+    <Compile Include="BizcadAlgorithm\MultiSignal\MultiSignalAlgorithm.cs" />
     <Compile Include="BizcadAlgorithm\OptimalTrackingAlgorithm.cs" />
-    <Compile Include="BizcadAlgorithm\OrderTransactionFactory.cs" />
     <Compile Include="BizcadAlgorithm\OrderTransaction.cs" />
+    <Compile Include="BizcadAlgorithm\OrderTransactionFactory.cs" />
+    <Compile Include="BizcadAlgorithm\OrderTransactionProcessor.cs" />
     <Compile Include="BizcadAlgorithm\PositionInventoryFifo.cs" />
     <Compile Include="BizcadAlgorithm\PositionInventoryLifo.cs" />
-    <Compile Include="Common\IStrategy.cs" />
-    <Compile Include="JJAlgorithms\DecycleInverseFisher\DecycleInverseFisherAlgorithm.cs" />
-    <Compile Include="JJAlgorithms\DecycleInverseFisher\DecycleInverseFisherStrategy.cs" />
-    <Compile Include="Proforma\ProformaOrder.cs" />
     <Compile Include="BizcadAlgorithm\RateOfChangePercentStrategy.cs" />
     <Compile Include="BizcadAlgorithm\RVIAlgorithm.cs" />
+    <Compile Include="BizcadAlgorithm\SigDaily\MultiSigDailyAlgorithmQC.cs" />
+    <Compile Include="BizcadAlgorithm\SigDaily\MultiSigDailyAlgorithm.cs" />
+    <Compile Include="BizcadAlgorithm\Signals\InstantTrendStrategy.cs" />
+    <Compile Include="BizcadAlgorithm\Signals\InstantTrendStrategyOriginal.cs" />
+    <Compile Include="BizcadAlgorithm\Signals\ISig.cs" />
+    <Compile Include="BizcadAlgorithm\Signals\ISigSerializable.cs" />
+    <Compile Include="BizcadAlgorithm\Signals\QCLiveSignal.cs" />
+    <Compile Include="BizcadAlgorithm\Signals\Sig1.cs" />
+    <Compile Include="BizcadAlgorithm\Signals\Sig2.cs" />
+    <Compile Include="BizcadAlgorithm\Signals\Sig3.cs" />
+    <Compile Include="BizcadAlgorithm\Signals\Sig4.cs" />
+    <Compile Include="BizcadAlgorithm\Signals\Sig5.cs" />
+    <Compile Include="BizcadAlgorithm\Signals\Sig6.cs" />
+    <Compile Include="BizcadAlgorithm\Signals\Sig7.cs" />
+    <Compile Include="BizcadAlgorithm\Signals\Sig8.cs" />
+    <Compile Include="BizcadAlgorithm\Signals\Sig9.cs">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="BizcadAlgorithm\Signals\SigC.cs" />
+    <Compile Include="BizcadAlgorithm\Signals\SignalInfo.cs" />
+    <Compile Include="BizcadAlgorithm\Signals\SignalSerializationAlgorithm.cs" />
+    <Compile Include="Common\IStrategy.cs" />
+    <Compile Include="CustomAlgorithms\SimpleSystemAlgorithm.cs" />
     <Compile Include="BizcadAlgorithm\TradeBarReporter.cs" />
-    <Compile Include="BizcadAlgorithm\OrderTransactionProcessor.cs" />
-    <Compile Include="BizcadAlgorithm\BrokerSimulator.cs" />
-    <Compile Include="Common\Global.cs" />
     <Compile Include="Common\CsvSerializer.cs" />
+    <Compile Include="Common\Global.cs" />
+    <Compile Include="CustomAlgorithms\UpdateOrderDemoAlgorithm.cs" />
     <Compile Include="CustomBenchmarkAlgorithm.cs" />
     <Compile Include="DelistingEventsAlgorithm.cs" />
+    <Compile Include="HistoryAlgorithm.cs" />
+    <Compile Include="HistoryAndWarmupRegressionAlgorithm.cs" />
     <Compile Include="ITrendAlgorithm\ITrendAlgorithm.cs" />
     <Compile Include="ITrendAlgorithm\ITrendStrategy.cs" />
     <Compile Include="ITrendAlgorithm\LoggingITrendAlgorithm.cs" />
     <Compile Include="JJAlgorithms\CyclePeriodHomodyneAlgorithm.cs" />
+    <Compile Include="JJAlgorithms\DecycleInverseFisher\DecycleInverseFisherAlgorithm.cs" />
+    <Compile Include="JJAlgorithms\DecycleInverseFisher\DecycleInverseFisherStrategy.cs" />
     <Compile Include="JJAlgorithms\IntradayBuyLow\AdaptativeSizing.cs" />
     <Compile Include="JJAlgorithms\IntradayBuyLow\BuyLowStrategy.cs" />
     <Compile Include="JJAlgorithms\IntradayBuyLow\IntradayBuyLow1_3.cs" />
@@ -90,8 +116,8 @@
     <Compile Include="JJAlgorithms\Laguerre.cs" />
     <Compile Include="JJAlgorithms\LaguerreBasic.cs" />
     <Compile Include="JJAlgorithms\LaguerreEMA.cs" />
-    <Compile Include="JJAlgorithms\TestingAP.cs" />
     <Compile Include="JJAlgorithms\TestingAlgo.cs" />
+    <Compile Include="JJAlgorithms\TestingAP.cs" />
     <Compile Include="LimitFillRegressionAlgorithm.cs" />
     <Compile Include="BasicTemplateFillForwardAlgorithm.cs" />
     <Compile Include="BenchmarkAlgorithm.cs" />
@@ -107,14 +133,18 @@
     <Compile Include="ETFGlobalRotationAlgorithm.cs" />
     <Compile Include="IndicatorSuiteAlgorithm.cs" />
     <Compile Include="LiveFeaturesAlgorithm.cs" />
+    <Compile Include="OpeningBreakoutAlgorithm.cs" />
+    <Compile Include="Proforma\ProformaOrder.cs" />
+    <Compile Include="Proforma\ProformaOrderTicket.cs" />
+    <Compile Include="Proforma\ProformaOrderTicketBack.cs" />
+    <Compile Include="Proforma\ProformaSubmitOrderRequest.cs" />
+    <Compile Include="WarmupAlgorithm.cs" />
+    <Compile Include="WarmupHistoryAlgorithm.cs" />
     <Compile Include="MACDTrendAlgorithm.cs" />
     <Compile Include="MarginCallEventsAlgorithm.cs" />
     <Compile Include="MarketOnOpenOnCloseAlgorithm.cs" />
     <Compile Include="MovingAverageCrossAlgorithm.cs" />
     <Compile Include="MultipleSymbolConsolidationAlgorithm.cs" />
-    <Compile Include="Proforma\ProformaOrderTicket.cs" />
-    <Compile Include="Proforma\ProformaOrderTicketBack.cs" />
-    <Compile Include="Proforma\ProformaSubmitOrderRequest.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="QuandlFuturesDataAlgorithm.cs" />
     <Compile Include="QuandlImporterAlgorithm.cs" />
@@ -125,6 +155,7 @@
     <Compile Include="StressSymbols.cs" />
     <Compile Include="TickDataFilteringAlgorithm.cs" />
     <Compile Include="UniverseSelectionAlgorithm.cs" />
+    <Compile Include="UniverseSelectionRegressionAlgorithm.cs" />
     <Compile Include="UpdateOrderLiveTestAlgorithm.cs" />
     <Compile Include="UpdateOrderRegressionAlgorithm.cs" />
     <Compile Include="OrderTicketDemoAlgorithm.cs" />
@@ -133,10 +164,6 @@
     <ProjectReference Include="..\Algorithm\QuantConnect.Algorithm.csproj">
       <Project>{3240aca4-bdd4-4d24-ac36-bbb651c39212}</Project>
       <Name>QuantConnect.Algorithm</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\Brokerages\QuantConnect.Brokerages.csproj">
-      <Project>{2D3E13CF-2D14-4180-A42D-F0A13AF0ADE2}</Project>
-      <Name>QuantConnect.Brokerages</Name>
     </ProjectReference>
     <ProjectReference Include="..\Common\QuantConnect.csproj">
       <Project>{2545c0b4-fabb-49c9-8dd1-9ad7ee23f86b}</Project>
@@ -158,9 +185,7 @@
   <ItemGroup>
     <None Include="packages.config" />
   </ItemGroup>
-  <ItemGroup>
-    <Folder Include="Custom Algos\" />
-  </ItemGroup>
+  <ItemGroup />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
        Other similar extension points exist, see Microsoft.Common.targets.

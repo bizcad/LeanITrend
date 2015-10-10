@@ -1,8 +1,7 @@
-﻿using QuantConnect.Algorithm.CSharp.Common;
-using QuantConnect.Indicators;
+﻿using QuantConnect.Indicators;
 using System;
 
-namespace QuantConnect.Algorithm.CSharp.ITrendAlgorithm
+namespace QuantConnect.Algorithm.CSharp
 {
 
     public class ITrendStrategy

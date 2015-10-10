@@ -1,11 +1,10 @@
 ﻿using NUnit.Framework;
-using QuantConnect.Algorithm.CSharp.ITrendAlgorithm;
-using QuantConnect.Algorithm.CSharp.Common;
+using QuantConnect.Algorithm.CSharp;
 using QuantConnect.Indicators;
 using QuantConnect.Tests.Indicators;
 using System;
 
-namespace QuantConnect.Tests.ITrendAlgorithm
+namespace QuantConnect.Tests
 {
     [TestFixture]
     public class ItrendStrategyTest

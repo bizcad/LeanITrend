@@ -46,27 +46,31 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="AverageDirectionalIndex.cs" />
-    <Compile Include="Custom Indicators\AutocorrelogramPeriodogram.cs">
-      <SubType>Code</SubType>
-    </Compile>
+    <Compile Include="Custom Indicators\AutocorrelogramPeriodogram.cs" />
     <Compile Include="Custom Indicators\CyclePeriod.cs" />
     <Compile Include="Custom Indicators\CyclePeriodHomodyme.cs" />
     <Compile Include="Custom Indicators\Decycle.cs" />
     <Compile Include="Custom Indicators\HighPassFilter.cs" />
+    <Compile Include="Custom Indicators\InverseFisherTransform.cs">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Custom Indicators\Momersion.cs" />
     <Compile Include="Custom Indicators\SuperSmoother.cs" />
     <Compile Include="DonchianChannel.cs" />
     <Compile Include="IchimokuKinkoHyo.cs" />
-    <Compile Include="MyIndicators\CyberCycle.cs" />
-    <Compile Include="MyIndicators\FisherTransform.cs" />
-    <Compile Include="MyIndicators\HullMovingAverage.cs" />
-    <Compile Include="MyIndicators\InstantaneousTrend.cs" />
-    <Compile Include="MyIndicators\InverseFisherTransform.cs" />
-    <Compile Include="MyIndicators\RelativeVigorIndex.cs" />
+    <Compile Include="KeltnerChannels.cs" />
+    <Compile Include="LogReturn.cs" />
+    <Compile Include="Custom Indicators\CyberCycle.cs" />
+    <Compile Include="Custom Indicators\FisherTransform.cs" />
+    <Compile Include="Custom Indicators\HullMovingAverage.cs" />
+    <Compile Include="Custom Indicators\InstantaneousTrend.cs" />
+    <Compile Include="Custom Indicators\RelativeVigorIndex.cs" />
     <Compile Include="OnBalanceVolume.cs" />
     <Compile Include="..\Common\Properties\SharedAssemblyInfo.cs">
       <Link>Properties\SharedAssemblyInfo.cs</Link>
     </Compile>
     <Compile Include="LinearWeightedMovingAverage.cs" />
+    <Compile Include="ParabolicStopAndReverse.cs" />
     <Compile Include="WilliamsPercentR.cs" />
     <Compile Include="AroonOscillator.cs" />
     <Compile Include="AverageTrueRange.cs" />

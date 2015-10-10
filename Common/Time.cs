@@ -16,7 +16,6 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
-using System.Linq;
 using QuantConnect.Logging;
 using QuantConnect.Securities;
 
@@ -232,7 +231,7 @@ namespace QuantConnect
         /// <returns>Enumerable date range</returns>
         public static IEnumerable<DateTime> EachTradeableDay(Security security, DateTime from, DateTime thru)
         {
-            return EachTradeableDay(security.Exchange, from, thru);
+            return EachTradeableDay(security.Exchange.Hours, from, thru);
         }
 
 
@@ -243,11 +242,11 @@ namespace QuantConnect
         /// <param name="from">Start date</param>
         /// <param name="thru">End date</param>
         /// <returns>Enumerable date range</returns>
-        public static IEnumerable<DateTime> EachTradeableDay(SecurityExchange exchange, DateTime from, DateTime thru)
+        public static IEnumerable<DateTime> EachTradeableDay(SecurityExchangeHours exchange, DateTime from, DateTime thru)
         {
             for (var day = from.Date; day.Date <= thru.Date; day = day.AddDays(1))
             {
-                if (exchange.DateIsOpen(day))
+                if (exchange.IsDateOpen(day))
                 {
                     yield return day;
                 }
@@ -290,9 +289,9 @@ namespace QuantConnect
             Log.Trace("Time.TradeableDates(): Security Count: " + securities.Count);
             try 
             {
-                foreach (var day in Time.EachDay(start, finish)) 
+                foreach (var day in EachDay(start, finish)) 
                 {
-                    if (Time.TradableDate(securities, day)) 
+                    if (TradableDate(securities, day)) 
                     {
                         count++;
                     }
@@ -305,5 +304,33 @@ namespace QuantConnect
             return count;
         }
 
+        /// <summary>
+        /// Determines the start time required to produce the requested number of bars and the given size
+        /// </summary>
+        /// <param name="exchange">The exchange used to test for market open hours</param>
+        /// <param name="end">The end time of the last bar over the requested period</param>
+        /// <param name="barSize">The length of each bar</param>
+        /// <param name="barCount">The number of bars requested</param>
+        /// <param name="extendedMarketHours">True to allow extended market hours bars, otherwise false for only normal market hours</param>
+        /// <returns>The start time that would provide the specified number of bars ending at the specified end time, rounded down by the requested bar size</returns>
+        public static DateTime GetStartTimeForTradeBars(SecurityExchangeHours exchange, DateTime end, TimeSpan barSize, int barCount, bool extendedMarketHours)
+        {
+            if (barSize <= TimeSpan.Zero)
+            {
+                throw new ArgumentException("barSize must be greater than TimeSpan.Zero", "barSize");
+            }
+
+            var current = end.RoundDown(barSize);
+            for (int i = 0; i < barCount;)
+            {
+                var previous = current;
+                current = current - barSize;
+                if (exchange.IsOpen(current, previous, extendedMarketHours))
+                {
+                    i++;
+                }
+            }
+            return current;
+        }
     }
 }

@@ -1,4 +1,4 @@
-﻿using QuantConnect.Algorithm.CSharp.Common;
+﻿using QuantConnect.Algorithm.CSharp;
 using QuantConnect.Indicators;
 using System;
 
@@ -50,12 +50,20 @@ namespace QuantConnect.Algorithm.CSharp.JJAlgorithms.DecycleInverseFisher
 
             if (InvFisherRW.IsReady)
             {
-                bool longSignal = (InvFisherRW[1] < -_threshold) &&
-                                  (InvFisherRW[0] > -_threshold) &&
+                //bool longSignal = (InvFisherRW[1] < -_threshold) &&
+                //                  (InvFisherRW[0] > -_threshold) &&
+                //                  (Math.Abs(InvFisherRW[0] - InvFisherRW[1]) > _tolerance);
+
+                //bool shortSignal = (InvFisherRW[1] > _threshold) &&
+                //                   (InvFisherRW[0] < _threshold) &&
+                //                   (Math.Abs(InvFisherRW[0] - InvFisherRW[1]) > _tolerance);
+
+                bool longSignal = (InvFisherRW[1] < _threshold) &&
+                                  (InvFisherRW[0] > _threshold) &&
                                   (Math.Abs(InvFisherRW[0] - InvFisherRW[1]) > _tolerance);
 
-                bool shortSignal = (InvFisherRW[1] > _threshold) &&
-                                   (InvFisherRW[0] < _threshold) &&
+                bool shortSignal = (InvFisherRW[1] > -_threshold) &&
+                                   (InvFisherRW[0] < -_threshold) &&
                                    (Math.Abs(InvFisherRW[0] - InvFisherRW[1]) > _tolerance);
 
                 switch (this.Position)

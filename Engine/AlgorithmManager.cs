@@ -138,7 +138,7 @@ namespace QuantConnect.Lean.Engine
         {
             //Initialize:
             _dataPointCount = 0;
-            var startingPortfolioValue = algorithm.Portfolio.TotalPortfolioValue;
+            var portfolioValue = algorithm.Portfolio.TotalPortfolioValue;
             var backtestMode = (job.Type == PacketType.BacktestNode);
             var methodInvokers = new Dictionary<Type, MethodInvoker>();
             var marginCallFrequency = TimeSpan.FromMinutes(5);
@@ -160,6 +160,7 @@ namespace QuantConnect.Lean.Engine
             var hasOnDataDividends = AddMethodInvoker<Dividends>(algorithm, methodInvokers);
             var hasOnDataSplits = AddMethodInvoker<Splits>(algorithm, methodInvokers);
             var hasOnDataDelistings = AddMethodInvoker<Delistings>(algorithm, methodInvokers);
+            var hasOnDataSymbolChangedEvents = AddMethodInvoker<SymbolChangedEvents>(algorithm, methodInvokers);
 
             // Algorithm 3.0 data accessors
             var hasOnDataSlice = algorithm.GetType().GetMethods()
@@ -192,9 +193,19 @@ namespace QuantConnect.Lean.Engine
                 }
             }
 
+            // wire up universe selection. it is assumed that the data feed will perform the
+            // required thread synchronization.
+            var universeSelection = new UniverseSelection(feed, algorithm, _liveMode);
+            feed.Fundamental += (sender, args) =>
+            {
+                var market = args.Configuration.Market;
+                var localTime = args.DateTimeUtc.ConvertFromUtc(args.Configuration.TimeZone);
+                universeSelection.ApplyUniverseSelection(localTime, market, args.Data.OfType<CoarseFundamental>());
+            };
+
             //Loop over the queues: get a data collection, then pass them all into relevent methods in the algorithm.
             Log.Trace("AlgorithmManager.Run(): Begin DataStream - Start: " + algorithm.StartDate + " Stop: " + algorithm.EndDate);
-            foreach (var timeSlice in feed.Bridge.GetConsumingEnumerable(token))
+            foreach (var timeSlice in Stream(job, algorithm, feed, results, token))
             {
                 // reset our timer on each loop
                 _currentTimeStepTime = DateTime.UtcNow;
@@ -230,15 +241,15 @@ namespace QuantConnect.Lean.Engine
                         results.SampleEquity(_previousTime, Math.Round(algorithm.Portfolio.TotalPortfolioValue, 4));
 
                         //Check for divide by zero
-                        if (startingPortfolioValue == 0m)
+                        if (portfolioValue == 0m)
                         {
                             results.SamplePerformance(_previousTime.Date, 0);
                         }
                         else
                         {
-                            results.SamplePerformance(_previousTime.Date, Math.Round((algorithm.Portfolio.TotalPortfolioValue - startingPortfolioValue)*100/startingPortfolioValue, 10));
+                            results.SamplePerformance(_previousTime.Date, Math.Round((algorithm.Portfolio.TotalPortfolioValue - portfolioValue) * 100 / portfolioValue, 10));
                         }
-                        startingPortfolioValue = algorithm.Portfolio.TotalPortfolioValue;
+                        portfolioValue = algorithm.Portfolio.TotalPortfolioValue;
                     }
                 }
                 else
@@ -251,6 +262,22 @@ namespace QuantConnect.Lean.Engine
 
                 //Set the algorithm and real time handler's time
                 algorithm.SetDateTime(time);
+
+                if (timeSlice.Slice.SymbolChangedEvents.Count != 0)
+                {
+                    if (hasOnDataSymbolChangedEvents)
+                    {
+                        methodInvokers[typeof (SymbolChangedEvents)](algorithm, timeSlice.Slice.SymbolChangedEvents);
+                    }
+                    foreach (var symbol in timeSlice.Slice.SymbolChangedEvents.Keys)
+                    {
+                        // cancel all orders for the old symbol
+                        foreach (var ticket in transactions.GetOrderTickets(x => x.Status.IsOpen() && x.Symbol == symbol))
+                        {
+                            ticket.Cancel("Open order cancelled on symbol changed event");
+                        }
+                    }
+                }
 
                 if (timeSlice.SecurityChanges != SecurityChanges.None)
                 {
@@ -274,6 +301,12 @@ namespace QuantConnect.Lean.Engine
                 foreach (var kvp in timeSlice.SecuritiesUpdateData)
                 {
                     kvp.Key.SetMarketPrice(kvp.Value);
+
+                    // Send market price updates to the TradeBuilder
+                    if (kvp.Value != null)
+                    {
+                        algorithm.TradeBuilder.SetMarketPrice(kvp.Key.Symbol, kvp.Value.Price);
+                    }
                 }
 
                 // fire real time events after we've updated based on the new data
@@ -291,7 +324,7 @@ namespace QuantConnect.Lean.Engine
                         {
                             algorithm.Securities.Remove(ticket.Symbol);
                             delistingTickets.RemoveAt(i--);
-                            Log.Trace("AlgorithmManager.Run(): Security removed: " + ticket.Symbol);
+                            Log.Trace("AlgorithmManager.Run(): Delisted Security removed: " + ticket.Symbol.Permtick);
                         }
                     }
                 }
@@ -576,7 +609,7 @@ namespace QuantConnect.Lean.Engine
             results.SampleRange(algorithm.GetChartUpdates());
             results.SampleEquity(_previousTime, Math.Round(algorithm.Portfolio.TotalPortfolioValue, 4));
             SampleBenchmark(algorithm, results, _previousTime);
-            results.SamplePerformance(_previousTime, Math.Round((algorithm.Portfolio.TotalPortfolioValue - startingPortfolioValue) * 100 / startingPortfolioValue, 10));
+            results.SamplePerformance(_previousTime, Math.Round((algorithm.Portfolio.TotalPortfolioValue - portfolioValue)*100/portfolioValue, 10));
         } // End of Run();
 
         /// <summary>
@@ -592,6 +625,154 @@ namespace QuantConnect.Lean.Engine
                 {
                     _algorithmState = state;
                 }
+            }
+        }
+
+        private IEnumerable<TimeSlice> Stream(AlgorithmNodePacket job, IAlgorithm algorithm, IDataFeed feed, IResultHandler results, CancellationToken cancellationToken)
+        {
+            bool setStartTime = false;
+            var timeZone = algorithm.TimeZone;
+            var history = algorithm.HistoryProvider;
+
+            // get the required history job from the algorithm
+            DateTime? lastHistoryTimeUtc = null;
+            var historyRequests = algorithm.GetWarmupHistoryRequests().ToList();
+
+            // initialize variables for progress computation
+            var start = DateTime.UtcNow.Ticks;
+            var nextStatusTime = DateTime.UtcNow.AddSeconds(1);
+            var minimumIncrement = algorithm.Securities.Min(x => x.Value.SubscriptionDataConfig.Increment);
+            minimumIncrement = (minimumIncrement == TimeSpan.Zero ? Time.OneSecond : minimumIncrement);
+
+            if (historyRequests.Count != 0)
+            {
+                // rewrite internal feed requests
+                var minResolution = algorithm.SubscriptionManager.Subscriptions.Where(x => !x.IsInternalFeed).Min(x => x.Resolution);
+                foreach (var request in historyRequests)
+                {
+                    Security security;
+                    if (algorithm.Securities.TryGetValue(request.Symbol, out security) && security.SubscriptionDataConfig.IsInternalFeed)
+                    {
+                        if (request.Resolution < minResolution)
+                        {
+                            request.Resolution = minResolution;
+                            request.FillForwardResolution = request.FillForwardResolution.HasValue ? minResolution : (Resolution?) null;
+                        }
+                    }
+                }
+
+                // rewrite all to share the same fill forward resolution
+                if (historyRequests.Any(x => x.FillForwardResolution.HasValue))
+                {
+                    minResolution = historyRequests.Where(x => x.FillForwardResolution.HasValue).Min(x => x.FillForwardResolution.Value);
+                    foreach (var request in historyRequests.Where(x => x.FillForwardResolution.HasValue))
+                    {
+                        request.FillForwardResolution = minResolution;
+                    }
+                }
+
+                foreach (var request in historyRequests)
+                {
+                    start = Math.Min(request.StartTimeUtc.Ticks, start);
+                    Log.Trace(string.Format("AlgorithmManager.Stream(): WarmupHistoryRequest: {0}: Start: {1} End: {2} Resolution: {3}", request.Symbol, request.StartTimeUtc, request.EndTimeUtc, request.Resolution));
+                }
+
+                // make the history request and build time slices
+                foreach (var slice in history.GetHistory(historyRequests, timeZone))
+                {
+                    TimeSlice timeSlice;
+                    try
+                    {
+                        // we need to recombine this slice into a time slice
+                        var paired = new List<KeyValuePair<Security, List<BaseData>>>();
+                        foreach (var symbol in slice.Keys)
+                        {
+                            var security = algorithm.Securities[symbol];
+                            var data = slice[symbol];
+                            var list = new List<BaseData>();
+                            var ticks = data as List<Tick>;
+                            if (ticks != null) list.AddRange(ticks);
+                            else               list.Add(data);
+                            paired.Add(new KeyValuePair<Security, List<BaseData>>(security, list));
+                        }
+                        timeSlice = TimeSlice.Create(slice.Time.ConvertToUtc(timeZone), timeZone, algorithm.Portfolio.CashBook, paired, SecurityChanges.None);
+                    }
+                    catch (Exception err)
+                    {
+                        Log.Error(err);
+                        algorithm.RunTimeError = err;
+                        yield break;
+                    }
+
+                    if (timeSlice != null)
+                    {
+                        if (!setStartTime)
+                        {
+                            setStartTime = true;
+                            _previousTime = timeSlice.Time;
+                            algorithm.Debug("Algorithm warming up...");
+                        }
+                        if (DateTime.UtcNow > nextStatusTime)
+                        {
+                            // send some status to the user letting them know we're done history, but still warming up,
+                            // catching up to real time data
+                            nextStatusTime = DateTime.UtcNow.AddSeconds(1);
+                            var percent = (int)(100 * (timeSlice.Time.Ticks - start) / (double)(DateTime.UtcNow.Ticks - start));
+                            results.SendStatusUpdate(job.AlgorithmId, AlgorithmStatus.History, string.Format("Catching up to realtime {0}%...", percent));
+                        }
+                        yield return timeSlice;
+                        lastHistoryTimeUtc = timeSlice.Time;
+                    } 
+                }
+            }
+
+            // if we're not live or didn't event request warmup, then set us as not warming up
+            if (!algorithm.LiveMode || historyRequests.Count == 0)
+            {
+                algorithm.SetFinishedWarmingUp();
+                results.SendStatusUpdate(job.AlgorithmId, AlgorithmStatus.Running);
+                if (historyRequests.Count != 0)
+                {
+                    algorithm.Debug("Algorithm finished warming up.");
+                    Log.Trace("AlgorithmManager.Stream(): Finished warmup");
+                }
+            }
+
+            foreach (var timeSlice in feed.Bridge.GetConsumingEnumerable(cancellationToken))
+            {
+                if (!setStartTime)
+                {
+                    setStartTime = true;
+                    _previousTime = timeSlice.Time;
+                }
+                if (algorithm.LiveMode && algorithm.IsWarmingUp)
+                {
+                    // this is hand-over logic, we spin up the data feed first and then request
+                    // the history for warmup, so there will be some overlap between the data
+                    if (lastHistoryTimeUtc.HasValue && timeSlice.Time <= lastHistoryTimeUtc)
+                    {
+                        continue;
+                    }
+
+                    // in live mode wait to mark us as finished warming up when
+                    // the data feed has caught up to now within the min increment
+                    if (timeSlice.Time > DateTime.UtcNow.Subtract(minimumIncrement))
+                    {
+                        algorithm.SetFinishedWarmingUp();
+                        results.SendStatusUpdate(job.AlgorithmId, AlgorithmStatus.Running);
+                        algorithm.Debug("Algorithm finished warming up.");
+                        Log.Trace("AlgorithmManager.Stream(): Finished warmup");
+                    }
+                    else if (DateTime.UtcNow > nextStatusTime)
+                    {
+                        // send some status to the user letting them know we're done history, but still warming up,
+                        // catching up to real time data
+                        nextStatusTime = DateTime.UtcNow.AddSeconds(1);
+                        var percent = (int) (100*(timeSlice.Time.Ticks - start)/(double) (DateTime.UtcNow.Ticks - start));
+                        results.SendStatusUpdate(job.AlgorithmId, AlgorithmStatus.History, string.Format("Catching up to realtime {0}%...", percent));   
+                    }
+                }
+                yield return timeSlice;
             }
         }
 

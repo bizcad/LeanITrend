@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using QuantConnect.Algorithm.CSharp.Common;
+
 using QuantConnect.Orders;
 
 namespace QuantConnect.Algorithm.CSharp
@@ -215,7 +215,7 @@ namespace QuantConnect.Algorithm.CSharp
                 Id = ++tradeId,
                 Symbol = buytrans.Symbol,
                 DescriptionOfProperty = string.Format("{0} {1}", buytrans.Quantity, buytrans.Symbol),
-                DateAcquired = buytrans.SettledDate,
+                DateAcquired = buytrans.TradeDate,
                 DateSoldOrDisposed = selltrans.SettledDate,
                 AdjustmentAmount = 0,
                 ReportedToIrs = true,
@@ -245,8 +245,8 @@ namespace QuantConnect.Algorithm.CSharp
                 TotalCommission += selltrans.Commission;
                 LastTradeCommission = buytrans.Commission + selltrans.Commission;
                 TotalProfit += trade.GainOrLoss;
-                if (Math.Abs(trade.GainOrLoss) > 1000)
-                    throw new Exception("Invalid gain or loss");
+                //if (Math.Abs(trade.GainOrLoss) > 1000)
+                //    throw new Exception("Invalid gain or loss");
                 trade.CumulativeProfit = TotalProfit;
                 Trades.Add(trade);
 
@@ -301,7 +301,43 @@ namespace QuantConnect.Algorithm.CSharp
 
             return l;
         }
+        public bool IsLong(Symbol symbol)
+        {
+            if (OpenPositions.Count > 0)
+            {
+                var position = OpenPositions.FirstOrDefault(b => b.Symbol == symbol);
+                if (position != null && position.BuysCount() > 0)
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+        public bool IsShort(Symbol symbol)
+        {
+            if (OpenPositions.Count > 0)
+            {
+                var position = OpenPositions.FirstOrDefault(b => b.Symbol == symbol);
+                if (position != null && position.SellsCount() > 0)
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
 
+        internal int GetPosition(Symbol symbol)
+        {
+
+            var openPosition = OpenPositions.FirstOrDefault();
+            if (openPosition != null && openPosition.GetBuysQuantity(symbol) > 0)
+                return openPosition.GetBuysQuantity(symbol);
+
+            if (openPosition != null && openPosition.GetSellsQuantity(symbol) < 0)
+                return openPosition.GetSellsQuantity(symbol);
+
+            return 0;
+        }
 
     }
 }

@@ -76,6 +76,7 @@
     <Compile Include="Brokerages\OrderTestParameters.cs" />
     <Compile Include="Brokerages\StopLimitOrderTestParameters.cs" />
     <Compile Include="Brokerages\StopMarketOrderTestParameters.cs" />
+    <Compile Include="Brokerages\Tradier\TradierBrokerageSerializationTests.cs" />
     <Compile Include="Brokerages\Tradier\TradierBrokerageTests.cs" />
     <Compile Include="Common\Data\Market\TickTests.cs" />
     <Compile Include="Common\Data\SliceTests.cs" />
@@ -93,48 +94,39 @@
     <Compile Include="Common\Securities\SecurityExchangeHoursTests.cs" />
     <Compile Include="Common\Securities\SecurityTransactionModelTests.cs" />
     <Compile Include="Common\SeriesTests.cs" />
+    <Compile Include="Common\SymbolTests.cs" />
+    <Compile Include="Common\Statistics\TradeStatisticsTests.cs" />
+    <Compile Include="Common\Statistics\TradeBuilderTests.cs" />
     <Compile Include="Common\TimeKeeperTests.cs" />
+    <Compile Include="Common\TimeTests.cs" />
     <Compile Include="Common\TimeZoneOffsetProviderTests.cs" />
     <Compile Include="Common\TimeZonesTest.cs" />
     <Compile Include="Common\Util\BusyBlockingCollectionTests.cs" />
+    <Compile Include="Common\Util\MemoizingEnumerableTests.cs" />
     <Compile Include="Common\Util\ObjectActivatorTests.cs" />
-    <Compile Include="Common\Util\CsvSerializerTests.cs" />
     <Compile Include="Common\Util\ObjectToListJsonConverterTests.cs" />
     <Compile Include="Common\Util\VersionHelperTests.cs" />
     <Compile Include="Common\Util\WhoCalledMeTests.cs" />
     <Compile Include="Compression\CompressionTests.cs" />
     <Compile Include="Configuration\ConfigTests.cs" />
-    <Compile Include="DecycleInverseFisherTest\DecycleInverseFisherTest.cs">
-      <SubType>Code</SubType>
-    </Compile>
+    <Compile Include="Engine\DataFeeds\Auxiliary\MapFileResolverTests.cs" />
     <Compile Include="Engine\DataFeeds\FillForwardEnumeratorTest.cs" />
     <Compile Include="Engine\FactorFileTests.cs" />
     <Compile Include="Engine\RealTime\ScheduledEventTests.cs" />
-    <Compile Include="Indicators\AutocorrelogramPeriodogramTest.cs">
-      <SubType>Code</SubType>
-    </Compile>
     <Compile Include="Indicators\AverageDirectionalIndexTests.cs" />
     <Compile Include="Indicators\DonchianChannelTest.cs" />
     <Compile Include="Indicators\IchimokuKinkoHyoTests.cs" />
-    <Compile Include="Indicators\DecycleTest .cs" />
-    <Compile Include="Indicators\InverseFisherTest .cs" />
-    <Compile Include="Indicators\InstantaneousTrendTest.cs" />
+    <Compile Include="Indicators\KeltnerChannelsTests.cs" />
+    <Compile Include="Indicators\LogReturnTests.cs" />
     <Compile Include="Indicators\OnBalanceVolumeTest.cs" />
-    <Compile Include="Indicators\HighPassFilterTest.cs" />
-    <Compile Include="Indicators\SuperSmootherTest.cs">
-      <SubType>Code</SubType>
-    </Compile>
+    <Compile Include="Indicators\ParabolicStopAndReverseTests.cs" />
     <Compile Include="Indicators\WilliamsPercentRTests.cs" />
     <Compile Include="Indicators\RateOfChangePercentTests.cs" />
     <Compile Include="Indicators\RateOfChangeTests.cs" />
     <Compile Include="Indicators\StochasticTests.cs" />
-    <Compile Include="ITrendAlgorithm\ItrendStrategyTest.cs">
-      <SubType>Code</SubType>
-    </Compile>
     <Compile Include="RegressionTests.cs" />
     <Compile Include="TestExtensions.cs" />
     <Compile Include="Indicators\LinearWeightedMovingAverageTests.cs" />
-    <Compile Include="TransactionProcessingTests\BrokerSimulatorTests.cs" />
     <Compile Include="TransactionProcessingTests\InventoryPositionTests.cs" />
     <Compile Include="TransactionProcessingTests\TransactionProcessorTests.cs" />
     <None Include="RegressionAlgorithms\Test_Cash.cs" />
@@ -198,10 +190,14 @@
     <None Include="TestData\spy_with_ichimoku.csv">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
+    <None Include="TestData\spy_with_keltner.csv">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <Folder Include="Adapters\" />
     <Folder Include="API\" />
+    <Folder Include="ITrendAlgorithm\" />
     <Folder Include="Messaging\" />
     <Folder Include="Tasks\" />
   </ItemGroup>
@@ -286,6 +282,9 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
     <Content Include="TestData\spy_bollinger_bands.txt">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="TestData\spy_logr14.txt">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
     <Content Include="TestData\spy_mfi.txt">
