@@ -93,6 +93,7 @@
     <Compile Include="BizcadAlgorithm\Signals\SigC.cs" />
     <Compile Include="BizcadAlgorithm\Signals\SignalInfo.cs" />
     <Compile Include="BizcadAlgorithm\Signals\SignalSerializationAlgorithm.cs" />
+    <Compile Include="Common\IStrategy.cs" />
     <Compile Include="CustomAlgorithms\SimpleSystemAlgorithm.cs" />
     <Compile Include="BizcadAlgorithm\TradeBarReporter.cs" />
     <Compile Include="Common\CsvSerializer.cs" />
@@ -106,6 +107,8 @@
     <Compile Include="ITrendAlgorithm\ITrendStrategy.cs" />
     <Compile Include="ITrendAlgorithm\LoggingITrendAlgorithm.cs" />
     <Compile Include="JJAlgorithms\CyclePeriodHomodyneAlgorithm.cs" />
+    <Compile Include="JJAlgorithms\DecycleInverseFisher\DecycleInverseFisherAlgorithm.cs" />
+    <Compile Include="JJAlgorithms\DecycleInverseFisher\DecycleInverseFisherStrategy.cs" />
     <Compile Include="JJAlgorithms\IntradayBuyLow\AdaptativeSizing.cs" />
     <Compile Include="JJAlgorithms\IntradayBuyLow\BuyLowStrategy.cs" />
     <Compile Include="JJAlgorithms\IntradayBuyLow\IntradayBuyLow1_3.cs" />

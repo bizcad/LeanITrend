@@ -124,7 +124,6 @@
     <Compile Include="Indicators\RateOfChangePercentTests.cs" />
     <Compile Include="Indicators\RateOfChangeTests.cs" />
     <Compile Include="Indicators\StochasticTests.cs" />
-    <Compile Include="ITrendAlgorithm\ItrendStrategyTest.cs" />
     <Compile Include="RegressionTests.cs" />
     <Compile Include="TestExtensions.cs" />
     <Compile Include="Indicators\LinearWeightedMovingAverageTests.cs" />
@@ -198,6 +197,7 @@
   <ItemGroup>
     <Folder Include="Adapters\" />
     <Folder Include="API\" />
+    <Folder Include="ITrendAlgorithm\" />
     <Folder Include="Messaging\" />
     <Folder Include="Tasks\" />
   </ItemGroup>

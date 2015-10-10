@@ -65,7 +65,7 @@ namespace QuantConnect.Indicators
             if (this.IsReady)
             {
                 double mean = (double)window.Average(t => t.Value);
-                double sqrAvg = (double)window.Sum(t => t.Value * t.Value) / window.Size;
+                double sqrAvg = (double)window.Average(t => t.Value * t.Value);
                 double sd = Math.Pow((sqrAvg - Math.Pow(mean, 2)), 0.5d);
 
                 double normalized = 4 * ((double)input.Value - mean) / sd;
