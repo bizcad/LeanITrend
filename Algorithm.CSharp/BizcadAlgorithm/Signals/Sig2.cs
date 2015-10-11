@@ -288,22 +288,25 @@ namespace QuantConnect.Algorithm.CSharp
         public void Deserialize(string json)
         {
             var v = JsonConvert.DeserializeObject(json, GetType());
-            PropertyInfo[] properties = GetType().GetProperties();
-            foreach (PropertyInfo p in properties)
+            if (v != null)
             {
-                try
+                PropertyInfo[] properties = GetType().GetProperties();
+                foreach (PropertyInfo p in properties)
                 {
-                    PropertyInfo v1 = v.GetType().GetProperties().FirstOrDefault(n => n.Name == p.Name);
-                    if (v1 != null) p.SetValue(this, v1.GetValue(v));
+                    try
+                    {
+                        PropertyInfo v1 = v.GetType().GetProperties().FirstOrDefault(n => n.Name == p.Name);
+                        if (v1 != null) p.SetValue(this, v1.GetValue(v));
+                    }
+                    catch (Exception e)
+                    {
+                        Debug.WriteLine(e.Message);
+                    }
                 }
-                catch (Exception e)
+                for (int i = 0; i < trendArray.Length; i++)
                 {
-                    Debug.WriteLine(e.Message);
+                    trendHistory.Add(trendArray[i]);
                 }
-            }
-            for (int i = 0; i < trendArray.Length; i++)
-            {
-                trendHistory.Add(trendArray[i]);
             }
         }
         #endregion

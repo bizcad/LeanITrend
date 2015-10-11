@@ -280,7 +280,7 @@ namespace QuantConnect.Algorithm.CSharp
 
         public void Deserialize(string json)
         {
-            throw new NotImplementedException();
+            throw new NotImplementedException("Deserialize is not implemented in Sig1");
         }
     }
 }

@@ -24,8 +24,8 @@ namespace QuantConnect.Algorithm.CSharp
 
         #region "Variables"
 
-        private DateTime _startDate = new DateTime(2015, 6, 1);
-        private DateTime _endDate = new DateTime(2015, 6, 10);
+        private DateTime _startDate = new DateTime(2015, 8, 11);
+        private DateTime _endDate = new DateTime(2015, 8, 14);
         private decimal _portfolioAmount = 10000;
         private decimal _transactionSize = 15000;
         //+----------------------------------------------------------------------------------------+
@@ -89,7 +89,7 @@ namespace QuantConnect.Algorithm.CSharp
         private readonly OrderTransactionFactory _orderTransactionFactory;
 
         private string ondataheader =
-            @"Time,BarCount,Open,High,Low,Close,EndTime,Period,DataType,IsFillForward,Time,Symbol,Price,,Time,Price,Trend15, Trend001,comment,orderSignal,Owned,Unrealized, TradeProfit, TradeFees, TradeNet, Portf Val";
+            @"Time,BarCount,Open,High,Low,Close,EndTime,Period,DataType,IsFillForward,Time,Symbol,Price,,Time,Price,Trend,Trend15,orderSignal,Comment,Owned,Unrealized, TradeProfit, TradeFees, TradeNet, Portf Val";
 
         private SigC _scig5C = new SigC();
 
@@ -127,6 +127,7 @@ namespace QuantConnect.Algorithm.CSharp
 
         private bool CanMakeTrade = true;
         private bool MinuteDataActivated = false;
+        private RollingWindow<OrderSignal> _revertWindow = new RollingWindow<OrderSignal>(3);
 
         #endregion
 
@@ -178,7 +179,7 @@ namespace QuantConnect.Algorithm.CSharp
             {
                 Id = 0,
                 Name = "Minutes_015",
-                IsActive = false,
+                IsActive = true,
                 SignalJson = string.Empty,
                 Value = OrderSignal.doNothing,
                 InternalState = string.Empty,
@@ -189,21 +190,21 @@ namespace QuantConnect.Algorithm.CSharp
             {
                 Id = 1,
                 Name = "Minutes_001",
-                IsActive = false,
+                IsActive = true,
                 SignalJson = string.Empty,
                 Value = OrderSignal.doNothing,
                 InternalState = string.Empty,
                 SignalType = typeof(Sig9)
             });
 
-            foreach (SignalInfo s in signalInfos)
-            {
-                s.IsActive = false;
-                if (s.Id == LiveSignalIndex)
-                {
-                    s.IsActive = true;
-                }
-            }
+            //foreach (SignalInfo s in signalInfos)
+            //{
+            //    s.IsActive = false;
+            //    if (s.Id == LiveSignalIndex)
+            //    {
+            //        s.IsActive = true;
+            //    }
+            //}
 
             #endregion
 
@@ -265,19 +266,19 @@ namespace QuantConnect.Algorithm.CSharp
                 {
                     if (signalInfo15.Value != OrderSignal.doNothing)
                     {
-
-                        if (CanMakeTrade)
-                        {
+                        ExecuteStrategy(symbol, signalInfo15, kvp);
+                        //if (CanMakeTrade)
+                        //{
                             MinuteDataActivated = true;
-                        }
-                        else
-                        {
-                            MinuteDataActivated = false;
-                        }
-                        if (Time.Hour == 15 && Time.Minute > 44 || Time.Hour == 16)
-                        {
-                            MinuteDataActivated = true;
-                        }
+                        //}
+                        //else
+                        //{
+                        //    MinuteDataActivated = false;
+                        //}
+                        //if (Time.Hour == 15 && Time.Minute > 44 || Time.Hour == 16)
+                        //{
+                        //    MinuteDataActivated = true;
+                        //}
                     }
                 }
             }
@@ -304,16 +305,17 @@ namespace QuantConnect.Algorithm.CSharp
                     "",
                     Time.ToShortTimeString(),
                     Price[0].Value,
+                    trend.Current.Value,
                     trend15Min.Current.Value,
+                    signalInfos[0].Value,
                     comment,
-                    orderSignal,
                     sharesOwned,
                     Portfolio.TotalUnrealisedProfit,
                     tradeprofit,
                     tradefees,
                     tradenet,
                     Portfolio.TotalPortfolioValue,
-                    "",
+                    "15 minute",
                     "",
                     "",
                     "",
@@ -331,7 +333,7 @@ namespace QuantConnect.Algorithm.CSharp
                     "",
                     ""
                     );
-            //mylog.Debug(logmsg);
+            mylog.Debug(logmsg);
 
             #endregion
         }
@@ -351,8 +353,7 @@ namespace QuantConnect.Algorithm.CSharp
                 CanMakeTrade = true;
                 MinuteDataActivated = false;
             }
-            if (barcount >= 375)
-                comment = "";
+
             // Add the history for the bar
             var time = this.Time;
 
@@ -382,10 +383,15 @@ namespace QuantConnect.Algorithm.CSharp
                                 {
                                     foreach (var signalInfo15 in signalInfos15)
                                     {
-                                        if (signalInfo15.Value == signalInfo001.Value && CanMakeTrade && signalInfo001.Value != OrderSignal.doNothing)
+                                        _revertWindow.Add(signalInfo001.Value);
+                                        if (signalInfo001.Value != OrderSignal.doNothing)
                                         {
-                                            signalInfo001.IsActive = true;
-                                            ExecuteStrategy(symbol, signalInfo001, data);
+                                            if (_revertWindow[0] == _revertWindow[1] &&
+                                                _revertWindow[2] == _revertWindow[1])
+                                            {
+                                                ExecuteStrategy(symbol, signalInfo001, data);
+                                            }
+
                                         }
 
                                     }
@@ -423,17 +429,17 @@ namespace QuantConnect.Algorithm.CSharp
                 "",
                 Time.ToShortTimeString(),
                 Price[0].Value,
-                trend15Min.Current.Value,
                 trend.Current.Value,
+                trend15Min.Current.Value,
+                signalInfos[1].Value,
                 comment,
-                orderSignal,
                 sharesOwned,
                 Portfolio.TotalUnrealisedProfit,
                 tradeprofit,
                 tradefees,
                 tradenet,
                 Portfolio.TotalPortfolioValue,
-                "",
+                "1 minute",
                 "",
                 "",
                 "",
@@ -475,7 +481,7 @@ namespace QuantConnect.Algorithm.CSharp
         /// Run the strategy associated with this algorithm
         /// </summary>
         /// <param name="data">TradeBars - the data received by the OnData event</param>
-        private void GetOrderSignals(KeyValuePair<Symbol, TradeBar> data, List<SignalInfo> signalInfos)
+        public void GetOrderSignals(KeyValuePair<Symbol, TradeBar> data, List<SignalInfo> signalInfos)
         {
 
             // ToDo:  Handle Partial Fills
@@ -494,10 +500,7 @@ namespace QuantConnect.Algorithm.CSharp
                 if (sig != null)
                 {
                     sig.symbol = data.Key;
-                    if (barcount > 1)
-                    {
-                        sig.Deserialize(info.SignalJson);
-                    }
+                    sig.Deserialize(info.SignalJson);
                     sig.Barcount = barcount; // for debugging
                     //sig.maketrade = info.IsActive;
 
@@ -508,11 +511,9 @@ namespace QuantConnect.Algorithm.CSharp
                     var handledTicket = handledTickets.FirstOrDefault();
                     if (handledTicket != null)
                     {
-
                         switch (handledTicket.Status)
                         {
                             // sig.orderFilled defaults to true in the three constructors
-
                             case OrderStatus.Filled:
                                 sig.orderFilled = true;
                                 if (Portfolio[symbol].HoldStock)
@@ -528,8 +529,6 @@ namespace QuantConnect.Algorithm.CSharp
                                 entryPrice = 0;
                                 break;
                         }
-
-
                     }
                     else
                     {
@@ -559,11 +558,7 @@ namespace QuantConnect.Algorithm.CSharp
                     {
                         sig.Reset();
                     }
-                    if (barcount >= 0)
-                    {
-                        json = sig.Serialize();
-                        info.SignalJson = json;
-                    }
+                    info.SignalJson = sig.Serialize();
                     info.InternalState = sig.GetInternalStateFields().ToString();
 
                 }
@@ -619,7 +614,7 @@ namespace QuantConnect.Algorithm.CSharp
                     // just checking
                     tickets = Transactions.GetOrderTickets(t => t.OrderId == orderId && t.Status == orderEvent.Status);
                     break;
-                case OrderStatus.Filled: 
+                case OrderStatus.Filled:
                 case OrderStatus.PartiallyFilled:
 
                     tickets = Transactions.GetOrderTickets(t => t.OrderId == orderId && t.Status == orderEvent.Status);
@@ -769,7 +764,7 @@ namespace QuantConnect.Algorithm.CSharp
 
                 default: break;
             }
-            MinuteDataActivated = true;
+            //MinuteDataActivated = false;
         }
 
 
@@ -831,7 +826,9 @@ namespace QuantConnect.Algorithm.CSharp
                             proformaLiveTicket.Status = OrderStatus.Filled;
                             proformaLiveTicket.QuantityFilled = (int)liveticket.QuantityFilled;
                             proformaLiveTicket.AverageFillPrice = liveticket.AverageFillPrice;
-                            CanMakeTrade = false;
+                            CanMakeTrade = true;
+                            // Wait for next 15 minutes
+                            //MinuteDataActivated = false;
                         }
                     }
                 }
@@ -1008,7 +1005,7 @@ namespace QuantConnect.Algorithm.CSharp
                     if (this.Time.Hour == 16)
                     {
                         CalculateDailyProfits();
-                        sharesOwned = Portfolio[symbol].Quantity;
+                        //sharesOwned = Portfolio[symbol].Quantity;
                         var _transactionsAsCsv = CsvSerializer.Serialize<OrderTransaction>(",", _transactions, true);
                         StringBuilder sb = new StringBuilder();
                         foreach (string s in _transactionsAsCsv)

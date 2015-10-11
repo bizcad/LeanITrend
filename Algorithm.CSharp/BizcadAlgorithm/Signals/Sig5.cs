@@ -445,14 +445,16 @@ namespace QuantConnect.Algorithm.CSharp
             try
             {
                 object v = JsonConvert.DeserializeObject(json, new JsonSerializerSettings { TypeNameHandling = TypeNameHandling.All });
-
-                PropertyInfo[] properties = GetType().GetProperties();
-                foreach (PropertyInfo p in properties)
+                if (v != null)
                 {
-                    PropertyInfo v1 = GetType().GetProperties().FirstOrDefault(n => n.Name == p.Name);
-                    if (v1 != null)
+                    PropertyInfo[] properties = GetType().GetProperties();
+                    foreach (PropertyInfo p in properties)
                     {
-                        p.SetValue(this, v1.GetValue(v));
+                        PropertyInfo v1 = GetType().GetProperties().FirstOrDefault(n => n.Name == p.Name);
+                        if (v1 != null)
+                        {
+                            p.SetValue(this, v1.GetValue(v));
+                        }
                     }
                 }
             }
