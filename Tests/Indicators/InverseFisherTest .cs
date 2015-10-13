@@ -37,7 +37,7 @@ namespace QuantConnect.Tests.Indicators
         decimal[] expectedValues = new decimal[20]
             {
                 // Estimated with Python: 
-                 0m       ,  0m       ,  0m       ,  0m       ,  0m       ,  0m       ,
+                 0m       ,  0m       ,  0m       ,  0m       ,  0m       , -0.999943m,
                 -0.999999m, -0.999988m, -0.999635m, -0.850784m,  0.999943m,  0.999999m,
                  0.999988m,  0.999635m,  0.850784m, -0.999943m, -0.999999m, -0.999988m,
                 -0.999635m, -0.850784m
@@ -45,7 +45,7 @@ namespace QuantConnect.Tests.Indicators
         # endregion
 
         [Test]
-        public void InstantaneousTrendComputesCorrectly()
+        public void InverseFisherComputesCorrectly()
         {
 
             int _period = 6;

@@ -1,5 +1,5 @@
 ﻿using NUnit.Framework;
-using QuantConnect.Algorithm.CSharp.Common;
+using QuantConnect.Algorithm.CSharp;
 using QuantConnect.Algorithm.CSharp.JJAlgorithms.DecycleInverseFisher;
 using QuantConnect.Indicators;
 using QuantConnect.Tests.Indicators;

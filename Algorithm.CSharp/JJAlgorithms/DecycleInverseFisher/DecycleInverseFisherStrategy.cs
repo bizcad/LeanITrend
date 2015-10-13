@@ -38,7 +38,7 @@ namespace QuantConnect.Algorithm.CSharp.JJAlgorithms.DecycleInverseFisher
 
         #endregion Constructor
 
-        #region Overriden methods
+        #region Overridden methods
 
         public override OrderSignal CheckSignal()
         {
@@ -50,14 +50,6 @@ namespace QuantConnect.Algorithm.CSharp.JJAlgorithms.DecycleInverseFisher
 
             if (InvFisherRW.IsReady)
             {
-                //bool longSignal = (InvFisherRW[1] < -_threshold) &&
-                //                  (InvFisherRW[0] > -_threshold) &&
-                //                  (Math.Abs(InvFisherRW[0] - InvFisherRW[1]) > _tolerance);
-
-                //bool shortSignal = (InvFisherRW[1] > _threshold) &&
-                //                   (InvFisherRW[0] < _threshold) &&
-                //                   (Math.Abs(InvFisherRW[0] - InvFisherRW[1]) > _tolerance);
-
                 bool longSignal = (InvFisherRW[1] < _threshold) &&
                                   (InvFisherRW[0] > _threshold) &&
                                   (Math.Abs(InvFisherRW[0] - InvFisherRW[1]) > _tolerance);

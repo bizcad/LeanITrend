@@ -16,8 +16,8 @@
     //"algorithm-type-name": "ITrendAlgorithm",
     //"algorithm-type-name": "SigTestAlgorithm",
     //"algorithm-type-name": "RollingWindowTestAlgorithm",
-    "algorithm-type-name": "MultiSignalAlgorithm",
-    //"algorithm-type-name": "QCLive",
+    //"algorithm-type-name": "DecycleInverseFisherAlgorithm",
+    "algorithm-type-name": "TestingInjectionAlgo",
     //"algorithm-type-name": "MultiSigDailyAlgorithm",
     
 
@@ -35,8 +35,8 @@
     //"algorithm-location": "QuantConnect.Algorithm.Java.dll",
 
     // engine
-    //"data-folder": "../../../Data/",
-    "data-folder": "H:\\GoogleFinanceData\\",
+    "data-folder": "../../../Data/",
+    //"data-folder": "H:\\GoogleFinanceData\\",
 
     // handlers
     "log-handler": "QuantConnect.Logging.CompositeLogHandler",

@@ -106,7 +106,6 @@
     <Compile Include="ITrendAlgorithm\ITrendAlgorithm.cs" />
     <Compile Include="ITrendAlgorithm\ITrendStrategy.cs" />
     <Compile Include="ITrendAlgorithm\LoggingITrendAlgorithm.cs" />
-    <Compile Include="JJAlgorithms\CyclePeriodHomodyneAlgorithm.cs" />
     <Compile Include="JJAlgorithms\DecycleInverseFisher\DecycleInverseFisherAlgorithm.cs" />
     <Compile Include="JJAlgorithms\DecycleInverseFisher\DecycleInverseFisherStrategy.cs" />
     <Compile Include="JJAlgorithms\IntradayBuyLow\AdaptativeSizing.cs" />
@@ -116,8 +115,10 @@
     <Compile Include="JJAlgorithms\Laguerre.cs" />
     <Compile Include="JJAlgorithms\LaguerreBasic.cs" />
     <Compile Include="JJAlgorithms\LaguerreEMA.cs" />
-    <Compile Include="JJAlgorithms\TestingAlgo.cs" />
-    <Compile Include="JJAlgorithms\TestingAP.cs" />
+    <Compile Include="JJAlgorithms\TestingAlgos\NaiveStrategy.cs" />
+    <Compile Include="JJAlgorithms\TestingAlgos\TestingInjectionAlgo.cs" />
+    <Compile Include="JJAlgorithms\TestingAlgos\TestingAP.cs" />
+    <Compile Include="JJAlgorithms\TestingAlgos\TestingPSAR.cs" />
     <Compile Include="LimitFillRegressionAlgorithm.cs" />
     <Compile Include="BasicTemplateFillForwardAlgorithm.cs" />
     <Compile Include="BenchmarkAlgorithm.cs" />

@@ -19,8 +19,8 @@ namespace QuantConnect.Algorithm.CSharp.JJAlgorithms.DecycleInverseFisher
     public class DecycleInverseFisherAlgorithm : QCAlgorithm
     {
         #region Algorithm Globals
-        private DateTime _startDate = new DateTime(2015, 08, 07);
-        private DateTime _endDate = new DateTime(2015, 09, 04);
+        private DateTime _startDate = new DateTime(2015, 09, 10);
+        private DateTime _endDate = new DateTime(2015, 09, 25);
         private decimal _portfolioAmount = 25000;
         #endregion
 
@@ -46,8 +46,10 @@ namespace QuantConnect.Algorithm.CSharp.JJAlgorithms.DecycleInverseFisher
         // Dictionary used to store the ITrendStrategy object for each symbol.
         private Dictionary<string, DIFStrategy> Strategy = new Dictionary<string, DIFStrategy>();
 
-        // Dictionary used to store the portfolio sharesize for each symbol.
+        // Dictionary used to store the portfolio share-size for each symbol.
         private Dictionary<string, decimal> ShareSize = new Dictionary<string, decimal>();
+
+        MomersionIndicator Momersion;
 
         private EquityExchange theMarket = new EquityExchange();
         #endregion
@@ -60,7 +62,7 @@ namespace QuantConnect.Algorithm.CSharp.JJAlgorithms.DecycleInverseFisher
 
         #endregion Logging stuff - Defining
 
-        #region QCAlgorithm overriden methods
+        #region QCAlgorithm overridden methods
         public override void Initialize()
         {
             SetStartDate(_startDate);               //Set Start Date
@@ -78,13 +80,18 @@ namespace QuantConnect.Algorithm.CSharp.JJAlgorithms.DecycleInverseFisher
             {
                 AddSecurity(SecurityType.Equity, symbol, Resolution.Minute);
                 Strategy.Add(symbol, new DIFStrategy(DecyclePeriod, InvFisherPeriod, Threshold, Tolerance));
-                RegisterStrategy(symbol);
+                RegisterIndicator(symbol, Strategy[symbol].DecycleTrend, Resolution.Minute, Field.Close);
+
+                //RegisterStrategy(symbol);
                 ShareSize.Add(symbol, (maxLeverage * (1 - leverageBuffer)) / Symbols.Count());
+
+                Momersion = new MomersionIndicator(15, 60);
+                RegisterIndicator(symbol, Momersion, Resolution.Minute, Field.Close);
 
                 #region Logging stuff - Initializing Stock Logging
 
                 stockLogging.Add(new StringBuilder());
-                stockLogging[i].AppendLine("Counter,Time,Close,Decycle,InvFisher,OrderSignal,OrderSignal,StateFromStrategy,StateFromPorfolio");
+                stockLogging[i].AppendLine("Counter,Time,Close,Decycle,InvFisher,OrderSignalInteger,Momersion");
                 i++;
 
                 #endregion Logging stuff - Initializing Stock Logging
@@ -94,20 +101,25 @@ namespace QuantConnect.Algorithm.CSharp.JJAlgorithms.DecycleInverseFisher
 
         public void OnData(TradeBars data)
         {
-            bool isMarketJustOpen;
+            bool firstOrder = true;
             bool isMarketAboutToClose;
             OrderSignal actualOrder = OrderSignal.doNothing;
+            if (!data.Keys.Contains(Symbols.Single())) return;
 
             int i = 0;
             foreach (string symbol in Symbols)
             {
-                isMarketJustOpen = !theMarket.DateTimeIsOpen(Time.AddMinutes(-15)); // Avoid to trade the first 15 minutes.
-                
                 isMarketAboutToClose = !theMarket.DateTimeIsOpen(Time.AddMinutes(10)); // 
 
-
-                if (theMarket.DateTimeIsOpen(Time))
+                if (Momersion.IsReady)
                 {
+                    if (firstOrder && Momersion > 70)
+                    {
+                        if (Strategy[symbol].InverseFisher > Threshold) actualOrder = OrderSignal.goLong;
+                        if (Strategy[symbol].InverseFisher < -Threshold) actualOrder = OrderSignal.goShort;
+                        firstOrder = false;
+                    }
+                    
                     if (noOvernight && isMarketAboutToClose)
                     {
                         if (Strategy[symbol].Position == StockState.longPosition) actualOrder = OrderSignal.closeLong;
@@ -119,26 +131,25 @@ namespace QuantConnect.Algorithm.CSharp.JJAlgorithms.DecycleInverseFisher
                         // Now check if there is some signal and execute the strategy.
                         actualOrder = Strategy[symbol].CheckSignal();
                     }
+
                     ExecuteStrategy(symbol, actualOrder, data);
                 }
                 #region Logging stuff - Filling the data StockLogging
-                //Counter, Time, Close, Decycle, InvFisher, OrderSignal, OrderSignal, StateFromStrategy, StateFromPorfolio
-                string newLine = string.Format("{0},{1},{2},{3},{4},{5},{6},{7},{8}",
+                //Counter,Time,Close,Decycle,InvFisher,OrderSignalInteger,Momersion
+                string newLine = string.Format("{0},{1},{2},{3},{4},{5},{6}",
                                                barCounter,
                                                Time.ToString("u"),
                                                data[symbol].Close,
                                                Strategy[symbol].DecycleTrend.Current.Value,
                                                Strategy[symbol].InverseFisher.Current.Value,
-                                               actualOrder,
                                                (actualOrder == OrderSignal.goLong || actualOrder == OrderSignal.closeShort) ? 1 :
                                                (actualOrder == OrderSignal.goShort || actualOrder == OrderSignal.closeLong) ? -1 : 0,
-                                               Strategy[symbol].Position.ToString(),
-                                               Portfolio[symbol].Quantity.ToString(),
-                                               Portfolio.TotalPortfolioValue
+                                               Momersion.Current.Value
                                                );
                 stockLogging[i].AppendLine(newLine);
                 i++;
                 #endregion Logging stuff - Filling the data StockLogging
+
             }
             barCounter++; // just for logging
         }
@@ -155,6 +166,7 @@ namespace QuantConnect.Algorithm.CSharp.JJAlgorithms.DecycleInverseFisher
 
         public override void OnEndOfDay()
         {
+            Momersion.Reset();
             if (resetAtEndOfDay)
             {
                 foreach (string symbol in Symbols)
