@@ -1,15 +1,9 @@
 ﻿using System;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.Diagnostics;
-using System.Dynamic;
 using System.Globalization;
 using System.IO;
 using System.Linq;
-using System.Security.Cryptography;
 using System.Text;
-using Newtonsoft.Json;
-using QuantConnect.Data.Consolidators;
 using QuantConnect.Data.Market;
 using QuantConnect.Indicators;
 using QuantConnect.Logging;
@@ -24,10 +18,12 @@ namespace QuantConnect.Algorithm.CSharp
 
         #region "Variables"
 
-        private DateTime _startDate = new DateTime(2015, 8, 11);
-        private DateTime _endDate = new DateTime(2015, 8, 14);
-        private decimal _portfolioAmount = 10000;
-        private decimal _transactionSize = 15000;
+        //private DateTime _startDate = new DateTime(2015, 8, 11);
+        //private DateTime _endDate = new DateTime(2015, 8, 14);
+        private DateTime _startDate = new DateTime(2015, 5, 19);
+        private DateTime _endDate = new DateTime(2015, 10, 9);
+        private decimal _portfolioAmount = 26000;
+        private decimal _transactionSize = 20000;
         //+----------------------------------------------------------------------------------------+
         //  Algorithm Control Panel                         
         // +---------------------------------------------------------------------------------------+
@@ -89,7 +85,7 @@ namespace QuantConnect.Algorithm.CSharp
         private readonly OrderTransactionFactory _orderTransactionFactory;
 
         private string ondataheader =
-            @"Time,BarCount,Open,High,Low,Close,EndTime,Period,DataType,IsFillForward,Time,Symbol,Price,,Time,Price,Trend15, Trend001,comment,orderSignal,Owned,Unrealized, TradeProfit, TradeFees, TradeNet, Portf Val";
+            @"Time,BarCount,Volume, Open,High,Low,Close,EndTime,Period,DataType,IsFillForward,Time,Symbol,Price,,,Time,Price,Trend, Trigger, orderSignal, Comment,, EntryPrice, Exit Price,Unrealized,Order Id, Owned, TradeProfit, TradeFees, TradeNet, Portfolio";
 
         private SigC _scig5C = new SigC();
 
@@ -163,7 +159,7 @@ namespace QuantConnect.Algorithm.CSharp
             Price = new RollingWindow<IndicatorDataPoint>(14);      // The price history
 
             // ITrend
-            trend = new InstantaneousTrend(7);
+            trend = new InstantaneousTrend("Main", 7, .24m);
             trendHistory = new RollingWindow<IndicatorDataPoint>(14);
 
             _ticketsQueue = new List<OrderTicket>();
@@ -183,14 +179,14 @@ namespace QuantConnect.Algorithm.CSharp
             });
 
 
-            foreach (SignalInfo s in signalInfos)
-            {
-                s.IsActive = false;
-                if (s.Id == LiveSignalIndex)
-                {
-                    s.IsActive = true;
-                }
-            }
+            //foreach (SignalInfo s in signalInfos)
+            //{
+            //    s.IsActive = false;
+            //    if (s.Id == LiveSignalIndex)
+            //    {
+            //        s.IsActive = true;
+            //    }
+            //}
 
             #endregion
 
@@ -222,17 +218,6 @@ namespace QuantConnect.Algorithm.CSharp
             //var security = Securities[symbol];
             //security.TransactionModel = new ConstantFeeTransactionModel(1.0m);
 
-        }
-        /// <summary>
-        /// OnData event is the primary entry point for your algorithm. Each new data point will be pumped in here.
-        /// </summary>
-        /// <param name="data">TradeBars IDictionary object with your stock data</param>
-        public void OnData(TradeBars data)
-        {
-            foreach (KeyValuePair<Symbol, TradeBar> kvp in data)
-            {
-                OnDataForSymbol(kvp);
-            }
         }
         #region "15 minute events here:"
         //public void OnFiftenMinuteAAPL(object sender, TradeBar data)
@@ -322,6 +307,18 @@ namespace QuantConnect.Algorithm.CSharp
         //    #endregion
         //}
         #endregion
+        #region "one minute events"
+        /// <summary>
+        /// OnData event is the primary entry point for your algorithm. Each new data point will be pumped in here.
+        /// </summary>
+        /// <param name="data">TradeBars IDictionary object with your stock data</param>
+        public void OnData(TradeBars data)
+        {
+            foreach (KeyValuePair<Symbol, TradeBar> kvp in data)
+            {
+                OnDataForSymbol(kvp);
+            }
+        }
         private void OnDataForSymbol(KeyValuePair<Symbol, TradeBar> data)
         {
             #region logging
@@ -351,85 +348,72 @@ namespace QuantConnect.Algorithm.CSharp
             var x = trend.Current;
             trendHistory.Add(CalculateNewTrendHistoryValue(barcount, time, Price, trend));
 
-            List<SignalInfo> signalInfos001 = new List<SignalInfo>(signalInfos.Where(s => s.Name == "Minutes_001"));
-            if (signalInfos001.Any())
+            List<SignalInfo> signalInfosMinute = new List<SignalInfo>(signalInfos.Where(s => s.Name == "Minutes_001"));
+            if (signalInfosMinute.Any())
             {
-
-                GetOrderSignals(data, signalInfos001);
-                foreach (var signalInfo001 in signalInfos001)
-                {
-                    if (signalInfo001.Value != OrderSignal.doNothing)
+                GetOrderSignals(data, signalInfosMinute);
+                if (SoldOutAtEndOfDay(data))
+                    foreach (var signalInfo001 in signalInfosMinute)
                     {
-                        signalInfo001.IsActive = true;
-                        ExecuteStrategy(symbol, signalInfo001, data);
+                        if (signalInfo001.Value != OrderSignal.doNothing)
+                        {
+                            signalInfo001.IsActive = true;
+                            ExecuteStrategy(symbol, signalInfo001, data);
+                        }
                     }
-                }
             }
-
-            #region logging
-
-            sharesOwned = Portfolio[symbol].Quantity;
-
+            sharesOwned = Portfolio[data.Key].Quantity;
             #region "biglog"
+
             string logmsg =
-            string.Format(
-                "{0},{1},{2},{3},{4},{5},{6},{7},{8},{9},{10},{11},{12},{13},{14},{15},{16},{17},{18},{19},{20}" +
-                ",{21},{22},{23},{24},{25},{26},{27},{28},{29},{30},{31},{32},{33},{34},{35},{36},{37},{38},{39},{40}" +
-                ",{41}",
-                Time,
-                barcount,
-                data.Value.Open,
-                data.Value.High,
-                data.Value.Low,
-                data.Value.Close,
-                data.Value.EndTime,
-                data.Value.Period,
-                data.Value.DataType,
-                data.Value.IsFillForward,
-                data.Value.Time,
-                data.Value.Symbol,
-                data.Value.Price,
-                "",
-                Time.ToShortTimeString(),
-                Price[0].Value,
-                //trend15Min.Current.Value,
-                "",
-                trend.Current.Value,
-                comment,
-                orderSignal,
-                sharesOwned,
-                Portfolio.TotalUnrealisedProfit,
-                tradeprofit,
-                tradefees,
-                tradenet,
-                Portfolio.TotalPortfolioValue,
-                "",
-                "",
-                "",
-                "",
-                "",
-                "",
-                "",
-                "",
-                "",
-                "",
-                "",
-                "",
-                "",
-                "",
-                "",
-                ""
-                );
-
-            #endregion
-
+                string.Format(
+                    "{0},{1},{2},{3},{4},{5},{6},{7},{8},{9},{10},{11},{12},{13},{14},{15},{16},{17},{18},{19},{20}" +
+                    ",{21},{22},{23},{24},{25},{26},{27},{28},{29},{30},{31},{32},{33},{34},{35},{36},{37},{38},{39}",
+                    time,
+                    barcount,
+                    data.Value.Volume,
+                    data.Value.Open,
+                    data.Value.High,
+                    data.Value.Low,
+                    data.Value.Close,
+                    data.Value.EndTime,
+                    data.Value.Period,
+                    data.Value.DataType,
+                    data.Value.IsFillForward,
+                    data.Value.Time,
+                    data.Value.Symbol,
+                    data.Value.Value,
+                    "",
+                    "",
+                    time.ToShortTimeString(),
+                    Price[0].Value,
+                    trend.Current.Value,
+                    signalInfos[0].nTrig,
+                    signalInfos[0].Value,
+                    comment,
+                    "",
+                    nEntryPrice,
+                    nExitPrice,
+                    Portfolio.TotalUnrealisedProfit,
+                    orderId,
+                    sharesOwned,
+                    tradeprofit,
+                    tradefees,
+                    tradenet,
+                    Portfolio.TotalPortfolioValue,
+                    "",
+                    "",
+                    "",
+                    "",
+                    "",
+                    "",
+                    "",
+                    ""
+                    );
             mylog.Debug(logmsg);
-
-            // reset the trade profit
             tradeprofit = 0;
             tradefees = 0;
             tradenet = 0;
-
             #endregion
 
             // At the end of day, reset the trend and trendHistory
@@ -439,7 +423,7 @@ namespace QuantConnect.Algorithm.CSharp
             }
         }
 
-
+        #endregion
 
         /// <summary>
         /// Run the strategy associated with this algorithm
@@ -451,7 +435,8 @@ namespace QuantConnect.Algorithm.CSharp
             // ToDo:  Handle Partial Fills
 
             #region "GetOrderSignals Execution"
-
+            nEntryPrice = 0;
+            nExitPrice = 0;
             List<ProformaOrderTicket> handledTickets = HandleTickets();
 
             #region lists
@@ -509,13 +494,14 @@ namespace QuantConnect.Algorithm.CSharp
                         {"nEntryPrice", entryPrice.ToString(CultureInfo.InvariantCulture)},
                         {"IsLong", Portfolio[symbol].IsLong.ToString()},
                         {"IsShort", Portfolio[symbol].IsShort.ToString()},
-                        {"trend", trend.Current.Value.ToString(CultureInfo.InvariantCulture)}
+                        {"trend", trend.Current.Value.ToString(CultureInfo.InvariantCulture)},
+                        {"UnrealizedProfit", Portfolio[symbol].UnrealizedProfit.ToString(CultureInfo.InvariantCulture)}
                     };
 
 
                     info.Value = sig.CheckSignal(data, paramlist, out comment);
+                    info.nTrig = sig.nTrig;
 
-                    //info.Value = sig.CheckSignal(data, trend.Current, out comment);
                     info.Comment = comment;
 
                     if (Time.Hour == 16)
@@ -586,18 +572,6 @@ namespace QuantConnect.Algorithm.CSharp
                     {
                         foreach (OrderTicket ticket in tickets)
                         {
-                            #region logging
-                            if (Portfolio[orderEvent.Symbol].Invested)
-                            {
-                                nEntryPrice = Portfolio[symbol].IsLong ? orderEvent.FillPrice : orderEvent.FillPrice * -1;
-                                nExitPrice = 0;
-                            }
-                            else
-                            {
-                                nExitPrice = nEntryPrice < 0 ? orderEvent.FillPrice : orderEvent.FillPrice * -1;
-                                nEntryPrice = 0;
-                            }
-
                             #region "log the ticket as a OrderTransacton"
 
                             OrderTransactionFactory transactionFactory = new OrderTransactionFactory((QCAlgorithm)this);
@@ -611,7 +585,7 @@ namespace QuantConnect.Algorithm.CSharp
                             }
                             totalProfit = _orderTransactionProcessor.TotalProfit;
                             #endregion
-                            #endregion "logging"
+
                         }
                     }
                     break;
@@ -622,7 +596,7 @@ namespace QuantConnect.Algorithm.CSharp
         /// </summary>
         public override void OnEndOfAlgorithm()
         {
-            Debug(string.Format("\nAlgorithm Name: {0}\n Symbol: {1}\n Ending Portfolio Value: {2} \n UseSig = {3}", this.GetType().Name, symbol, Portfolio.TotalPortfolioValue, LiveSignalIndex));
+            Debug(string.Format("\nAlgorithm Name: {0}\n Symbol: {1}\n Ending Portfolio Value: {2} \n loss = {3}", this.GetType().Name, symbol, Portfolio.TotalPortfolioValue, -50));
             #region logging
             //foreach (string symbol in Symbols)
             //{
@@ -786,7 +760,18 @@ namespace QuantConnect.Algorithm.CSharp
                         // ToDo:  Handle partial tickets
                         if (liveticket.Status == OrderStatus.Filled)
                         {
-
+                            #region logging
+                            if (Portfolio[symbol].Invested)
+                            {
+                                nEntryPrice = Portfolio[symbol].IsLong ? liveticket.AverageFillPrice : liveticket.AverageFillPrice * -1;
+                                nExitPrice = 0;
+                            }
+                            else
+                            {
+                                nExitPrice = nEntryPrice != 0 ? liveticket.AverageFillPrice : liveticket.AverageFillPrice * -1;
+                                nEntryPrice = 0;
+                            }
+                            #endregion
                             proformaLiveTicket.Status = OrderStatus.Filled;
                             proformaLiveTicket.QuantityFilled = (int)liveticket.QuantityFilled;
                             proformaLiveTicket.AverageFillPrice = liveticket.AverageFillPrice;
@@ -887,6 +872,15 @@ namespace QuantConnect.Algorithm.CSharp
             int quantity = 0;
             int operationQuantity;
             decimal targetSize;
+
+            if (Portfolio[symbol].Invested)
+            {
+                targetSize = Math.Abs(Portfolio[symbol].Quantity);
+            }
+            else
+            {
+                targetSize = (int)(_transactionSize / Price[0].Value);
+            }
 
 
             targetSize = GetBetSize(symbol, signalInfo);

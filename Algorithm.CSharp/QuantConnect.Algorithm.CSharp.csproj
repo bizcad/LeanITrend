@@ -56,14 +56,15 @@
     <Compile Include="BizcadAlgorithm\InstataneousTrendAlgorithm\IBetSizer.cs" />
     <Compile Include="BizcadAlgorithm\InstataneousTrendAlgorithm\ILimitPriceCalculator.cs" />
     <Compile Include="BizcadAlgorithm\InstataneousTrendAlgorithm\InstantaneousTrendAlgorithm.cs" />
+    <Compile Include="BizcadAlgorithm\InstataneousTrendAlgorithm\InstantaneousTrendAlgorithmQC.cs" />
     <Compile Include="BizcadAlgorithm\InstataneousTrendAlgorithm\InstantTrendAlgorithmOriginal.cs" />
     <Compile Include="BizcadAlgorithm\InstataneousTrendAlgorithm\InstantTrendBetSizer.cs" />
     <Compile Include="BizcadAlgorithm\InstataneousTrendAlgorithm\InstantTrendLimitPriceCalculator.cs" />
     <Compile Include="BizcadAlgorithm\IPositionInventory.cs" />
     <Compile Include="BizcadAlgorithm\MatchedTrade.cs" />
     <Compile Include="BizcadAlgorithm\MeanReversionAlgorithm.cs" />
+    <Compile Include="BizcadAlgorithm\MultiSignal\MultiSignalAlgorithmQC.cs" />
     <Compile Include="BizcadAlgorithm\MultiSignal\MultiSignalConsolidatorAlgorithm.cs" />
-    <Compile Include="BizcadAlgorithm\MultiSignal\MultiSignalAlgorithm.cs" />
     <Compile Include="BizcadAlgorithm\OptimalTrackingAlgorithm.cs" />
     <Compile Include="BizcadAlgorithm\OrderTransaction.cs" />
     <Compile Include="BizcadAlgorithm\OrderTransactionFactory.cs" />
@@ -76,6 +77,7 @@
     <Compile Include="BizcadAlgorithm\SigDaily\MultiSigDailyAlgorithm.cs" />
     <Compile Include="BizcadAlgorithm\Signals\InstantTrendStrategy.cs" />
     <Compile Include="BizcadAlgorithm\Signals\InstantTrendStrategyOriginal.cs" />
+    <Compile Include="BizcadAlgorithm\Signals\InstantTrendStrategyQC.cs" />
     <Compile Include="BizcadAlgorithm\Signals\ISig.cs" />
     <Compile Include="BizcadAlgorithm\Signals\ISigSerializable.cs" />
     <Compile Include="BizcadAlgorithm\Signals\QCLiveSignal.cs" />

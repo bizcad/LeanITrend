@@ -213,8 +213,8 @@ namespace QuantConnect.Algorithm.CSharp
 
             if (time.Hour == 16)
             {
-                trend.Reset();
-                trendHistory.Reset();
+                //trend.Reset();
+                //trendHistory.Reset();
                 barcount = 0;
                 Plot("Strategy Equity", "Portfolio", Portfolio.TotalPortfolioValue);
             }

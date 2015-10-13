@@ -44,5 +44,6 @@ namespace QuantConnect.Algorithm.CSharp
         /// The state of the portfolio.
         /// </summary>
         bool IsLong { get; set; }
+        decimal nTrig { get; set; }
     }
 }

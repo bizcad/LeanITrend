@@ -296,14 +296,14 @@ namespace QuantConnect.Algorithm.CSharp
 
                 // Run the strategy only to check the signal
 
-                iTrendStrategy.maketrade = false;
+                iTrendStrategy.maketrade = true;
                 iTrendStrategy.SetTradesize(tradesize);
                 signals[0] = iTrendStrategy.CheckSignal(data, trend.Current, out comment);
                 #endregion
 
                 // Execute only the selected strategy with it's signal
-                if(signals[LiveSignalIndex] != OrderSignal.doNothing)
-                    ExecuteStrategy(symbol, signals[LiveSignalIndex], data);
+                //if(signals[LiveSignalIndex] != OrderSignal.doNothing)
+                //    ExecuteStrategy(symbol, signals[LiveSignalIndex], data);
 
                 #region lists
                 #endregion

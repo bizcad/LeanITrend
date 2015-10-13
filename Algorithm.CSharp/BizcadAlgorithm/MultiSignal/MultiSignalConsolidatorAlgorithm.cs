@@ -14,6 +14,7 @@ using QuantConnect.Data.Market;
 using QuantConnect.Indicators;
 using QuantConnect.Logging;
 using QuantConnect.Orders;
+using QuantConnect.Securities;
 using QuantConnect.Util;
 
 namespace QuantConnect.Algorithm.CSharp
@@ -24,10 +25,10 @@ namespace QuantConnect.Algorithm.CSharp
 
         #region "Variables"
 
-        private DateTime _startDate = new DateTime(2015, 8, 11);
-        private DateTime _endDate = new DateTime(2015, 8, 14);
+        private DateTime _startDate = new DateTime(2015, 5, 19);
+        private DateTime _endDate = new DateTime(2015, 10, 4);
         private decimal _portfolioAmount = 10000;
-        private decimal _transactionSize = 15000;
+        private decimal _transactionSize = 10000;
         //+----------------------------------------------------------------------------------------+
         //  Algorithm Control Panel                         
         // +---------------------------------------------------------------------------------------+
@@ -126,7 +127,7 @@ namespace QuantConnect.Algorithm.CSharp
         private InstantaneousTrend trend15Min;
 
         private bool CanMakeTrade = true;
-        private bool MinuteDataActivated = false;
+        private bool MinuteDataActivated = true;
         private RollingWindow<OrderSignal> _revertWindow = new RollingWindow<OrderSignal>(3);
 
         #endregion
@@ -233,8 +234,8 @@ namespace QuantConnect.Algorithm.CSharp
 
 
             // for use with Tradier. Default is IB.
-            //var security = Securities[symbol];
-            //security.TransactionModel = new ConstantFeeTransactionModel(1.0m);
+            var security = Securities[symbol];
+            security.TransactionModel = new ConstantFeeTransactionModel(7.0m);
 
         }
         /// <summary>
@@ -266,7 +267,7 @@ namespace QuantConnect.Algorithm.CSharp
                 {
                     if (signalInfo15.Value != OrderSignal.doNothing)
                     {
-                        ExecuteStrategy(symbol, signalInfo15, kvp);
+                        //ExecuteStrategy(symbol, signalInfo15, kvp);
                         //if (CanMakeTrade)
                         //{
                             MinuteDataActivated = true;
@@ -351,7 +352,7 @@ namespace QuantConnect.Algorithm.CSharp
             if (Time.Hour == 9 && Time.Minute == 31)
             {
                 CanMakeTrade = true;
-                MinuteDataActivated = false;
+                MinuteDataActivated = true;
             }
 
             // Add the history for the bar
@@ -369,35 +370,36 @@ namespace QuantConnect.Algorithm.CSharp
             {
 
                 GetOrderSignals(data, signalInfos001);
+
                 if (MinuteDataActivated)
                 {
                     if (SoldOutAtEndOfDay(data))
                     {
                         foreach (var signalInfo001 in signalInfos001)
                         {
-                            List<SignalInfo> signalInfos15 =
-                                new List<SignalInfo>(signalInfos.Where(s => s.Name == "Minutes_015"));
-                            if (signalInfos15.Any())
-                            {
-                                if (CanMakeTrade)
-                                {
-                                    foreach (var signalInfo15 in signalInfos15)
-                                    {
-                                        _revertWindow.Add(signalInfo001.Value);
-                                        if (signalInfo001.Value != OrderSignal.doNothing)
-                                        {
-                                            if (_revertWindow[0] == _revertWindow[1] &&
-                                                _revertWindow[2] == _revertWindow[1])
-                                            {
-                                                ExecuteStrategy(symbol, signalInfo001, data);
-                                            }
+                            ExecuteStrategy(symbol, signalInfo001, data);
+                            //List<SignalInfo> signalInfos15 =
+                            //    new List<SignalInfo>(signalInfos.Where(s => s.Name == "Minutes_015"));
+                            //if (signalInfos15.Any())
+                            //{
+                            //    if (CanMakeTrade)
+                            //    {
+                            //        foreach (var signalInfo15 in signalInfos15)
+                            //        {
+                            //            _revertWindow.Add(signalInfo001.Value);
+                            //            if (signalInfo001.Value != OrderSignal.doNothing)
+                            //            {
+                            //                if (_revertWindow[0] == _revertWindow[1] &&
+                            //                    _revertWindow[2] == _revertWindow[1])
+                            //                {
+                            //                    ExecuteStrategy(symbol, signalInfo001, data);
+                            //                }
 
-                                        }
+                            //            }
 
-                                    }
-                                }
-                            }
-
+                            //        }
+                            //    }
+                            //}
                         }
                     }
                 }
@@ -528,6 +530,12 @@ namespace QuantConnect.Algorithm.CSharp
                                 _ticketsQueue.Remove(_ticketsQueue.FirstOrDefault(z => z.OrderId == handledTicket.OrderId));
                                 entryPrice = 0;
                                 break;
+                            case OrderStatus.Invalid:
+                                sig.orderFilled = false;
+                                _ticketsQueue.Remove(_ticketsQueue.FirstOrDefault(z => z.OrderId == handledTicket.OrderId));
+                                entryPrice = 0;
+                                break;
+
                         }
                     }
                     else

@@ -37,7 +37,6 @@
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
-using System.Diagnostics;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.Serialization;
@@ -49,17 +48,14 @@ using QuantConnect.Indicators;
 
 namespace QuantConnect.Algorithm.CSharp
 {
-
+    [Serializable]
     public class Sig9 : ISigSerializable
     {
         #region "fields"
 
         private bool bReverseTrade = false;
         private decimal RevPct = 1.0015m;
-        private decimal RngFac = .35m;
-        // private decimal nLimitPrice = 0; // no limit price needed
-        //private QCAlgorithm _algorithm;   // no algorithm needed
-        //private ILimitPriceCalculator priceCalculator = new InstantTrendLimitPriceCalculator();  // no price calculator needed
+        private decimal lossThreshhold = -50;
         private int period = 4;     // used to size the length of the trendArray
 
         #endregion
@@ -89,7 +85,7 @@ namespace QuantConnect.Algorithm.CSharp
         /// The trigger use in the decision process
         /// Used internally only, not serialized or set from the outside
         /// </summary>
-        private decimal nTrig { get; set; }
+        public decimal nTrig { get; set; }
         /// <summary>
         /// True if the the order was filled in the last trade.  Mostly used after Limit orders
         /// It needs to be public because it is set from the outside by checking the ticket in the Transactions collection
@@ -124,6 +120,7 @@ namespace QuantConnect.Algorithm.CSharp
         /// </summary>
         public SigC sigC { get; set; }
 
+        public decimal UnrealizedProfit { get; set; }
 
         private bool BarcountLT4 { get; set; }
         private bool NTrigLTEP { get; set; }
@@ -263,8 +260,9 @@ namespace QuantConnect.Algorithm.CSharp
             {
                 nTrig = 2m * trendArray[0] - trendArray[2];
 
-
                 #region "Selection Logic Reversals"
+
+                retval = CheckLossThreshhold(ref comment, retval);
 
                 if (nTrig < (Math.Abs(nEntryPrice) / RevPct))
                 {
@@ -315,9 +313,11 @@ namespace QuantConnect.Algorithm.CSharp
                 #endregion
                 #region "selection logic buy/sell"
 
-
+                retval = CheckLossThreshhold(ref comment, retval);
+                
                 if (!bReverseTrade)
                 {
+
                     if (nTrig > trendArray[0])
                     {
                         NTrigGTTA0 = true;
@@ -415,15 +415,6 @@ namespace QuantConnect.Algorithm.CSharp
 
                 #endregion
             }
-            StringBuilder sb = new StringBuilder();
-            sb.Append(comment);
-            sb.Append(",");
-            sb.Append(retval.ToString());
-            sb.Append(",");
-            //sb.Append(ToInt32());
-            sb.Append(",");
-            //sb.Append(ToIntCsv());
-            comment = sb.ToString();
             return retval;
         }
 
@@ -491,9 +482,9 @@ namespace QuantConnect.Algorithm.CSharp
             {
                 nTrig = 2m * trendArray[0] - trendArray[2];
 
-
                 #region "Selection Logic Reversals"
 
+                retval = CheckLossThreshhold(ref comment, retval);
 
                 if (nTrig < (Math.Abs(nEntryPrice) / RevPct))
                 {
@@ -543,8 +534,13 @@ namespace QuantConnect.Algorithm.CSharp
                 #endregion
                 #region "selection logic buy/sell"
 
+                retval = CheckLossThreshhold(ref comment, retval);
+
+
                 if (!bReverseTrade)
                 {
+                    
+
                     if (nTrig > trendArray[0])
                     {
                         NTrigGTTA0 = true;
@@ -644,13 +640,27 @@ namespace QuantConnect.Algorithm.CSharp
             }
             StringBuilder sb = new StringBuilder();
             sb.Append(comment);
-            sb.Append(",");
-            sb.Append(retval.ToString());
-            sb.Append(",");
-            //sb.Append(ToInt32());
-            sb.Append(",");
-            //sb.Append(ToIntCsv());
             comment = sb.ToString();
+            return retval;
+        }
+
+        private OrderSignal CheckLossThreshhold(ref string comment, OrderSignal retval)
+        {
+            if (UnrealizedProfit < lossThreshhold)
+            {
+                if (IsLong)
+                {
+                    retval = OrderSignal.goShortLimit;
+                    
+                }
+                if (IsShort)
+                {
+                    retval = OrderSignal.goLongLimit;
+                    
+                }
+                comment = string.Format("Unrealized loss exceeded {0}", lossThreshhold);
+                bReverseTrade = true;
+            }
             return retval;
         }
 
@@ -784,8 +794,8 @@ namespace QuantConnect.Algorithm.CSharp
 
             //    list.Add(p.Name, value == null ? "null" : value.ToString());
             //}
-
-            FieldInfo[] fields = GetType().GetFields();
+            
+            FieldInfo[] fields = this.GetType().GetFields();
             foreach (FieldInfo f in fields)
             {
                 var value = f.GetValue(this);

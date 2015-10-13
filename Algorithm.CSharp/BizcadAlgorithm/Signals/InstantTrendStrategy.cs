@@ -250,7 +250,7 @@ namespace QuantConnect.Algorithm.CSharp
 
         public void Reset()
         {
-            trendHistory.Reset();
+            //trendHistory.Reset();
             Barcount = 0;
             xOver = 0;
         }

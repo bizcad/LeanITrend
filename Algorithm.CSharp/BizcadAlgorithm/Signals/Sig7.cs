@@ -71,7 +71,7 @@ namespace QuantConnect.Algorithm.CSharp
         /// <summary>
         /// The trigger use in the decision process
         /// </summary>
-        private decimal nTrig { get; set; }
+        public decimal nTrig { get; set; }
         /// <summary>
         /// True if the the order was filled in the last trade.  Mostly used after Limit orders
         /// </summary>

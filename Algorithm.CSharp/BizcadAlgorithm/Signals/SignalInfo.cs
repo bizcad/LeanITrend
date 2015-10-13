@@ -12,5 +12,6 @@ namespace QuantConnect.Algorithm.CSharp
         public string InternalState { get; set; }
         public string Comment { get; set; }
         public string Name { get; set; }
+        public decimal nTrig { get; set; }
     }
 }

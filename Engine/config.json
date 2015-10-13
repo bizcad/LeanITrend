@@ -19,8 +19,10 @@
     //"algorithm-type-name": "MultiSignalAlgorithm",
     //"algorithm-type-name": "QCLive",
     //"algorithm-type-name": "MultiSigDailyAlgorithm",
-    "algorithm-type-name": "MultiSignalConsolidatorAlgorithm",
-
+    //"algorithm-type-name": "MultiSignalConsolidatorAlgorithm",
+    //"algorithm-type-name": "MultiSigDailyAlgorithmQc",
+    //"algorithm-type-name": "InstantaneousTrendAlgorithmQC",
+    "algorithm-type-name": "MultiSignalAlgorithmQC",
 
 
 

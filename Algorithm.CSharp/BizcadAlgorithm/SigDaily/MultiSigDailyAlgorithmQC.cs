@@ -14,8 +14,8 @@ namespace QuantConnect.Algorithm.CSharp
 
         #region "Variables"
 
-        private DateTime _startDate = new DateTime(2015, 1, 11);
-        private DateTime _endDate = new DateTime(2015, 10, 4);
+        private DateTime _startDate = new DateTime(2015, 5, 19);
+        private DateTime _endDate = new DateTime(2015, 10, 9);
         private decimal _portfolioAmount = 10000;
         private decimal _transactionSize = 15000;
         //+----------------------------------------------------------------------------------------+
@@ -84,11 +84,11 @@ namespace QuantConnect.Algorithm.CSharp
             signalInfos.Add(new SignalInfo
             {
                 Id = 8,
-                IsActive = false,
+                IsActive = true,
                 SignalJson = string.Empty,
                 Value = OrderSignal.doNothing,
                 InternalState = string.Empty,
-                SignalType = typeof(Sig8)
+                SignalType = typeof(Sig9)
             });
 
             foreach (SignalInfo s in signalInfos)

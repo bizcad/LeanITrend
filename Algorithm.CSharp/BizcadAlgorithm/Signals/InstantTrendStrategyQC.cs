@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Diagnostics;
 using QuantConnect.Data.Market;
 using QuantConnect.Indicators;
 using QuantConnect.Orders;
@@ -9,7 +8,10 @@ namespace QuantConnect.Algorithm.CSharp
     /// <summary>
     /// From Ehlers Cybernetics page 27 on Trading the trend
     /// </summary>
-    public class InstantTrendStrategyOriginal
+    /// <summary>
+    /// From Ehlers Cybernetics page 27 on Trading the trend
+    /// </summary>
+    public class InstantTrendStrategyQC
     {
         /// <summary>
         /// The entry price for the latest trade
@@ -54,7 +56,7 @@ namespace QuantConnect.Algorithm.CSharp
         /// <param name="symbol">string - ticker symbol</param>
         /// <param name="period">int - the period of the Trend History Rolling Window</param>
         /// <param name="algorithm"></param>
-        public InstantTrendStrategyOriginal(string symbol, int period, QCAlgorithm algorithm)
+        public InstantTrendStrategyQC(string symbol, int period, QCAlgorithm algorithm)
         {
             _symbol = symbol;
             trendHistory = new RollingWindow<IndicatorDataPoint>(period);
@@ -74,7 +76,7 @@ namespace QuantConnect.Algorithm.CSharp
         public OrderSignal ExecuteStrategy(TradeBars data, int tradesize, IndicatorDataPoint trendCurrent, out string current)
         {
             OrderTicket ticket;
-            int orderId = 0;
+
             string comment = string.Empty;
             OrderSignal retval = OrderSignal.doNothing;
 
@@ -98,11 +100,11 @@ namespace QuantConnect.Algorithm.CSharp
                 var nTrig = 2 * trendHistory[0].Value - trendHistory[2].Value;
                 if (nStatus == 1 && nTrig < (Math.Abs(nEntryPrice) / RevPct))
                 {
-                    if(maketrade)
+                    if (maketrade)
                     {
                         ticket = ReverseToShort();
                         orderFilled = ticket.OrderId > 0;
-                        
+
                     }
                     bReverseTrade = true;
                     retval = OrderSignal.revertToShort;
@@ -232,9 +234,10 @@ namespace QuantConnect.Algorithm.CSharp
 
         public void Reset()
         {
-            // resetting the trend decreases the profit by half.  
-            trendHistory.Reset();
+            //trendHistory.Reset();
             Barcount = 0;
         }
+
     }
+
 }
