@@ -17,7 +17,7 @@
     //"algorithm-type-name": "SigTestAlgorithm",
     //"algorithm-type-name": "RollingWindowTestAlgorithm",
     //"algorithm-type-name": "DecycleInverseFisherAlgorithm",
-    "algorithm-type-name": "TestingInjectionAlgo",
+    "algorithm-type-name": "DecycleInverseFisherAlgorithm",
     //"algorithm-type-name": "MultiSigDailyAlgorithm",
     
 

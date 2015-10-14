@@ -27,11 +27,14 @@ namespace QuantConnect
             _symbol = Symbol;
             _price = Price;
             _trend = Trend;
+
+            _trend.Updated += (object sender, IndicatorDataPoint updated) =>
+                { CheckSignal(); };
         }
 
-        public override OrderSignal CheckSignal()
+
+        public override void CheckSignal()
         {
-            return OrderSignal.doNothing;
         }
 
         public void Reset()

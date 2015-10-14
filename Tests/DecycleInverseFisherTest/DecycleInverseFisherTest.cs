@@ -37,14 +37,19 @@ namespace QuantConnect.Tests.DecycleInverseFisher
 
             OrderSignal[] actualOrders = new OrderSignal[expectedOrders.Length];
 
-            DIFStrategy strategy = new DIFStrategy(_trendPeriod, _invFisherPeriod, _threshold, _tolerance);
+            Identity VoidIndicator = new Identity("Void");
 
+            DIFStrategy strategy = new DIFStrategy(VoidIndicator, _trendPeriod, _invFisherPeriod, _threshold, _tolerance);
+            
             for (int i = 0; i < prices.Length; i++)
             {
                 strategy.DecycleTrend.Update(new IndicatorDataPoint(time, prices[i]));
+                // Update the InverseFisher indicator from here, if not it took 11 bars until the first signal.
                 strategy.InverseFisher.Update(strategy.DecycleTrend.Current);
-                actualOrders[i] = strategy.CheckSignal();
+                actualOrders[i] = strategy.ActualSignal;
+                
                 if (actualOrders[i] == OrderSignal.goLong) strategy.Position = StockState.longPosition;
+                
                 Console.WriteLine(i + "| Actual Order:" + actualOrders[i]);
                 time.AddDays(1);
             }
@@ -78,13 +83,15 @@ namespace QuantConnect.Tests.DecycleInverseFisher
 
             OrderSignal[] actualOrders = new OrderSignal[expectedOrders.Length];
 
-            DIFStrategy strategy = new DIFStrategy(_trendPeriod, _invFisherPeriod, _threshold, _tolerance);
+            Identity VoidIndicator = new Identity("Void");
+
+            DIFStrategy strategy = new DIFStrategy(VoidIndicator, _trendPeriod, _invFisherPeriod, _threshold, _tolerance);
 
             for (int i = 0; i < prices.Length; i++)
             {
                 strategy.DecycleTrend.Update(new IndicatorDataPoint(time, prices[i]));
                 strategy.InverseFisher.Update(strategy.DecycleTrend.Current);
-                actualOrders[i] = strategy.CheckSignal();
+                actualOrders[i] = strategy.ActualSignal;
                 if (actualOrders[i] == OrderSignal.goShort) strategy.Position = StockState.shortPosition;
                 Console.WriteLine(i + "| Actual Order:" + actualOrders[i]);
                 time.AddDays(1);
@@ -112,24 +119,26 @@ namespace QuantConnect.Tests.DecycleInverseFisher
 
             OrderSignal[] expectedOrders = new OrderSignal[30]
             {
-                OrderSignal.doNothing, OrderSignal.doNothing, OrderSignal.doNothing, OrderSignal.doNothing, OrderSignal.doNothing,
-                OrderSignal.doNothing, OrderSignal.doNothing, OrderSignal.doNothing, OrderSignal.doNothing, OrderSignal.goLong   ,
-                OrderSignal.doNothing, OrderSignal.doNothing, OrderSignal.doNothing, OrderSignal.doNothing, OrderSignal.closeLong,
-                OrderSignal.doNothing, OrderSignal.doNothing, OrderSignal.doNothing, OrderSignal.goLong   , OrderSignal.doNothing,
-                OrderSignal.doNothing, OrderSignal.doNothing, OrderSignal.doNothing, OrderSignal.doNothing, OrderSignal.doNothing,
-                OrderSignal.doNothing, OrderSignal.closeLong, OrderSignal.goLong   , OrderSignal.doNothing, OrderSignal.doNothing
+                OrderSignal.doNothing, OrderSignal.doNothing, OrderSignal.doNothing , OrderSignal.doNothing , OrderSignal.doNothing,
+                OrderSignal.doNothing, OrderSignal.doNothing, OrderSignal.goShort   , OrderSignal.doNothing , OrderSignal.closeShort,
+                OrderSignal.doNothing, OrderSignal.doNothing, OrderSignal.doNothing , OrderSignal.doNothing , OrderSignal.goShort,
+                OrderSignal.doNothing, OrderSignal.doNothing, OrderSignal.doNothing , OrderSignal.closeShort, OrderSignal.doNothing,
+                OrderSignal.doNothing, OrderSignal.doNothing, OrderSignal.doNothing , OrderSignal.doNothing , OrderSignal.doNothing,
+                OrderSignal.doNothing, OrderSignal.goShort  , OrderSignal.closeShort, OrderSignal.doNothing , OrderSignal.doNothing
             };
             # endregion
 
             OrderSignal[] actualOrders = new OrderSignal[expectedOrders.Length];
 
-            DIFStrategy strategy = new DIFStrategy(_trendPeriod, _invFisherPeriod, _threshold, _tolerance);
+            Identity VoidIndicator = new Identity("Void");
+
+            DIFStrategy strategy = new DIFStrategy(VoidIndicator, _trendPeriod, _invFisherPeriod, _threshold, _tolerance);
 
             for (int i = 0; i < prices.Length; i++)
             {
                 strategy.DecycleTrend.Update(new IndicatorDataPoint(time, prices[i]));
                 strategy.InverseFisher.Update(strategy.DecycleTrend.Current);
-                actualOrders[i] = strategy.CheckSignal();
+                actualOrders[i] = strategy.ActualSignal;
 
                 if (actualOrders[i] == OrderSignal.goShort && strategy.Position == StockState.noInvested) strategy.Position = StockState.shortPosition;
                 if (actualOrders[i] == OrderSignal.closeShort && strategy.Position == StockState.shortPosition) strategy.Position = StockState.noInvested;
@@ -177,13 +186,15 @@ namespace QuantConnect.Tests.DecycleInverseFisher
 
             OrderSignal[] actualOrders = new OrderSignal[expectedOrders.Length];
 
-            DIFStrategy strategy = new DIFStrategy(_trendPeriod, _invFisherPeriod, _threshold, _tolerance);
+            Identity VoidIndicator = new Identity("Void");
+
+            DIFStrategy strategy = new DIFStrategy(VoidIndicator, _trendPeriod, _invFisherPeriod, _threshold, _tolerance);
 
             for (int i = 0; i < prices.Length; i++)
             {
                 strategy.DecycleTrend.Update(new IndicatorDataPoint(time, prices[i]));
                 strategy.InverseFisher.Update(strategy.DecycleTrend.Current);
-                actualOrders[i] = strategy.CheckSignal();
+                actualOrders[i] = strategy.ActualSignal;
 
                 if (actualOrders[i] == OrderSignal.goShort && strategy.Position == StockState.noInvested) strategy.Position = StockState.shortPosition;
                 if (actualOrders[i] == OrderSignal.closeShort && strategy.Position == StockState.shortPosition) strategy.Position = StockState.noInvested;
@@ -227,13 +238,15 @@ namespace QuantConnect.Tests.DecycleInverseFisher
 
             OrderSignal[] actualOrders = new OrderSignal[expectedOrders.Length];
 
-            DIFStrategy strategy = new DIFStrategy(_trendPeriod, _invFisherPeriod, _threshold, _tolerance);
+            Identity VoidIndicator = new Identity("Void");
+
+            DIFStrategy strategy = new DIFStrategy(VoidIndicator, _trendPeriod, _invFisherPeriod, _threshold, _tolerance);
 
             for (int i = 0; i < prices.Length; i++)
             {
                 strategy.DecycleTrend.Update(new IndicatorDataPoint(time, prices[i]));
                 strategy.InverseFisher.Update(strategy.DecycleTrend.Current);
-                actualOrders[i] = strategy.CheckSignal();
+                actualOrders[i] = strategy.ActualSignal;
                 if (actualOrders[i] == OrderSignal.goLong) strategy.Position = StockState.longPosition;
                 Console.WriteLine(i + "| Actual Order:" + actualOrders[i]);
                 time.AddDays(1);
@@ -253,13 +266,14 @@ namespace QuantConnect.Tests.DecycleInverseFisher
             };
             #endregion
 
-            DIFStrategy strategy = new DIFStrategy(5, 5);
+            Identity VoidIndicator = new Identity("Void");
+
+            DIFStrategy strategy = new DIFStrategy(VoidIndicator, 5, 5);
 
             for (int i = 0; i < prices.Length; i++)
             {
                 strategy.DecycleTrend.Update(new IndicatorDataPoint(time, prices[i]));
                 strategy.InverseFisher.Update(strategy.DecycleTrend.Current);
-                strategy.CheckSignal();
                 time.AddDays(1);
             }
             Assert.IsTrue(strategy.DecycleTrend.IsReady, "Decycle Trend Ready");

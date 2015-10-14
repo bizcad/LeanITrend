@@ -19,8 +19,8 @@ namespace QuantConnect.Algorithm.CSharp.JJAlgorithms.DecycleInverseFisher
     public class DecycleInverseFisherAlgorithm : QCAlgorithm
     {
         #region Algorithm Globals
-        private DateTime _startDate = new DateTime(2015, 09, 10);
-        private DateTime _endDate = new DateTime(2015, 09, 25);
+        private DateTime _startDate = new DateTime(2013, 10, 07);
+        private DateTime _endDate = new DateTime(2013, 10, 11);
         private decimal _portfolioAmount = 25000;
         #endregion
 
@@ -41,7 +41,7 @@ namespace QuantConnect.Algorithm.CSharp.JJAlgorithms.DecycleInverseFisher
         private bool noOvernight = true;                // Close all positions before market close.
     /* +-------------------------------------------------+*/
 
-        private static string[] Symbols = { "SBUX" };
+        private static string[] Symbols = { "AIG", "BAC", "IBM", "SPY" };
 
         // Dictionary used to store the ITrendStrategy object for each symbol.
         private Dictionary<string, DIFStrategy> Strategy = new Dictionary<string, DIFStrategy>();
@@ -79,10 +79,12 @@ namespace QuantConnect.Algorithm.CSharp.JJAlgorithms.DecycleInverseFisher
             foreach (string symbol in Symbols)
             {
                 AddSecurity(SecurityType.Equity, symbol, Resolution.Minute);
-                Strategy.Add(symbol, new DIFStrategy(DecyclePeriod, InvFisherPeriod, Threshold, Tolerance));
-                RegisterIndicator(symbol, Strategy[symbol].DecycleTrend, Resolution.Minute, Field.Close);
+                
+                Identity PriceIdentity = new Identity("Price" + symbol);
+                RegisterIndicator(symbol, PriceIdentity, Resolution.Minute, Field.Close);
 
-                //RegisterStrategy(symbol);
+                Strategy.Add(symbol, new DIFStrategy(PriceIdentity, DecyclePeriod, InvFisherPeriod, Threshold, Tolerance));
+
                 ShareSize.Add(symbol, (maxLeverage * (1 - leverageBuffer)) / Symbols.Count());
 
                 Momersion = new MomersionIndicator(15, 60);
@@ -104,12 +106,11 @@ namespace QuantConnect.Algorithm.CSharp.JJAlgorithms.DecycleInverseFisher
             bool firstOrder = true;
             bool isMarketAboutToClose;
             OrderSignal actualOrder = OrderSignal.doNothing;
-            if (!data.Keys.Contains(Symbols.Single())) return;
 
             int i = 0;
             foreach (string symbol in Symbols)
             {
-                isMarketAboutToClose = !theMarket.DateTimeIsOpen(Time.AddMinutes(10)); // 
+                isMarketAboutToClose = !theMarket.DateTimeIsOpen(Time.AddMinutes(10));
 
                 if (Momersion.IsReady)
                 {
@@ -129,7 +130,7 @@ namespace QuantConnect.Algorithm.CSharp.JJAlgorithms.DecycleInverseFisher
                     else
                     {
                         // Now check if there is some signal and execute the strategy.
-                        actualOrder = Strategy[symbol].CheckSignal();
+                        actualOrder = Strategy[symbol].ActualSignal;
                     }
 
                     ExecuteStrategy(symbol, actualOrder, data);
@@ -149,7 +150,6 @@ namespace QuantConnect.Algorithm.CSharp.JJAlgorithms.DecycleInverseFisher
                 stockLogging[i].AppendLine(newLine);
                 i++;
                 #endregion Logging stuff - Filling the data StockLogging
-
             }
             barCounter++; // just for logging
         }
@@ -200,16 +200,6 @@ namespace QuantConnect.Algorithm.CSharp.JJAlgorithms.DecycleInverseFisher
         #endregion
 
         #region Algorithm methods
-
-        private void RegisterStrategy(string symbol)
-        {
-            var consolidator = new IdentityDataConsolidator<TradeBar>();
-            SubscriptionManager.AddConsolidator(symbol, consolidator);
-            consolidator.DataConsolidated += (sender, consolidated) =>
-            {
-                Strategy[symbol].DecycleTrend.Update(new IndicatorDataPoint(consolidated.Time, consolidated.Price));
-            };
-        }
 
         private void ExecuteStrategy(string symbol, OrderSignal actualOrder, TradeBars data)
         {

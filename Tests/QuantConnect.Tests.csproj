@@ -115,6 +115,7 @@
     <Compile Include="Engine\FactorFileTests.cs" />
     <Compile Include="Engine\RealTime\ScheduledEventTests.cs" />
     <Compile Include="Indicators\AverageDirectionalIndexTests.cs" />
+    <Compile Include="Indicators\DecycleTest .cs" />
     <Compile Include="Indicators\DonchianChannelTest.cs" />
     <Compile Include="Indicators\IchimokuKinkoHyoTests.cs" />
     <Compile Include="Indicators\InverseFisherTest .cs" />

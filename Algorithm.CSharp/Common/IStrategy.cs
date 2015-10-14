@@ -3,12 +3,12 @@
 namespace QuantConnect.Algorithm.CSharp
 {
     public interface IStrategy
-    {
+    {      
         /// <summary>
         /// Checks the signal.
         /// </summary>
         /// <returns></returns>
-        OrderSignal CheckSignal();
+        void CheckSignal();
     }
 
     public abstract class BaseStrategy : IStrategy
@@ -16,7 +16,9 @@ namespace QuantConnect.Algorithm.CSharp
         public StockState Position;
 
         public Nullable<decimal> EntryPrice;
+        
+        public OrderSignal ActualSignal;
 
-        public abstract OrderSignal CheckSignal();
+        public abstract void CheckSignal();
     }
 }
