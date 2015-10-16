@@ -63,6 +63,7 @@
     <Compile Include="BizcadAlgorithm\IPositionInventory.cs" />
     <Compile Include="BizcadAlgorithm\MatchedTrade.cs" />
     <Compile Include="BizcadAlgorithm\MeanReversionAlgorithm.cs" />
+    <Compile Include="BizcadAlgorithm\MultiSignal\MultiSignalAlgorithm.cs" />
     <Compile Include="BizcadAlgorithm\MultiSignal\MultiSignalAlgorithmQC.cs" />
     <Compile Include="BizcadAlgorithm\MultiSignal\MultiSignalConsolidatorAlgorithm.cs" />
     <Compile Include="BizcadAlgorithm\OptimalTrackingAlgorithm.cs" />
@@ -80,6 +81,7 @@
     <Compile Include="BizcadAlgorithm\Signals\InstantTrendStrategyQC.cs" />
     <Compile Include="BizcadAlgorithm\Signals\ISig.cs" />
     <Compile Include="BizcadAlgorithm\Signals\ISigSerializable.cs" />
+    <Compile Include="BizcadAlgorithm\Signals\ITrendSignal.cs" />
     <Compile Include="BizcadAlgorithm\Signals\QCLiveSignal.cs" />
     <Compile Include="BizcadAlgorithm\Signals\Sig1.cs" />
     <Compile Include="BizcadAlgorithm\Signals\Sig2.cs" />
@@ -106,7 +108,9 @@
     <Compile Include="HistoryAlgorithm.cs" />
     <Compile Include="HistoryAndWarmupRegressionAlgorithm.cs" />
     <Compile Include="ITrendAlgorithm\ITrendAlgorithm.cs" />
-    <Compile Include="ITrendAlgorithm\ITrendStrategy.cs" />
+    <Compile Include="ITrendAlgorithm\ITrendStrategy.cs">
+      <SubType>Code</SubType>
+    </Compile>
     <Compile Include="ITrendAlgorithm\LoggingITrendAlgorithm.cs" />
     <Compile Include="JJAlgorithms\CyclePeriodHomodyneAlgorithm.cs" />
     <Compile Include="JJAlgorithms\DecycleInverseFisher\DecycleInverseFisherAlgorithm.cs" />
@@ -115,6 +119,8 @@
     <Compile Include="JJAlgorithms\IntradayBuyLow\BuyLowStrategy.cs" />
     <Compile Include="JJAlgorithms\IntradayBuyLow\IntradayBuyLow1_3.cs" />
     <Compile Include="JJAlgorithms\IntradayBuyLow\WarmUp.cs" />
+    <Compile Include="JJAlgorithms\ITrendAlgorithmJJ.cs" />
+    <Compile Include="JJAlgorithms\ITrendStrategyJJ.cs" />
     <Compile Include="JJAlgorithms\Laguerre.cs" />
     <Compile Include="JJAlgorithms\LaguerreBasic.cs" />
     <Compile Include="JJAlgorithms\LaguerreEMA.cs" />

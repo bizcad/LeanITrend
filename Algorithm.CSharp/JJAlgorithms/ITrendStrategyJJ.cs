@@ -1,10 +1,13 @@
-﻿using QuantConnect.Indicators;
-using System;
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+using QuantConnect.Indicators;
 
-namespace QuantConnect.Algorithm.CSharp
+namespace QuantConnect.Algorithm.CSharp.JJAlgorithms
 {
-
-    public class ITrendStrategy
+    public class ITrendStrategyJJ
     {
         #region Fields
 
@@ -48,7 +51,7 @@ namespace QuantConnect.Algorithm.CSharp
         /// Initializes a new instance of the <see cref="ITrendStrategy"/> class.
         /// </summary>
         /// <param name="period">The period of the Instantaneous trend.</param>
-        public ITrendStrategy(int period, decimal tolerance = 0.001m, decimal revetPct = 1.0015m,
+        public ITrendStrategyJJ(int period, decimal tolerance = 0.001m, decimal revetPct = 1.0015m,
             RevertPositionCheck checkRevertPosition = RevertPositionCheck.vsTrigger)
         {
             ITrend = new InstantaneousTrend(period);
@@ -73,19 +76,19 @@ namespace QuantConnect.Algorithm.CSharp
             if (!MomentumWindow.IsReady) return OrderSignal.doNothing;
 
             TriggerCrossOverITrend = MomentumWindow[1] < 0 && MomentumWindow[0] > 0 &&
-                Math.Abs(MomentumWindow[0] - MomentumWindow[1]) >= _tolerance;
+                                     Math.Abs(MomentumWindow[0] - MomentumWindow[1]) >= _tolerance;
             TriggerCrossUnderITrend = MomentumWindow[1] > 0 && MomentumWindow[0] < 0 &&
-                Math.Abs(MomentumWindow[0] - MomentumWindow[1]) >= _tolerance;
+                                      Math.Abs(MomentumWindow[0] - MomentumWindow[1]) >= _tolerance;
 
             if (_checkRevertPosition == RevertPositionCheck.vsTrigger)
             {
-                ExitFromLong = (_entryPrice != null) ? ITrend + ITrendMomentum < _entryPrice / _revertPCT : false;
-                ExitFromShort = (_entryPrice != null) ? ITrend + ITrendMomentum > _entryPrice * _revertPCT : false;
+                ExitFromLong = (_entryPrice != null) ? ITrend + ITrendMomentum < _entryPrice/_revertPCT : false;
+                ExitFromShort = (_entryPrice != null) ? ITrend + ITrendMomentum > _entryPrice*_revertPCT : false;
             }
             else if (_checkRevertPosition == RevertPositionCheck.vsClosePrice)
             {
-                ExitFromLong = (_entryPrice != null) ? close < _entryPrice / _revertPCT : false;
-                ExitFromShort = (_entryPrice != null) ? close > _entryPrice * _revertPCT : false;
+                ExitFromLong = (_entryPrice != null) ? close < _entryPrice/_revertPCT : false;
+                ExitFromShort = (_entryPrice != null) ? close > _entryPrice*_revertPCT : false;
             }
 
             OrderSignal order;
@@ -110,7 +113,8 @@ namespace QuantConnect.Algorithm.CSharp
                     else order = OrderSignal.doNothing;
                     break;
 
-                default: order = OrderSignal.doNothing;
+                default:
+                    order = OrderSignal.doNothing;
                     break;
             }
             return order;
@@ -118,8 +122,7 @@ namespace QuantConnect.Algorithm.CSharp
 
         public void Reset()
         {
-            // Not resetting the ITrend increases returns
-            //ITrend.Reset();
+            ITrend.Reset();
             ITrendMomentum.Reset();
             MomentumWindow.Reset();
         }

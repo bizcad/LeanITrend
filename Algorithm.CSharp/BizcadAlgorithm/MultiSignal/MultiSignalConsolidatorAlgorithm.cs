@@ -687,6 +687,40 @@ namespace QuantConnect.Algorithm.CSharp
             //SendTradesToFile("simtrades.csv", _proformaProcessor.Trades);
             #endregion
         }
+        private void NotifyUser()
+        {
+            #region logging
+
+            if (this.Time.Hour == 16)
+            {
+                sharesOwned = Portfolio[symbol].Quantity;
+                var _transactionsAsCsv = CsvSerializer.Serialize<OrderTransaction>(",", _transactions, true);
+                StringBuilder sb = new StringBuilder();
+                foreach (string s in _transactionsAsCsv)
+                    sb.AppendLine(s);
+                string attachment = sb.ToString();
+                Notify.Email("nicholasstein@cox.net",
+                    string.Format("Todays Date: {0} \nNumber of Transactions: {1}", Time.ToLongDateString(),
+                        _transactions.Count()),
+                    attachment);
+                var _tradesAsCsv = CsvSerializer.Serialize<MatchedTrade>(",",
+                    _orderTransactionProcessor.Trades.Where(f => f.DateAcquired == tradingDate), true);
+                sb = new StringBuilder();
+                foreach (string s in _tradesAsCsv)
+                {
+                    sb.AppendLine(s);
+                }
+                attachment = sb.ToString();
+                Notify.Email("nicholasstein@cox.net",
+                    string.Format("Todays Date: {0} \nNumber of Trades: {1}", Time.ToLongDateString(), _tradesAsCsv.Count()),
+                    attachment);
+
+                _transactions = new List<OrderTransaction>();
+            }
+
+            #endregion
+        }
+        
 
         #endregion
 
@@ -782,12 +816,8 @@ namespace QuantConnect.Algorithm.CSharp
         /// 
         /// It re
         /// </summary>
-
         private List<ProformaOrderTicket> HandleTickets()
         {
-            if (barcount == 20)
-                comment = "103";
-
             List<ProformaOrderTicket> proformaOrderTickets = new List<ProformaOrderTicket>();
             //if (maketrade)
             //{
@@ -811,32 +841,42 @@ namespace QuantConnect.Algorithm.CSharp
                         proformaLiveTicket.Security_Type = liveticket.SecurityType;
                         proformaLiveTicket.Tag = liveticket.Tag;
                         proformaLiveTicket.TicketOrderType = liveticket.OrderType;
-                        proformaLiveTicket.Direction = liveticket.Quantity > 0
-                            ? OrderDirection.Buy
-                            : OrderDirection.Sell;
 
-                        if (liveticket.Status == OrderStatus.Canceled)
+                        switch (liveticket.Status)
                         {
-                            proformaLiveTicket.Status = OrderStatus.Canceled;
-                        }
+                            case OrderStatus.Canceled:
+                            case OrderStatus.New:
+                            case OrderStatus.None:
+                                break;
+                            case OrderStatus.Invalid:
+                                proformaLiveTicket.ErrorMessage = liveticket.GetMostRecentOrderResponse().ErrorMessage;
+                                break;
+                            case OrderStatus.Submitted:
+                                liveticket.Cancel();
+                                proformaLiveTicket.Status = OrderStatus.Canceled;
+                                proformaLiveTicket.QuantityFilled = 0; // they are probably already 0
+                                proformaLiveTicket.AverageFillPrice = 0;
+                                break;
+                            case OrderStatus.Filled:
+                            case OrderStatus.PartiallyFilled:
 
-                        if (liveticket.Status == OrderStatus.Submitted)
-                        {
-                            liveticket.Cancel();
-                            proformaLiveTicket.Status = OrderStatus.Canceled;
-                            proformaLiveTicket.QuantityFilled = 0; // they are probably already 0
-                            proformaLiveTicket.AverageFillPrice = 0;
-                        }
-                        // ToDo:  Handle partial tickets
-                        if (liveticket.Status == OrderStatus.Filled)
-                        {
-
-                            proformaLiveTicket.Status = OrderStatus.Filled;
-                            proformaLiveTicket.QuantityFilled = (int)liveticket.QuantityFilled;
-                            proformaLiveTicket.AverageFillPrice = liveticket.AverageFillPrice;
-                            CanMakeTrade = true;
-                            // Wait for next 15 minutes
-                            //MinuteDataActivated = false;
+                                #region logging
+                                if (Portfolio[symbol].Invested)
+                                {
+                                    nEntryPrice = Portfolio[symbol].IsLong ? liveticket.AverageFillPrice : liveticket.AverageFillPrice * -1;
+                                    nExitPrice = 0;
+                                }
+                                else
+                                {
+                                    nExitPrice = nEntryPrice != 0 ? liveticket.AverageFillPrice : liveticket.AverageFillPrice * -1;
+                                    nEntryPrice = 0;
+                                }
+                                #endregion
+                                proformaLiveTicket.Direction = liveticket.Quantity > 0 ? OrderDirection.Buy : OrderDirection.Sell;
+                                proformaLiveTicket.Status = OrderStatus.Filled;
+                                proformaLiveTicket.QuantityFilled = (int)liveticket.QuantityFilled;
+                                proformaLiveTicket.AverageFillPrice = liveticket.AverageFillPrice;
+                                break;
                         }
                     }
                 }
@@ -850,61 +890,6 @@ namespace QuantConnect.Algorithm.CSharp
                 proformaOrderTickets.Add(proformaLiveTicket);
             }
             return proformaOrderTickets;
-            //}
-            //else
-            //{
-            //    // Process a sumulated order
-            //    var tickets = _ticketsSubmitted.Where(t => System.Convert.ToInt32(t.Source) == sigId);
-            //    foreach (var ticket in tickets)
-            //    {
-            //        var simticket = sim._orderTickets.FirstOrDefault(s => s.Value.OrderId == ticket.OrderId).Value;
-
-            //        if (simticket.Status == OrderStatus.Submitted)
-            //        {
-            //            // Todo: do something with the cancelled ticket such as save it to a file or collection for later analysis
-
-            //            if (sim.TryCancelTicket(simticket))
-            //            {
-            //                // remove the cancelled ticket from the simulator
-            //                var cancelledTicket = sim.RemoveCancelledTicket(simticket);
-
-            //                // remove the cancelled ticket from the _ticketsSubmitted collection
-            //                _ticketsSubmitted.Remove(ticket);
-
-            //                // it was cancelled so the ticket did not fill
-            //                orderfilled = false;
-            //                return cancelledTicket;
-            //            }
-            //            return null;
-            //        }
-
-            //        if (simticket.Status == OrderStatus.Filled)
-            //        {
-
-            //            // Create a transaction and add it to the OrderProcessor
-            //            OrderTransactionFactory fac = new OrderTransactionFactory(this);
-            //            OrderTransaction transaction = fac.Create(sim, simticket);
-            //            if (simticket.OrderId == 27)
-            //                comment = "";
-            //            _proformatransactions.Add(transaction);
-            //            _proformaProcessor.ProcessTransaction(transaction);
-
-            //            ProformaOrderTicket filledTicket = sim.RemoveTicket(simticket);
-            //            _ticketsSubmitted.Remove(ticket);
-
-            //            // orderfilled = true;  // no need to change the filled
-            //            return filledTicket;
-            //        }
-
-            //        orderfilled = false;
-            //        _ticketsSubmitted.Remove(ticket);
-            //        return simticket;
-
-            //        // ToDo: Partial fills
-            //    }
-            //}
-
-            return null;
         }
 
         private decimal GetBetSize(Symbol symbol, SignalInfo signalInfo)

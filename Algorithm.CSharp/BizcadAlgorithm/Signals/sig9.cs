@@ -55,7 +55,6 @@ namespace QuantConnect.Algorithm.CSharp
 
         private bool bReverseTrade = false;
         private decimal RevPct = 1.0015m;
-        private decimal lossThreshhold = -50;
         private int period = 4;     // used to size the length of the trendArray
 
         #endregion
@@ -121,6 +120,7 @@ namespace QuantConnect.Algorithm.CSharp
         public SigC sigC { get; set; }
 
         public decimal UnrealizedProfit { get; set; }
+        public decimal lossThreshhold { get; set; }
 
         private bool BarcountLT4 { get; set; }
         private bool NTrigLTEP { get; set; }

@@ -33,7 +33,7 @@ namespace QuantConnect.Algorithm.CSharp
         private decimal RngFac = 0.35m;                 // Percentage of the bar range used to estimate limit prices.
         // +---------------------------------------------------------------------------------------+
 
-        private Symbol symbol = new Symbol("BAC");
+        private Symbol symbol = new Symbol("AAPL");
 
         private int barcount = 0;
 
@@ -164,6 +164,7 @@ namespace QuantConnect.Algorithm.CSharp
             {
                 GetOrderSignals(data, signalInfosMinute);
                 if (SoldOutAtEndOfDay(data))
+                {
                     foreach (var signalInfo001 in signalInfosMinute)
                     {
                         if (signalInfo001.Value != OrderSignal.doNothing)
@@ -172,55 +173,56 @@ namespace QuantConnect.Algorithm.CSharp
                             ExecuteStrategy(symbol, signalInfo001, data);
                         }
                     }
+                }
             }
             sharesOwned = Portfolio[data.Key].Quantity;
             #region "biglog"
 
-            //string logmsg =
-            //    string.Format(
-            //        "{0},{1},{2},{3},{4},{5},{6},{7},{8},{9},{10},{11},{12},{13},{14},{15},{16},{17},{18},{19},{20}" +
-            //        ",{21},{22},{23},{24},{25},{26},{27},{28},{29},{30},{31},{32},{33},{34},{35},{36},{37},{38},{39}",
-            //        time,
-            //        barcount,
-            //        data.Value.Volume,
-            //        data.Value.Open,
-            //        data.Value.High,
-            //        data.Value.Low,
-            //        data.Value.Close,
-            //        data.Value.EndTime,
-            //        data.Value.Period,
-            //        data.Value.DataType,
-            //        data.Value.IsFillForward,
-            //        data.Value.Time,
-            //        data.Value.Symbol,
-            //        data.Value.Value,
-            //        "",
-            //        "",
-            //        time.ToShortTimeString(),
-            //        Price[0].Value,
-            //        trend.Current.Value,
-            //        signalInfos[0].nTrig,
-            //        signalInfos[0].Value,
-            //        comment,
-            //        "",
-            //        nEntryPrice,
-            //        nExitPrice,
-            //        Portfolio.TotalUnrealisedProfit,
-            //        orderId,
-            //        sharesOwned,
-            //        tradeprofit,
-            //        tradefees,
-            //        tradenet,
-            //        Portfolio.TotalPortfolioValue,
-            //        "",
-            //        "",
-            //        "",
-            //        "",
-            //        "",
-            //        "",
-            //        "",
-            //        ""
-            //        );
+            string logmsg =
+                string.Format(
+                    "{0},{1},{2},{3},{4},{5},{6},{7},{8},{9},{10},{11},{12},{13},{14},{15},{16},{17},{18},{19},{20}" +
+                    ",{21},{22},{23},{24},{25},{26},{27},{28},{29},{30},{31},{32},{33},{34},{35},{36},{37},{38},{39}",
+                    time,
+                    barcount,
+                    data.Value.Volume,
+                    data.Value.Open,
+                    data.Value.High,
+                    data.Value.Low,
+                    data.Value.Close,
+                    data.Value.EndTime,
+                    data.Value.Period,
+                    data.Value.DataType,
+                    data.Value.IsFillForward,
+                    data.Value.Time,
+                    data.Value.Symbol,
+                    data.Value.Value,
+                    "",
+                    "",
+                    time.ToShortTimeString(),
+                    Price[0].Value,
+                    trend.Current.Value,
+                    signalInfos[0].nTrig,
+                    signalInfos[0].Value,
+                    comment,
+                    "",
+                    nEntryPrice,
+                    nExitPrice,
+                    Portfolio.TotalUnrealisedProfit,
+                    orderId,
+                    sharesOwned,
+                    tradeprofit,
+                    tradefees,
+                    tradenet,
+                    Portfolio.TotalPortfolioValue,
+                    "",
+                    "",
+                    "",
+                    "",
+                    "",
+                    "",
+                    "",
+                    ""
+                    );
             //mylog.Debug(logmsg);
             tradeprofit = 0;
             tradefees = 0;
@@ -242,9 +244,6 @@ namespace QuantConnect.Algorithm.CSharp
         /// <param name="data">TradeBars - the data received by the OnData event</param>
         public void GetOrderSignals(KeyValuePair<Symbol, TradeBar> data, List<SignalInfo> signalInfos)
         {
-
-            // ToDo:  Handle Partial Fills
-
             #region "GetOrderSignals Execution"
             nEntryPrice = 0;
             nExitPrice = 0;
@@ -262,9 +261,6 @@ namespace QuantConnect.Algorithm.CSharp
                     sig.symbol = data.Key;
                     sig.Deserialize(info.SignalJson);
                     sig.Barcount = barcount; // for debugging
-                    //sig.maketrade = info.IsActive;
-
-                    // Todo: handle partial fills.
 
                     decimal entryPrice = sig.nEntryPrice;
                     // set the properties from the handled ticket.
@@ -275,6 +271,7 @@ namespace QuantConnect.Algorithm.CSharp
                         {
                             // sig.orderFilled defaults to true in the three constructors
                             case OrderStatus.Filled:
+                            case OrderStatus.PartiallyFilled:
                                 sig.orderFilled = true;
                                 if (Portfolio[symbol].HoldStock)
                                 {
@@ -284,6 +281,7 @@ namespace QuantConnect.Algorithm.CSharp
                                 _ticketsQueue.Remove(_ticketsQueue.FirstOrDefault(z => z.OrderId == handledTicket.OrderId));
                                 break;
                             case OrderStatus.Canceled:
+                            case OrderStatus.Invalid:
                                 sig.orderFilled = false;
                                 _ticketsQueue.Remove(_ticketsQueue.FirstOrDefault(z => z.OrderId == handledTicket.OrderId));
                                 entryPrice = 0;
@@ -321,7 +319,6 @@ namespace QuantConnect.Algorithm.CSharp
                     }
                     info.SignalJson = sig.Serialize();
                     info.InternalState = sig.GetInternalStateFields().ToString();
-
                 }
                 else
                 {
@@ -382,7 +379,6 @@ namespace QuantConnect.Algorithm.CSharp
                         foreach (OrderTicket ticket in tickets)
                         {
                             #region "log the ticket as a OrderTransacton"
-
                             OrderTransactionFactory transactionFactory = new OrderTransactionFactory((QCAlgorithm)this);
                             OrderTransaction t = transactionFactory.Create(orderEvent, ticket, false);
                             _transactions.Add(t);
@@ -399,32 +395,6 @@ namespace QuantConnect.Algorithm.CSharp
                     }
                     break;
             }
-        }
-        /// <summary>
-        /// Handles the On end of algorithm 
-        /// </summary>
-        public override void OnEndOfAlgorithm()
-        {
-            Debug(string.Format("\nAlgorithm Name: {0}\n Symbol: {1}\n Ending Portfolio Value: {2} \n loss = {3}", this.GetType().Name, symbol, Portfolio.TotalPortfolioValue, -50));
-            #region logging
-            //foreach (string symbol in Symbols)
-            //{
-            //    string filename = string.Format("ITrendDebug_{0}.csv", symbol);
-            //    string filePath = @"C:\Users\JJ\Desktop\MA y señales\ITrend Debug\" + filename;
-            //    // JJ do not delete this line it locates my engine\bin\debug folder
-            //    //  I just uncomment it when I run on my local machine
-            //    filePath = AssemblyLocator.ExecutingDirectory() + filename;
-
-            //    if (File.Exists(filePath)) File.Delete(filePath);
-            //    File.AppendAllText(filePath, stockLogging[i].ToString());
-            //    Debug(string.Format("\nSymbol Name: {0}, Ending Portfolio Value: {1} ", symbol, Portfolio[symbol].Profit));
-
-            //}
-
-            //SendOrderEventsToFile();
-            SendTradesToFile("trades.csv", _orderTransactionProcessor.Trades);
-            //SendTradesToFile("simtrades.csv", _proformaProcessor.Trades);
-            #endregion
         }
 
         #endregion
@@ -490,15 +460,9 @@ namespace QuantConnect.Algorithm.CSharp
         /// <summary>
         /// This function is called prior to calling the GetOrderSignals to check to see if a ticket was filled
         /// If the ticket did not fill within one bar, cancel it and assume the market moved away from the limit order
-        /// 
-        /// It re
         /// </summary>
-
         private List<ProformaOrderTicket> HandleTickets()
         {
-            if (barcount == 20)
-                comment = "103";
-
             List<ProformaOrderTicket> proformaOrderTickets = new List<ProformaOrderTicket>();
             //if (maketrade)
             //{
@@ -522,43 +486,42 @@ namespace QuantConnect.Algorithm.CSharp
                         proformaLiveTicket.Security_Type = liveticket.SecurityType;
                         proformaLiveTicket.Tag = liveticket.Tag;
                         proformaLiveTicket.TicketOrderType = liveticket.OrderType;
-                        proformaLiveTicket.Direction = liveticket.Quantity > 0
-                            ? OrderDirection.Buy
-                            : OrderDirection.Sell;
 
-                        if (liveticket.Status == OrderStatus.Canceled)
+                        switch (liveticket.Status)
                         {
-                            proformaLiveTicket.Status = OrderStatus.Canceled;
-                        }
+                            case OrderStatus.Canceled:
+                            case OrderStatus.New:
+                            case OrderStatus.None:
+                                break;
+                            case OrderStatus.Invalid:
+                                proformaLiveTicket.ErrorMessage = liveticket.GetMostRecentOrderResponse().ErrorMessage;
+                                break;
+                            case OrderStatus.Submitted:
+                                liveticket.Cancel();
+                                proformaLiveTicket.Status = OrderStatus.Canceled;
+                                proformaLiveTicket.QuantityFilled = 0; // they are probably already 0
+                                proformaLiveTicket.AverageFillPrice = 0;
+                                break;
+                            case OrderStatus.Filled:
+                            case OrderStatus.PartiallyFilled:
 
-                        if (liveticket.Status == OrderStatus.Submitted)
-                        {
-                            liveticket.Cancel();
-                            proformaLiveTicket.Status = OrderStatus.Canceled;
-                            proformaLiveTicket.QuantityFilled = 0; // they are probably already 0
-                            proformaLiveTicket.AverageFillPrice = 0;
-                        }
-                        // ToDo:  Handle partial tickets
-                        if (liveticket.Status == OrderStatus.Filled)
-                        {
-                            #region logging
-                            if (Portfolio[symbol].Invested)
-                            {
-                                nEntryPrice = Portfolio[symbol].IsLong ? liveticket.AverageFillPrice : liveticket.AverageFillPrice * -1;
-                                nExitPrice = 0;
-                            }
-                            else
-                            {
-                                nExitPrice = nEntryPrice != 0 ? liveticket.AverageFillPrice : liveticket.AverageFillPrice * -1;
-                                nEntryPrice = 0;
-                            }
-                            #endregion
-                            proformaLiveTicket.Status = OrderStatus.Filled;
-                            proformaLiveTicket.QuantityFilled = (int)liveticket.QuantityFilled;
-                            proformaLiveTicket.AverageFillPrice = liveticket.AverageFillPrice;
-                            //CanMakeTrade = true;
-                            // Wait for next 15 minutes
-                            //MinuteDataActivated = false;
+                                #region logging
+                                if (Portfolio[symbol].Invested)
+                                {
+                                    nEntryPrice = Portfolio[symbol].IsLong ? liveticket.AverageFillPrice : liveticket.AverageFillPrice * -1;
+                                    nExitPrice = 0;
+                                }
+                                else
+                                {
+                                    nExitPrice = nEntryPrice != 0 ? liveticket.AverageFillPrice : liveticket.AverageFillPrice * -1;
+                                    nEntryPrice = 0;
+                                }
+                                #endregion
+                                proformaLiveTicket.Direction = liveticket.Quantity > 0 ? OrderDirection.Buy : OrderDirection.Sell;
+                                proformaLiveTicket.Status = OrderStatus.Filled;
+                                proformaLiveTicket.QuantityFilled = (int)liveticket.QuantityFilled;
+                                proformaLiveTicket.AverageFillPrice = liveticket.AverageFillPrice;
+                                break;
                         }
                     }
                 }
@@ -572,9 +535,6 @@ namespace QuantConnect.Algorithm.CSharp
                 proformaOrderTickets.Add(proformaLiveTicket);
             }
             return proformaOrderTickets;
-            
-
-            return null;
         }
 
         private decimal GetBetSize(Symbol symbol, SignalInfo signalInfo)
@@ -684,42 +644,59 @@ namespace QuantConnect.Algorithm.CSharp
                     {
                         Buy(symbol, Portfolio[symbol].AbsoluteQuantity);
                     }
-                    // Daily Profit
-                    #region logging
-                    if (this.Time.Hour == 16)
-                    {
-                        sharesOwned = Portfolio[symbol].Quantity;
-                        var _transactionsAsCsv = CsvSerializer.Serialize<OrderTransaction>(",", _transactions, true);
-                        StringBuilder sb = new StringBuilder();
-                        foreach (string s in _transactionsAsCsv)
-                            sb.AppendLine(s);
-                        string attachment = sb.ToString();
-                        Notify.Email("nicholasstein@cox.net",
-                            "Todays Trades " + this.Time.ToLongDateString(),
-                            "Number of Trades: " + _tradecount,
-                            attachment);
-                        //SendTransactionsToFile();
-                        _transactions = new List<OrderTransaction>();
-
-
-                    }
-                    #endregion
-
+                    NotifyUser();
                     return false;
                 }
             }
             return true;
         }
+
+        private void NotifyUser()
+        {
+            #region logging
+
+            if (this.Time.Hour == 16)
+            {
+                sharesOwned = Portfolio[symbol].Quantity;
+                var _transactionsAsCsv = CsvSerializer.Serialize<OrderTransaction>(",", _transactions, true);
+                StringBuilder sb = new StringBuilder();
+                foreach (string s in _transactionsAsCsv)
+                    sb.AppendLine(s);
+                string attachment = sb.ToString();
+                Notify.Email("nicholasstein@cox.net",
+                    string.Format("Todays Date: {0} \nNumber of Transactions: {1}", Time.ToLongDateString(),
+                        _transactions.Count()),
+                    attachment);
+                var _tradesAsCsv = CsvSerializer.Serialize<MatchedTrade>(",",
+                    _orderTransactionProcessor.Trades.Where(f => f.DateAcquired == tradingDate), true);
+                sb = new StringBuilder();
+                foreach (string s in _tradesAsCsv)
+                {
+                    sb.AppendLine(s);
+                }
+                attachment = sb.ToString();
+                Notify.Email("nicholasstein@cox.net",
+                    string.Format("Todays Date: {0} \nNumber of Trades: {1}", Time.ToLongDateString(), _tradesAsCsv.Count()),
+                    attachment);
+
+                _transactions = new List<OrderTransaction>();
+            }
+
+            #endregion
+        }
+        /// <summary>
+        /// Handles the On end of algorithm 
+        /// </summary>
+        public override void OnEndOfAlgorithm()
+        {
+            Debug(string.Format("\nAlgorithm Name: {0}\n Symbol: {1}\n Ending Portfolio Value: {2} \n loss = {3}", this.GetType().Name, symbol, Portfolio.TotalPortfolioValue, -50));
+            #region logging
+            NotifyUser();
+            #endregion
+        }
+
         private IndicatorDataPoint CalculateNewTrendHistoryValue(int barcount, DateTime time, RollingWindow<IndicatorDataPoint> price, InstantaneousTrend tr)
         {
-            //if (barcount < 7 && barcount > 2)
-            //{
-            //    return (idp(time, (price[0].Value + 2 * price[1].Value + price[2].Value) / 4));
-            //}
-            //else
-            //{
-            //    return (idp(time, tr.Current.Value)); //add last iteration value for the cycle
-            //}
             if (!trendHistory.IsReady)
                 return idp(time, price[0].Value);
             return (idp(time, tr.Current.Value)); //add last iteration value for the cycle
@@ -728,36 +705,36 @@ namespace QuantConnect.Algorithm.CSharp
         #endregion
 
         #region "Logging Methods"
-        private void SendTradesToFile(string filename, IList<MatchedTrade> tradelist)
-        {
-            string filepath = AssemblyLocator.ExecutingDirectory() + filename;
-            if (File.Exists(filepath)) File.Delete(filepath);
-            var liststring = CsvSerializer.Serialize<MatchedTrade>(",", tradelist);
-            using (StreamWriter fs = new StreamWriter(filepath, true))
-            {
-                foreach (var s in liststring)
-                    fs.WriteLine(s);
-                fs.Flush();
-                fs.Close();
-            }
-        }
+        //private void SendTradesToFile(string filename, IList<MatchedTrade> tradelist)
+        //{
+        //    string filepath = AssemblyLocator.ExecutingDirectory() + filename;
+        //    if (File.Exists(filepath)) File.Delete(filepath);
+        //    var liststring = CsvSerializer.Serialize<MatchedTrade>(",", tradelist);
+        //    using (StreamWriter fs = new StreamWriter(filepath, true))
+        //    {
+        //        foreach (var s in liststring)
+        //            fs.WriteLine(s);
+        //        fs.Flush();
+        //        fs.Close();
+        //    }
+        //}
 
-        private void SendTransactionsToFile()
-        {
-            string filepath = AssemblyLocator.ExecutingDirectory() + "transactions.csv";
-            //if (File.Exists(filepath)) File.Delete(filepath);
-            var liststring = CsvSerializer.Serialize<OrderTransaction>(",", _transactions, true);
-            using (StreamWriter fs = new StreamWriter(filepath, true))
-            {
-                foreach (var s in liststring)
-                {
-                    if (!s.Contains("Symbol"))
-                        fs.WriteLine(s);
-                }
-                fs.Flush();
-                fs.Close();
-            }
-        }
+        //private void SendTransactionsToFile()
+        //{
+        //    string filepath = AssemblyLocator.ExecutingDirectory() + "transactions.csv";
+        //    //if (File.Exists(filepath)) File.Delete(filepath);
+        //    var liststring = CsvSerializer.Serialize<OrderTransaction>(",", _transactions, true);
+        //    using (StreamWriter fs = new StreamWriter(filepath, true))
+        //    {
+        //        foreach (var s in liststring)
+        //        {
+        //            if (!s.Contains("Symbol"))
+        //                fs.WriteLine(s);
+        //        }
+        //        fs.Flush();
+        //        fs.Close();
+        //    }
+        //}
         #endregion
 
 

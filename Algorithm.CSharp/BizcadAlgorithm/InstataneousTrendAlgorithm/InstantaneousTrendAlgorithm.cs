@@ -24,7 +24,7 @@ namespace QuantConnect.Algorithm.CSharp
 
         private DateTime _startDate = new DateTime(2015, 8, 11);
         private DateTime _endDate = new DateTime(2015, 8, 14);
-        private decimal _portfolioAmount = 10000;
+        private decimal _portfolioAmount = 26000;
         private decimal _transactionSize = 15000;
         //+----------------------------------------------------------------------------------------+
         //  Algorithm Control Panel                         

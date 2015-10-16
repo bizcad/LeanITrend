@@ -4,7 +4,8 @@ using System;
 namespace QuantConnect.Algorithm.CSharp
 {
 
-    public class ITrendStrategy
+    public class ITrendSignal
+
     {
         #region Fields
 
@@ -48,7 +49,7 @@ namespace QuantConnect.Algorithm.CSharp
         /// Initializes a new instance of the <see cref="ITrendStrategy"/> class.
         /// </summary>
         /// <param name="period">The period of the Instantaneous trend.</param>
-        public ITrendStrategy(int period, decimal tolerance = 0.001m, decimal revetPct = 1.0015m,
+        public ITrendSignal(int period, decimal tolerance = 0.001m, decimal revetPct = 1.0015m,
             RevertPositionCheck checkRevertPosition = RevertPositionCheck.vsTrigger)
         {
             ITrend = new InstantaneousTrend(period);
@@ -118,8 +119,7 @@ namespace QuantConnect.Algorithm.CSharp
 
         public void Reset()
         {
-            // Not resetting the ITrend increases returns
-            //ITrend.Reset();
+            ITrend.Reset();
             ITrendMomentum.Reset();
             MomentumWindow.Reset();
         }

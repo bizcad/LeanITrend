@@ -13,8 +13,8 @@ namespace QuantConnect.Algorithm.CSharp
     public class ITrendAlgorithm : QCAlgorithm
     {
         #region "Algorithm Globals"
-        private DateTime _startDate = new DateTime(2015, 9, 2);
-        private DateTime _endDate = new DateTime(2015, 9, 3);
+        private DateTime _startDate = new DateTime(2015, 5, 19);
+        private DateTime _endDate = new DateTime(2015, 10, 4);
         private decimal _portfolioAmount = 10000;
         private decimal _transactionSize = 15000;
         #endregion

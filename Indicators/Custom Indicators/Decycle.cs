@@ -10,18 +10,19 @@ namespace QuantConnect.Indicators
     {
         // the alpha for the formula
         private decimal alpha;
-        private IndicatorDataPoint _decycle;
         private readonly int _period;
+        private readonly RollingWindow<IndicatorDataPoint> _price;
+        private readonly RollingWindow<IndicatorDataPoint> _decycle;
 
         public Decycle(string name, int period)
             : base(name, period)
         {
 
             // Decycle history
-            _decycle = new IndicatorDataPoint();
+            _price = new RollingWindow<IndicatorDataPoint>(2);
+            _decycle = new RollingWindow<IndicatorDataPoint>(1);
             _period = period;
-            alpha = (decimal)((Math.Cos(2 * Math.PI / (double)period) + Math.Sin(2 * Math.PI / (double)period) - 1) /
-                Math.Cos(2 * Math.PI / (double)period));
+            alpha = (decimal)((Math.Cos(2 * Math.PI / period) + Math.Sin(2 * Math.PI / period) - 1) / Math.Cos(2 * Math.PI / period));
         }
         /// <summary>
         /// Default constructor
@@ -31,7 +32,15 @@ namespace QuantConnect.Indicators
             : this("Decycle" + period, period)
         {
         }
-                
+
+        /// <summary>
+        ///     Gets a flag indicating when this indicator is ready and fully initialized
+        /// </summary>
+        public override bool IsReady
+        {
+            get { return _decycle.IsReady; }
+        }
+
         /// <summary>
         /// Calculates the next value for the decycle
         /// </summary>
@@ -43,18 +52,19 @@ namespace QuantConnect.Indicators
             // for convenience
             DateTime time = input.Time;
 
+            _price.Add(input);
 
-            if (window.Count < 3)
+            if (!_price.IsReady)
             {
-                _decycle = idp(time, input.Value);
+                _decycle.Add(input);
             }
             else
-            {                
-                decimal decycle = alpha / 2 * (window[0] + window[1]) + (1 - alpha) * _decycle.Value;
-                _decycle = idp(time, decycle);
+            {
+                decimal decycle = alpha / 2 * (_price[0] + _price[1]) + (1 - alpha) * _decycle[1];
+                _decycle.Add(idp(time, decycle));
             }
 
-            return _decycle;
+            return _decycle[0];
         }
         /// <summary>
         /// Factory function which creates an IndicatorDataPoint
@@ -69,6 +79,7 @@ namespace QuantConnect.Indicators
         {
             return new IndicatorDataPoint(time, value);
         }
+
 
     }
 }

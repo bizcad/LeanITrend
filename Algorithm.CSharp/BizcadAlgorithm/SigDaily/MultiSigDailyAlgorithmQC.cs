@@ -298,9 +298,6 @@ namespace QuantConnect.Algorithm.CSharp
                     proformaLiveTicket.Security_Type = liveticket.SecurityType;
                     proformaLiveTicket.Tag = liveticket.Tag;
                     proformaLiveTicket.TicketOrderType = liveticket.OrderType;
-                    proformaLiveTicket.Direction = liveticket.Quantity > 0
-                        ? OrderDirection.Buy
-                        : OrderDirection.Sell;
 
                     if (liveticket.Status == OrderStatus.Submitted)
                     {
@@ -312,6 +309,8 @@ namespace QuantConnect.Algorithm.CSharp
                     // ToDo:  Handle partial tickets
                     if (liveticket.Status == OrderStatus.Filled)
                     {
+                        proformaLiveTicket.Direction = liveticket.Quantity > 0 ? OrderDirection.Buy : OrderDirection.Sell;
+                        proformaLiveTicket.Status = OrderStatus.Filled;
                         proformaLiveTicket.QuantityFilled = (int)liveticket.QuantityFilled;
                         proformaLiveTicket.AverageFillPrice = liveticket.AverageFillPrice;
                     }
