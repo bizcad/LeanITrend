@@ -1,8 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
-
+using QuantConnect.Indicators;
 using QuantConnect.Orders;
 
 namespace QuantConnect.Algorithm.CSharp
@@ -21,6 +22,7 @@ namespace QuantConnect.Algorithm.CSharp
         public decimal TotalCommission { get; set; }
         public decimal TotalFees { get; set; }
         public decimal TotalProfit { get; set; }
+        //public SimpleMovingAverage smaWins { get; set; }
         private int tradeId = 0;
 
 
@@ -31,6 +33,7 @@ namespace QuantConnect.Algorithm.CSharp
 
             OpenPositions = new List<IPositionInventory>();
             Trades = new List<MatchedTrade>();
+            //smaWins = new SimpleMovingAverage(50);
 
         }
 
@@ -216,7 +219,7 @@ namespace QuantConnect.Algorithm.CSharp
                 Symbol = buytrans.Symbol,
                 DescriptionOfProperty = string.Format("{0} {1}", buytrans.Quantity, buytrans.Symbol),
                 DateAcquired = buytrans.TradeDate,
-                DateSoldOrDisposed = selltrans.SettledDate,
+                DateSoldOrDisposed = selltrans.TradeDate,
                 AdjustmentAmount = 0,
                 ReportedToIrs = true,
                 ReportedToMe = true,
@@ -250,9 +253,14 @@ namespace QuantConnect.Algorithm.CSharp
                 trade.CumulativeProfit = TotalProfit;
                 Trades.Add(trade);
 
+                //if (trade.GainOrLoss > 0)
+                //{
+                //    smaWins.Update(new IndicatorDataPoint(trade.DateSoldOrDisposed, trade.GainOrLoss));
+                //}
 
                 return l;
             }
+
 
             throw new InvalidDataException("buy qty not equal to sell qty");
 
@@ -328,7 +336,6 @@ namespace QuantConnect.Algorithm.CSharp
 
         internal int GetPosition(Symbol symbol)
         {
-
             var openPosition = OpenPositions.FirstOrDefault();
             if (openPosition != null && openPosition.GetBuysQuantity(symbol) > 0)
                 return openPosition.GetBuysQuantity(symbol);
@@ -336,6 +343,19 @@ namespace QuantConnect.Algorithm.CSharp
             if (openPosition != null && openPosition.GetSellsQuantity(symbol) < 0)
                 return openPosition.GetSellsQuantity(symbol);
 
+            return 0;
+        }
+
+        public decimal CalculateLastTradePandL(Symbol symbol)
+        {
+            try
+            {
+                return Trades.LastOrDefault(p => p.Symbol == symbol).GainOrLoss;
+            }
+            catch (Exception e)
+            {
+                Debug.WriteLine(e);
+            }
             return 0;
         }
 

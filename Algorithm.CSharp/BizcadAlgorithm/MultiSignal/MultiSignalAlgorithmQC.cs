@@ -18,10 +18,10 @@ namespace QuantConnect.Algorithm.CSharp
 
         #region "Variables"
 
-        private DateTime _startDate = new DateTime(2015, 5, 19);
-        private DateTime _endDate = new DateTime(2015, 10, 4); 
-        //private DateTime _startDate = new DateTime(2015, 8, 11);
-        //private DateTime _endDate = new DateTime(2015, 8, 14);
+        //private DateTime _startDate = new DateTime(2015, 5, 19);
+        //private DateTime _endDate = new DateTime(2015, 10, 4);
+        private DateTime _startDate = new DateTime(2015, 8, 11);
+        private DateTime _endDate = new DateTime(2015, 8, 14);
         //private DateTime _startDate = new DateTime(2015, 10, 1);
         //private DateTime _endDate = new DateTime(2015, 10, 9);
         private decimal _portfolioAmount = 26000;
@@ -31,6 +31,7 @@ namespace QuantConnect.Algorithm.CSharp
         // +---------------------------------------------------------------------------------------+
         private int maxOperationQuantity = 500;         // Maximum shares per operation.
         private decimal RngFac = 0.35m;                 // Percentage of the bar range used to estimate limit prices.
+        private decimal lossThreshhold = -55;
         // +---------------------------------------------------------------------------------------+
 
         private Symbol symbol = new Symbol("AAPL");
@@ -156,7 +157,7 @@ namespace QuantConnect.Algorithm.CSharp
 
             // Update the indicators
             trend.Update(idp(time, Price[0].Value));
-            var x = trend.Current;
+            
             trendHistory.Add(CalculateNewTrendHistoryValue(barcount, time, Price, trend));
 
             List<SignalInfo> signalInfosMinute = new List<SignalInfo>(signalInfos.Where(s => s.Name == "Minutes_001"));
@@ -304,6 +305,7 @@ namespace QuantConnect.Algorithm.CSharp
                         {"IsLong", Portfolio[symbol].IsLong.ToString()},
                         {"IsShort", Portfolio[symbol].IsShort.ToString()},
                         {"trend", trend.Current.Value.ToString(CultureInfo.InvariantCulture)},
+                        {"lossThreshhold", lossThreshhold.ToString(CultureInfo.InvariantCulture)},
                         {"UnrealizedProfit", Portfolio[symbol].UnrealizedProfit.ToString(CultureInfo.InvariantCulture)}
                     };
 
@@ -634,7 +636,7 @@ namespace QuantConnect.Algorithm.CSharp
         {
             if (shouldSellOutAtEod)
             {
-                if (this.Time.Hour == 15 && this.Time.Minute > 49 || this.Time.Hour == 16)
+                if (this.Time.Hour == 15 && this.Time.Minute > 45)
                 {
                     if (Portfolio[symbol].IsLong)
                     {
@@ -644,9 +646,9 @@ namespace QuantConnect.Algorithm.CSharp
                     {
                         Buy(symbol, Portfolio[symbol].AbsoluteQuantity);
                     }
-                    NotifyUser();
                     return false;
                 }
+                NotifyUser();
             }
             return true;
         }
@@ -689,7 +691,7 @@ namespace QuantConnect.Algorithm.CSharp
         /// </summary>
         public override void OnEndOfAlgorithm()
         {
-            Debug(string.Format("\nAlgorithm Name: {0}\n Symbol: {1}\n Ending Portfolio Value: {2} \n loss = {3}", this.GetType().Name, symbol, Portfolio.TotalPortfolioValue, -50));
+            Debug(string.Format("\nAlgorithm Name: {0}\n Symbol: {1}\n Ending Portfolio Value: {2} \n lossThreshhold = {3}", this.GetType().Name, symbol, Portfolio.TotalPortfolioValue, lossThreshhold));
             #region logging
             NotifyUser();
             #endregion

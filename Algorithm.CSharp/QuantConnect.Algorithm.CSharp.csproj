@@ -60,6 +60,7 @@
     <Compile Include="BizcadAlgorithm\InstataneousTrendAlgorithm\InstantTrendAlgorithmOriginal.cs" />
     <Compile Include="BizcadAlgorithm\InstataneousTrendAlgorithm\InstantTrendBetSizer.cs" />
     <Compile Include="BizcadAlgorithm\InstataneousTrendAlgorithm\InstantTrendLimitPriceCalculator.cs" />
+    <Compile Include="BizcadAlgorithm\InstataneousTrendAlgorithm\KellyReturns.cs" />
     <Compile Include="BizcadAlgorithm\IPositionInventory.cs" />
     <Compile Include="BizcadAlgorithm\MatchedTrade.cs" />
     <Compile Include="BizcadAlgorithm\MeanReversionAlgorithm.cs" />

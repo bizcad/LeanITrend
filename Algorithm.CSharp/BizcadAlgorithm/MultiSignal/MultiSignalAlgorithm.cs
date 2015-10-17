@@ -18,12 +18,12 @@ namespace QuantConnect.Algorithm.CSharp
 
         #region "Variables"
 
-        //private DateTime _startDate = new DateTime(2015, 8, 11);
-        //private DateTime _endDate = new DateTime(2015, 8, 14);
-        private DateTime _startDate = new DateTime(2015, 5, 19);
-        private DateTime _endDate = new DateTime(2015, 10, 9);
+        private DateTime _startDate = new DateTime(2015, 8, 11);
+        private DateTime _endDate = new DateTime(2015, 8, 14);
+        //private DateTime _startDate = new DateTime(2015, 5, 19);
+        //private DateTime _endDate = new DateTime(2015, 10, 9);
         private decimal _portfolioAmount = 26000;
-        private decimal _transactionSize = 15000;
+        private decimal _transactionSize = 20000;
         //+----------------------------------------------------------------------------------------+
         //  Algorithm Control Panel                         
         // +---------------------------------------------------------------------------------------+
@@ -39,11 +39,10 @@ namespace QuantConnect.Algorithm.CSharp
 
         private bool resetAtEndOfDay = true;            // Reset the strategies at EOD.
         private bool noOvernight = true;                // Close all positions before market close.
-        private decimal lossThreshhold = -50;           // When unrealized losses fall below, revert position
+        private decimal lossThreshhold = -55;           // When unrealized losses fall below, revert position
         // +---------------------------------------------------------------------------------------+
 
-        private Symbol symbol = new Symbol("IBM");
-        //private string symbol = "AAPL";
+        private Symbol symbol;
 
         private int barcount = 0;
 
@@ -92,7 +91,7 @@ namespace QuantConnect.Algorithm.CSharp
         private readonly OrderTransactionFactory _orderTransactionFactory;
 
         private string ondataheader =
-            @"Time,BarCount,Volume, Open,High,Low,Close,EndTime,Period,DataType,IsFillForward,Time,Symbol,Price,,,Time,Price,Trend, Trigger, orderSignal, Comment,, EntryPrice, Exit Price,Unrealized,Order Id, Owned, TradeProfit, TradeFees, TradeNet, Portfolio";
+            @"Time,BarCount,Volume, Open,High,Low,Close,EndTime,Period,DataType,IsFillForward,Time,Symbol,Price,,,Time,Price,Trend, Trigger, orderSignal, Comment,, EntryPrice, Exit Price,Unrealized,Order Id, Owned, TradeNet, Portfolio";
 
         private SigC _scig5C = new SigC();
 
@@ -158,7 +157,14 @@ namespace QuantConnect.Algorithm.CSharp
             SetStartDate(_startDate);
             SetEndDate(_endDate);
             SetCash(_portfolioAmount);
-
+            string symbols;
+            var filename = AssemblyLocator.ExecutingDirectory() + "symbols.txt";
+            using (StreamReader sr = new StreamReader(filename))
+            {
+                symbols = sr.ReadLine();
+                sr.Close();
+            }
+            symbol = new Symbol(symbols);
             //Add as many securities as you like. All the data will be passed into the event handler:
             AddSecurity(SecurityType.Equity, symbol, Resolution.Minute);
 
@@ -168,9 +174,12 @@ namespace QuantConnect.Algorithm.CSharp
             // ITrend
             trend = new InstantaneousTrend("Main", 7, .24m);
             trendHistory = new RollingWindow<IndicatorDataPoint>(14);
-            iTrendSignal = new ITrendSignal(7);
+
+            _orderTransactionProcessor = new OrderTransactionProcessor();
+            _transactions = new List<OrderTransaction>();
             _ticketsQueue = new List<OrderTicket>();
             #region ITrend
+            iTrendSignal = new ITrendSignal(7);
             LastOrderSent.Add(symbol, OrderSignal.doNothing);
             #endregion
 
@@ -208,7 +217,7 @@ namespace QuantConnect.Algorithm.CSharp
             //}
 
             #endregion
-
+            #region "15 Minute"
             // define our 15 minute consolidator
             //var fifteenMinuteConsolidator = new TradeBarConsolidator(TimeSpan.FromMinutes(15));
 
@@ -231,7 +240,7 @@ namespace QuantConnect.Algorithm.CSharp
             //// data for the specified symbol, and also set up the indicator to receive its data from the consolidator
             //RegisterIndicator("AAPL", fastEmaOnFifteenMinuteBars, fifteenMinuteConsolidator, Field.Close);
             //RegisterIndicator("AAPL", slowEmaOnFifteenMinuteBars, fifteenMinuteConsolidator, Field.Close);
-
+            #endregion
 
             // for use with Tradier. Default is IB.
             //var security = Securities[symbol];
@@ -276,8 +285,7 @@ namespace QuantConnect.Algorithm.CSharp
         //    string logmsg =
         //        string.Format(
         //            "{0},{1},{2},{3},{4},{5},{6},{7},{8},{9},{10},{11},{12},{13},{14},{15},{16},{17},{18},{19},{20}" +
-        //            ",{21},{22},{23},{24},{25},{26},{27},{28},{29},{30},{31},{32},{33},{34},{35},{36},{37},{38},{39},{40}" +
-        //            ",{41}",
+        //            ",{21},{22},{23},{24},{25},{26},{27},{28},{29},{30},{31},{32},{33},{34},{35},{36},{37},{38},{39}",
         //            Time,
         //            barcount,
         //            data.Open,
@@ -299,8 +307,6 @@ namespace QuantConnect.Algorithm.CSharp
         //            orderSignal,
         //            sharesOwned,
         //            Portfolio.TotalUnrealisedProfit,
-        //            tradeprofit,
-        //            tradefees,
         //            tradenet,
         //            Portfolio.TotalPortfolioValue,
         //            "",
@@ -355,7 +361,7 @@ namespace QuantConnect.Algorithm.CSharp
 
             // Update the indicators
             trend.Update(idp(time, Price[0].Value));
-            var x = trend.Current;
+
             trendHistory.Add(CalculateNewTrendHistoryValue(barcount, time, Price, trend));
 
             List<SignalInfo> signalInfosMinute = new List<SignalInfo>(signalInfos.Where(s => s.Name == "Minutes_001"));
@@ -363,6 +369,7 @@ namespace QuantConnect.Algorithm.CSharp
             {
                 GetOrderSignals(data, signalInfosMinute);
                 if (SoldOutAtEndOfDay(data))
+                {
                     foreach (var signalInfo001 in signalInfosMinute)
                     {
                         if (signalInfo001.Value != OrderSignal.doNothing)
@@ -371,6 +378,7 @@ namespace QuantConnect.Algorithm.CSharp
                             ExecuteStrategy(symbol, signalInfo001, data);
                         }
                     }
+                }
             }
             sharesOwned = Portfolio[data.Key].Quantity;
             #region "biglog"
@@ -407,10 +415,10 @@ namespace QuantConnect.Algorithm.CSharp
                     Portfolio.TotalUnrealisedProfit,
                     orderId,
                     sharesOwned,
-                    tradeprofit,
-                    tradefees,
                     tradenet,
                     Portfolio.TotalPortfolioValue,
+                    "",
+                    "",
                     "",
                     "",
                     "",
@@ -508,16 +516,16 @@ namespace QuantConnect.Algorithm.CSharp
                         sig.nEntryPrice = entryPrice;
 
                         Dictionary<string, string> paramlist = new Dictionary<string, string>
-                    {
-                        {"symbol", data.Key.ToString()},
-                        {"Barcount", barcount.ToString(CultureInfo.InvariantCulture)},
-                        {"nEntryPrice", entryPrice.ToString(CultureInfo.InvariantCulture)},
-                        {"IsLong", Portfolio[symbol].IsLong.ToString()},
-                        {"IsShort", Portfolio[symbol].IsShort.ToString()},
-                        {"trend", trend.Current.Value.ToString(CultureInfo.InvariantCulture)},
-                        {"lossThreshhold", lossThreshhold.ToString(CultureInfo.InvariantCulture)},
-                        {"UnrealizedProfit", Portfolio[symbol].UnrealizedProfit.ToString(CultureInfo.InvariantCulture)}
-                    };
+                        {
+                            {"symbol", data.Key.ToString()},
+                            {"Barcount", barcount.ToString(CultureInfo.InvariantCulture)},
+                            {"nEntryPrice", entryPrice.ToString(CultureInfo.InvariantCulture)},
+                            {"IsLong", Portfolio[symbol].IsLong.ToString()},
+                            {"IsShort", Portfolio[symbol].IsShort.ToString()},
+                            {"trend", trend.Current.Value.ToString(CultureInfo.InvariantCulture)},
+                            {"lossThreshhold", lossThreshhold.ToString(CultureInfo.InvariantCulture)},
+                            {"UnrealizedProfit", Portfolio[symbol].UnrealizedProfit.ToString(CultureInfo.InvariantCulture)}
+                        };
 
 
                         info.Value = sig.CheckSignal(data, paramlist, out comment);
@@ -538,7 +546,6 @@ namespace QuantConnect.Algorithm.CSharp
                         info.Comment = "Signal is null";
                     }
                 }
-
             }
             #endregion  // lists
 
@@ -630,7 +637,6 @@ namespace QuantConnect.Algorithm.CSharp
                         foreach (OrderTicket ticket in tickets)
                         {
                             #region "log the ticket as a OrderTransacton"
-
                             OrderTransactionFactory transactionFactory = new OrderTransactionFactory((QCAlgorithm)this);
                             OrderTransaction t = transactionFactory.Create(orderEvent, ticket, false);
                             _transactions.Add(t);
@@ -638,7 +644,7 @@ namespace QuantConnect.Algorithm.CSharp
                             _tradecount++;
                             if (_orderTransactionProcessor.TotalProfit != totalProfit)
                             {
-                                CalculateTradeProfit();
+                                CalculateTradeProfit(t.Symbol);
                             }
                             totalProfit = _orderTransactionProcessor.TotalProfit;
                             #endregion
@@ -647,39 +653,6 @@ namespace QuantConnect.Algorithm.CSharp
                     }
                     break;
             }
-        }
-        private void NotifyUser()
-        {
-            #region logging
-
-            if (this.Time.Hour == 16)
-            {
-                sharesOwned = Portfolio[symbol].Quantity;
-                var _transactionsAsCsv = CsvSerializer.Serialize<OrderTransaction>(",", _transactions, true);
-                StringBuilder sb = new StringBuilder();
-                foreach (string s in _transactionsAsCsv)
-                    sb.AppendLine(s);
-                string attachment = sb.ToString();
-                Notify.Email("nicholasstein@cox.net",
-                    string.Format("Todays Date: {0} \nNumber of Transactions: {1}", Time.ToLongDateString(),
-                        _transactions.Count()),
-                    attachment);
-                var _tradesAsCsv = CsvSerializer.Serialize<MatchedTrade>(",",
-                    _orderTransactionProcessor.Trades.Where(f => f.DateAcquired == tradingDate), true);
-                sb = new StringBuilder();
-                foreach (string s in _tradesAsCsv)
-                {
-                    sb.AppendLine(s);
-                }
-                attachment = sb.ToString();
-                Notify.Email("nicholasstein@cox.net",
-                    string.Format("Todays Date: {0} \nNumber of Trades: {1}", Time.ToLongDateString(), _tradesAsCsv.Count()),
-                    attachment);
-
-                _transactions = new List<OrderTransaction>();
-            }
-
-            #endregion
         }
         /// <summary>
         /// Handles the On end of algorithm 
@@ -695,22 +668,16 @@ namespace QuantConnect.Algorithm.CSharp
         #endregion
 
         #region "Profit Calculations for logging"
-        private void CalculateTradeProfit()
+        private void CalculateTradeProfit(Symbol symbol)
         {
-            var lasttrade = _orderTransactionProcessor.Trades.LastOrDefault();
-            tradefees = _orderTransactionProcessor.LastTradeCommission;
-            if (lasttrade != null)
-            {
-                tradeprofit = lasttrade.GainOrLoss;
-                tradenet = tradeprofit + tradefees;
-            }
+            tradenet = _orderTransactionProcessor.CalculateLastTradePandL(symbol);
         }
         private void CalculateDailyProfits()
         {
             // get todays trades
-            var trades = _orderTransactionProcessor.Trades.Where(t => t.DateAcquired.Year == tradingDate.Year
-                                                                      && t.DateAcquired.Month == tradingDate.Month
-                                                                      && t.DateAcquired.Day == tradingDate.Day);
+            var trades = _orderTransactionProcessor.Trades.Where(t => t.DateSoldOrDisposed.Year == tradingDate.Year
+                                                                      && t.DateSoldOrDisposed.Month == tradingDate.Month
+                                                                      && t.DateSoldOrDisposed.Day == tradingDate.Day);
 
 
 
@@ -747,6 +714,8 @@ namespace QuantConnect.Algorithm.CSharp
         {
             decimal limitPrice = 0m;
             int shares = PositionShares(symbol, actualOrder);
+            if (shares == 0)
+                return;
             ILimitPriceCalculator priceCalculator = new InstantTrendLimitPriceCalculator();
             OrderTicket ticket;
             switch (actualOrder.Value)
@@ -960,7 +929,7 @@ namespace QuantConnect.Algorithm.CSharp
         {
             if (shouldSellOutAtEod)
             {
-                if (this.Time.Hour == 15 && this.Time.Minute > 49 || this.Time.Hour == 16)
+                if (this.Time.Hour == 15 && this.Time.Minute > 45)
                 {
                     if (Portfolio[symbol].IsLong)
                     {
@@ -970,25 +939,56 @@ namespace QuantConnect.Algorithm.CSharp
                     {
                         Buy(symbol, Portfolio[symbol].AbsoluteQuantity);
                     }
-                    // Daily Profit
-                    #region logging
-                    if (this.Time.Hour == 16)
-                    {
-                        CalculateDailyProfits();
-                        sharesOwned = Portfolio[symbol].Quantity;
-                        NotifyUser();
-                        SendTransactionsToFile();
-                        _transactions = new List<OrderTransaction>();
-
-
-                    }
-                    #endregion
-
                     return false;
                 }
+                #region logging
+                if (this.Time.Hour == 16)
+                {
+                    CalculateDailyProfits();
+                    sharesOwned = Portfolio[symbol].Quantity;
+                    SendTransactionsToFile();
+                }
+                #endregion
+                NotifyUser();
+
             }
             return true;
         }
+
+        private void NotifyUser()
+        {
+            #region logging
+
+            if (this.Time.Hour == 16)
+            {
+                sharesOwned = Portfolio[symbol].Quantity;
+                var _transactionsAsCsv = CsvSerializer.Serialize<OrderTransaction>(",", _transactions, true);
+                StringBuilder sb = new StringBuilder();
+                foreach (string s in _transactionsAsCsv)
+                    sb.AppendLine(s);
+                string attachment = sb.ToString();
+                Notify.Email("nicholasstein@cox.net",
+                    string.Format("Todays Date: {0} \nNumber of Transactions: {1}", Time.ToLongDateString(),
+                        _transactions.Count()),
+                    attachment);
+                var _tradesAsCsv = CsvSerializer.Serialize<MatchedTrade>(",",
+                    _orderTransactionProcessor.Trades.Where(f => f.DateAcquired == tradingDate), true);
+                sb = new StringBuilder();
+                foreach (string s in _tradesAsCsv)
+                {
+                    sb.AppendLine(s);
+                }
+                attachment = sb.ToString();
+                Notify.Email("nicholasstein@cox.net",
+                    string.Format("Todays Date: {0} \nNumber of Trades: {1}", Time.ToLongDateString(), _tradesAsCsv.Count()),
+                    attachment);
+
+                _transactions = new List<OrderTransaction>();
+            }
+
+            #endregion
+        }
+
         private IndicatorDataPoint CalculateNewTrendHistoryValue(int barcount, DateTime time, RollingWindow<IndicatorDataPoint> price, InstantaneousTrend tr)
         {
             //if (barcount < 7 && barcount > 2)
