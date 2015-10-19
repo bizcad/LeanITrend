@@ -1,4 +1,6 @@
-﻿using QuantConnect.Algorithm.CSharp;
+﻿using System;
+
+using QuantConnect.Algorithm.CSharp;
 using QuantConnect.Indicators;
 using QuantConnect.Orders;
 
@@ -29,7 +31,15 @@ namespace QuantConnect
             _trend = Trend;
 
             _trend.Updated += (object sender, IndicatorDataPoint updated) =>
-                { CheckSignal(); };
+                {
+                    if (!_trend.IsReady)
+                    {
+                        Console.ForegroundColor = ConsoleColor.Cyan;
+                        Console.WriteLine("From TREND EVENT HANDLER, Trend is NOT ready");
+                        Console.ResetColor();
+                    }
+                    CheckSignal();
+                };
         }
 
 

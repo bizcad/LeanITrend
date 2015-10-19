@@ -47,6 +47,17 @@ namespace QuantConnect
 
             testerAcum = 0m;
             counter = 0;
+
+            Identity close = new Indicators.Identity("SPY");
+            RegisterIndicator(symbol, close, Resolution.Minute, Field.Close);
+            var chart = new Chart("SPY");
+            chart.AddSeries(new Series(close.Name));
+            chart.AddSeries(new Series(PSARList[0].Name, SeriesType.Scatter));
+            chart.AddSeries(new Series(PSARList[1].Name, SeriesType.Scatter));
+            chart.AddSeries(new Series(PSARList[2].Name, SeriesType.Scatter));
+
+            PlotIndicator("SPY", close);
+            PlotIndicator("SPY", true, PSARList[0], PSARList[1], PSARList[2]);
         }
 
         public void OnData(TradeBars data)

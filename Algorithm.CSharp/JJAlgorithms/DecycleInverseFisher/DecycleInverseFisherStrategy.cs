@@ -17,6 +17,11 @@ namespace QuantConnect.Algorithm.CSharp.JJAlgorithms.DecycleInverseFisher
         public InverseFisherTransform InverseFisher;
         public RollingWindow<decimal> InvFisherRW;
 
+        public Decycle LightSmoothPrice;
+        public MomersionIndicator Momersion;
+
+        public ParabolicStopAndReverse PSAR;
+
         #endregion Fields
 
         #region Constructor
@@ -35,6 +40,9 @@ namespace QuantConnect.Algorithm.CSharp.JJAlgorithms.DecycleInverseFisher
             InverseFisher = new InverseFisherTransform(_invFisherPeriod).Of(DecycleTrend);
             InvFisherRW = new RollingWindow<decimal>(2);
             
+            LightSmoothPrice = new Decycle(10).Of(Price);
+            Momersion = new MomersionIndicator(10, 30).Of(LightSmoothPrice, false);
+
             // Fill the Inverse Fisher rolling windows at every new InverseFisher observation.
             // Once the Inverse Fisher rolling windows is ready, at every InverseFisher update, the Check signal method will be called.
             InverseFisher.Updated += (object sender, IndicatorDataPoint updated) =>
@@ -70,11 +78,13 @@ namespace QuantConnect.Algorithm.CSharp.JJAlgorithms.DecycleInverseFisher
 
             bool longSignal = (InvFisherRW[1] < _threshold) &&
                               (InvFisherRW[0] > _threshold) &&
-                              (Math.Abs(InvFisherRW[0] - InvFisherRW[1]) > _tolerance);
+                              (Math.Abs(InvFisherRW[0] - InvFisherRW[1]) > _tolerance) &&
+                              (Momersion > 50);
 
             bool shortSignal = (InvFisherRW[1] > -_threshold) &&
                                (InvFisherRW[0] < -_threshold) &&
-                               (Math.Abs(InvFisherRW[0] - InvFisherRW[1]) > _tolerance);
+                               (Math.Abs(InvFisherRW[0] - InvFisherRW[1]) > _tolerance) &&
+                               (Momersion > 50);
             
 
             switch (Position)
@@ -104,9 +114,11 @@ namespace QuantConnect.Algorithm.CSharp.JJAlgorithms.DecycleInverseFisher
 
         public void Reset()
         {
-            this.DecycleTrend.Reset();
-            this.InverseFisher.Reset();
-            this.InvFisherRW.Reset();
+            DecycleTrend.Reset();
+            InverseFisher.Reset();
+            InvFisherRW.Reset();
+            LightSmoothPrice.Reset();
+            Momersion.Reset();
         }
 
         #endregion Methods
