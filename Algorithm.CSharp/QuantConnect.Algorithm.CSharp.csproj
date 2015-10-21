@@ -118,6 +118,7 @@
     <Compile Include="JJAlgorithms\MMRStrategy\MomersionAlgorithm.cs" />
     <Compile Include="JJAlgorithms\MMRStrategy\RSIStrategy.cs" />
     <Compile Include="JJAlgorithms\MMRStrategy\CrossEMAStrategy.cs" />
+    <Compile Include="JJAlgorithms\TestingAlgos\TestingLSMA.cs" />
     <Compile Include="JJAlgorithms\TestingAlgos\TestingTradeBuilder.cs" />
     <Compile Include="JJAlgorithms\TestingAlgos\TestingEOD.cs" />
     <Compile Include="JJAlgorithms\TestingAlgos\NaiveStrategy.cs" />

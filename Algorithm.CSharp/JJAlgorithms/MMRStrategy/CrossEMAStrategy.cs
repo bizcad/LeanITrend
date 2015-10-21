@@ -25,7 +25,7 @@ namespace QuantConnect.Algorithm.CSharp
         /// <param name="Price">The injected price indicator.</param>
         /// <param name="SlowEMAPeriod">The slow EMA period.</param>
         /// <param name="FastEMAPeriod">The fast EMA period.</param>
-        public CrossEMAStrategy(Indicator Price, int SlowEMAPeriod = 15, int FastEMAPeriod = 60)
+        public CrossEMAStrategy(Indicator Price, int SlowEMAPeriod = 45, int FastEMAPeriod = 120)
         {
             // Initialize fields.
             _price = Price;

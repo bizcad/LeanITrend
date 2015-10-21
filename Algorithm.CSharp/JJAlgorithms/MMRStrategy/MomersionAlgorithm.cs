@@ -23,10 +23,8 @@ namespace QuantConnect.Algorithm.CSharp
         #region Fields
 
         // Some of the biggest market cap stocks in USA.
-        public static string[] Symbols = { "AIG", "BAC", "IBM", "SPY" };
-
-        /* { "AAPL", "AMZN", "FB", "GE", "JNJ", "JPM", "MSFT",
-         *   "NVS", "PFE", "PG", "PTR", "TM", "VZ", "WFC" };*/
+        public static string[] Symbols = { "AAPL", "AMZN", "FB", "GE", "JNJ", "JPM", "MSFT",
+                                           "NVS", "PFE", "PG", "PTR", "TM", "VZ", "WFC" };
 
         // Flags if the market is open.
         private bool isMarketOpen;
@@ -41,10 +39,10 @@ namespace QuantConnect.Algorithm.CSharp
         private Dictionary<int, MomersionState> SenderStrategy = new Dictionary<int, MomersionState>();
 
         // Dictionary used to store the RSIStrategy object for each symbol.
-        private Dictionary<string, RSIStrategy> MeanReversionStrategy = new Dictionary<string, RSIStrategy>();
+        private Dictionary<string, BaseStrategy> MeanReversionStrategy = new Dictionary<string, BaseStrategy>();
 
         // Dictionary used to store the CrossEMAStrategy object for each symbol.
-        private Dictionary<string, CrossEMAStrategy> MomentumStrategy = new Dictionary<string, CrossEMAStrategy>();
+        private Dictionary<string, BaseStrategy> MomentumStrategy = new Dictionary<string, BaseStrategy>();
 
         // Dictionary used to store the Momersion indicator for each symbol.
         private Dictionary<string, MomersionIndicator> Momersion = new Dictionary<string, MomersionIndicator>();
@@ -58,8 +56,8 @@ namespace QuantConnect.Algorithm.CSharp
         /// </summary>
         public override void Initialize()
         {
-            SetStartDate(2013, 10, 07);  //Set Start Date
-            SetEndDate(2013, 10, 11);    //Set End Date
+            SetStartDate(2015, 06, 1);  //Set Start Date
+            SetEndDate(2015, 10, 16);    //Set End Date
             SetCash(100000);             //Set Strategy Cash
 
             foreach (var symbol in Symbols)
@@ -83,6 +81,7 @@ namespace QuantConnect.Algorithm.CSharp
                 // Once the Momersion indicator is ready, call a method to check the status of Momersion at every indicator's update.
                 Momersion[symbol].Updated += (object sender, IndicatorDataPoint updated) =>
                     {
+                        //Debug(string.Format("Updating Momersion for {0}", symbol));
                         if (Momersion[symbol].IsReady) CheckMomersionState(symbol);
                     };
                 
@@ -118,6 +117,8 @@ namespace QuantConnect.Algorithm.CSharp
         {
             foreach (var symbol in Symbols)
             {
+                bool breakout = Time == new DateTime(2015, 06, 04, 15, 59, 0);
+                Log(Securities[symbol].Close.ToString());
                 if (isMarketOpen)
                 {
                     var actualSignal = OrderSignal.doNothing;
@@ -167,17 +168,14 @@ namespace QuantConnect.Algorithm.CSharp
         /// </remarks>
         public override void OnOrderEvent(Orders.OrderEvent orderEvent)
         {
-            // Logging.
+            string symbol = orderEvent.Symbol;
+            int portfolioPosition = Portfolio[symbol].Quantity;
+            var senderStrategy = SenderStrategy[orderEvent.OrderId];
             var actualOrder = Transactions.GetOrderById(orderEvent.OrderId);
-            Log(actualOrder.ToString());
-
+            
             // Update the strategy object if the order status is filled.
             if (orderEvent.Status == OrderStatus.Filled)
             {
-                string symbol = orderEvent.Symbol;
-                int portfolioPosition = Portfolio[symbol].Quantity;
-                var senderStrategy = SenderStrategy[orderEvent.OrderId];
-
                 switch (senderStrategy)
                 {
                     case MomersionState.Momentum:
@@ -196,7 +194,8 @@ namespace QuantConnect.Algorithm.CSharp
                         break;
                 }
             }
-            
+            // Logging.
+            Log(string.Format("{0} sent from {1} strategy.", actualOrder.ToString(), senderStrategy.ToString()));
         }
 
         #endregion QCAlgorithm overridden methods
@@ -220,6 +219,12 @@ namespace QuantConnect.Algorithm.CSharp
             {
                 ActiveStrategy[symbol] = MomersionState.MeanRevertion;
                 Log(string.Format("Mean Reversion Strategy activated for {0}", symbol));
+            }
+            else if (Momersion[symbol] == 50 &&
+                  ActiveStrategy[symbol] != MomersionState.None)
+            {
+                ActiveStrategy[symbol] = MomersionState.None;
+                Log(string.Format("No Strategy activated for {0}", symbol));
             }
         }
 
