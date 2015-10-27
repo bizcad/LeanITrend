@@ -122,23 +122,20 @@ namespace QuantConnect.Indicators
         {
             int Mc = 0;
             int MRc = 0;
-            decimal momersion;
+            decimal momersion = 50m;
 
             if (window.Count >= 3) _multipliedDiffWindow.Add((window[0] - window[1]) * (window[1] - window[2]));
 
-            if (this.IsReady)
+            // Estimate the indicator if less than 50% of observation are zero. Avoid division by
+            // zero and estimations with few real observations in case of forward filled data.
+            if (this.IsReady &&
+                _multipliedDiffWindow.Count(obs => obs == 0) < 0.5 * _multipliedDiffWindow.Count)
             {
                 Mc = _multipliedDiffWindow.Count(obs => obs > 0);
                 MRc = _multipliedDiffWindow.Count(obs => obs < 0);
                 momersion = 100m * Mc / (Mc + MRc);
             }
-            else
-            {
-                momersion = 50m;
-            }
-
-            Current = new IndicatorDataPoint(input.Time, momersion);
-            return this.Current;
+            return momersion;
         }
     }
 }

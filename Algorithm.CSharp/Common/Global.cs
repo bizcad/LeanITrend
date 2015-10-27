@@ -3,7 +3,7 @@
     public enum StockState
     {
         shortPosition,  // The Portfolio has short position in this bar.
-        longPosition,   // The Portfolio has short position in this bar.
+        longPosition,   // The Portfolio has long position in this bar.
         noInvested,     // The Portfolio hasn't any position in this bar.
         orderSent       // An order has been sent in this same bar, skip analysis.
     };

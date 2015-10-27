@@ -244,6 +244,7 @@ namespace QuantConnect.Algorithm.CSharp
                 }
             }
 
+
             // first wait for our opening range bar to be set to today
             if (OpeningBarRange == null || OpeningBarRange.EndTime.Date != Time.Date || OpeningBarRange.EndTime == Time) return;
 
