@@ -56,28 +56,27 @@ namespace QuantConnect.Algorithm.CSharp
         /// </summary>
         public override void Initialize()
         {
-            SetStartDate(2015, 06, 1);  //Set Start Date
-            SetEndDate(2015, 10, 16);    //Set End Date
+            SetStartDate(2000, 01, 01);  //Set Start Date
+            SetEndDate(2014, 12, 31);    //Set End Date
             SetCash(100000);             //Set Strategy Cash
 
             foreach (var symbol in Symbols)
             {
                 // Initialize fields.
-                isMarketOpen = false;
+                isMarketOpen = true; // false;
                 // Equally weighted, fully invested portfolio
                 shareSize = 1m / Symbols.Length;
 
-                AddSecurity(SecurityType.Equity, symbol, Resolution.Minute);
+                AddSecurity(SecurityType.Equity, symbol, Resolution.Daily);
                 // Define and register an Identity indicator with the price, this indicator will be
                 // injected in the Strategy.
-                Identity PriceIdentity = new Identity(symbol);
-                RegisterIndicator(symbol, PriceIdentity, Resolution.Minute, Field.Close);
+                var PriceIdentity = Identity(new Symbol(symbol), selector: Field.Close);
 
                 // Define the Strategies for this symbol
                 MomentumStrategy.Add(symbol, new CrossEMAStrategy(PriceIdentity));
                 MeanReversionStrategy.Add(symbol, new RSIStrategy(PriceIdentity));
 
-                Momersion.Add(symbol, new MomersionIndicator(15, 60).Of(PriceIdentity));
+                Momersion.Add(symbol, new MomersionIndicator(15).Of(PriceIdentity));
                 // Once the Momersion indicator is ready, call a method to check the status of Momersion at every indicator's update.
                 Momersion[symbol].Updated += (object sender, IndicatorDataPoint updated) =>
                     {
@@ -88,25 +87,25 @@ namespace QuantConnect.Algorithm.CSharp
                 ActiveStrategy.Add(symbol, MomersionState.None);
             }
 
-            // Avoid to operate the first 15 minutes.
-            Schedule.Event("MarketOpenSpan")
-                .EveryDay()
-                .At(9, 45)
-                .Run(() =>
-                {
-                    isMarketOpen = true;
-                    Log(string.Format("|||||||||| {0} Market Open ||||||||||", Time.DayOfWeek));
-                });
+            //// Avoid to operate the first 15 minutes.
+            //Schedule.Event("MarketOpenSpan")
+            //    .EveryDay()
+            //    .At(9, 45)
+            //    .Run(() =>
+            //    {
+            //        isMarketOpen = true;
+            //        Log(string.Format("|||||||||| {0} Market Open ||||||||||", Time.DayOfWeek));
+            //    });
 
-            // Avoid to operate the last 5 minutes.
-            Schedule.Event("MarketClose")
-                .EveryDay()
-                .At(15, 55)
-                .Run(() =>
-                {
-                    isMarketOpen = false;
-                    Log(string.Format("========== {0} Market Close ==========", Time.DayOfWeek));
-                });
+            //// Avoid to operate the last 5 minutes.
+            //Schedule.Event("MarketClose")
+            //    .EveryDay()
+            //    .At(15, 55)
+            //    .Run(() =>
+            //    {
+            //        isMarketOpen = false;
+            //        Log(string.Format("========== {0} Market Close ==========", Time.DayOfWeek));
+            //    });
         }
 
         /// <summary>
@@ -118,7 +117,6 @@ namespace QuantConnect.Algorithm.CSharp
             foreach (var symbol in Symbols)
             {
                 bool breakout = Time == new DateTime(2015, 06, 04, 15, 59, 0);
-                Log(Securities[symbol].Close.ToString());
                 if (isMarketOpen)
                 {
                     var actualSignal = OrderSignal.doNothing;

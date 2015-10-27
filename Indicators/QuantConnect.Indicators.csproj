@@ -54,6 +54,7 @@
     <Compile Include="Custom Indicators\InverseFisherTransform.cs">
       <SubType>Code</SubType>
     </Compile>
+    <Compile Include="Custom Indicators\LeastSquaredMovingAverageAlt.cs" />
     <Compile Include="Custom Indicators\LeastSquaredMovingAverage.cs" />
     <Compile Include="Custom Indicators\Momersion.cs" />
     <Compile Include="Custom Indicators\SuperSmoother.cs" />

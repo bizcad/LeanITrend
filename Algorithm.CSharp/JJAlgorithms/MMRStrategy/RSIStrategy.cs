@@ -29,7 +29,7 @@ namespace QuantConnect.Algorithm.CSharp
         /// <param name="Price">The injected price indicator.</param>
         /// <param name="SlowEMAPeriod">The slow EMA period.</param>
         /// <param name="FastEMAPeriod">The fast EMA period.</param>
-        public RSIStrategy(Indicator Price, int RSIPeriod = 2, decimal Threshold = 40)
+        public RSIStrategy(Indicator Price, int RSIPeriod = 40, decimal Threshold = 20)
         {
             // Initialize fields.
             _threshold = Threshold;

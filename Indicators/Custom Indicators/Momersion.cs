@@ -127,7 +127,7 @@ namespace QuantConnect.Indicators
             if (window.Count >= 3) _multipliedDiffWindow.Add((window[0] - window[1]) * (window[1] - window[2]));
 
             // Estimate the indicator if less than 50% of observation are zero. Avoid division by
-            // zero and make estimation with few real observations in case of forward filled data.
+            // zero and estimations with few real observations in case of forward filled data.
             if (this.IsReady &&
                 _multipliedDiffWindow.Count(obs => obs == 0) < 0.5 * _multipliedDiffWindow.Count)
             {

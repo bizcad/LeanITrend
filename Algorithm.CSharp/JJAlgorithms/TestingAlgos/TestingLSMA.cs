@@ -2,6 +2,8 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text;
+using System.IO;
 
 using QuantConnect.Algorithm;
 using QuantConnect.Algorithm.CSharp;
@@ -18,6 +20,7 @@ namespace QuantConnect
         #region Fields
         private static string symbol = "SPY";
         LeastSquaredMovingAverage LSMA;
+        StringBuilder logResult = new StringBuilder();
         #endregion
 
         #region QCAlgorithm Methods
@@ -40,6 +43,7 @@ namespace QuantConnect
             
             PlotIndicator("Plot", close);
             PlotIndicator("Plot", true, LSMA);
+            logResult.AppendLine("Time,Close,LSMA");
         }
 
         public void OnData(TradeBars data)
@@ -48,6 +52,21 @@ namespace QuantConnect
             {
                 SetHoldings(symbol, 1);
             }
+            logResult.AppendLine(string.Format("{0},{1},{2},{3}",
+                Time.ToString("u"),
+                data[symbol].Close,
+                LSMA.Current.Value,
+                LSMA.IsReady
+                ));
+        }
+
+        public override void OnEndOfAlgorithm()
+        {
+            string fileName = string.Format("TestingLSMA.csv", symbol);
+            string filePath = AssemblyLocator.ExecutingDirectory() + fileName;
+
+            if (File.Exists(filePath)) File.Delete(filePath);
+            File.AppendAllText(filePath, logResult.ToString());
         }
         #endregion
     }
