@@ -24,7 +24,7 @@ namespace QuantConnect.Indicators
     {
         SimpleMovingAverage mean;
         StandardDeviation sd;
-        
+
         public InverseFisherTransform(string name, int period)
             : base(name)
         {
@@ -36,7 +36,7 @@ namespace QuantConnect.Indicators
             : this("InvFish_" + period, period)
         {
         }
-        
+
         public override bool IsReady
         {
             get { return mean.IsReady && sd.IsReady; }
@@ -52,13 +52,16 @@ namespace QuantConnect.Indicators
         protected override decimal ComputeNextValue(IndicatorDataPoint input)
         {
             double ifish = 0d;
+            double normalized;
 
             mean.Update(input);
             sd.Update(input);
-            
-            if (mean.IsReady && sd.IsReady)
+
+            if (mean.IsReady &&
+                sd.IsReady &&
+                sd != 0)
             {
-                double normalized = (double)(4 * (input - mean) / sd);
+                normalized = (double)(4 * (input - mean) / sd);
                 ifish = (Math.Exp(2 * normalized) - 1) / (Math.Exp(2 * normalized) + 1);
             }
             return (decimal)ifish;
