@@ -13,22 +13,24 @@ namespace QuantConnect.Algorithm.CSharp
     public class ITrendAlgorithm : QCAlgorithm
     {
         #region "Algorithm Globals"
-        private DateTime _startDate = new DateTime(2015, 5, 19);
-        private DateTime _endDate = new DateTime(2015, 10, 4);
-        private decimal _portfolioAmount = 10000;
-        private decimal _transactionSize = 15000;
+        
+        private DateTime _startDate = new DateTime(2015, 06, 01);
+        private DateTime _endDate = new DateTime(2015, 06, 15);
+        private decimal _portfolioAmount = 26000;
+        
         #endregion
+
         #region Fields
 
     /* +-------------------------------------------------+
      * |Algorithm Control Panel                          |
      * +-------------------------------------------------+*/
         private static int ITrendPeriod = 7;            // Instantaneous Trend period.
-        private static decimal Tolerance = 0.000m;      // Trigger - Trend crossing tolerance.
+        private static decimal Tolerance = 0.0001m;      // Trigger - Trend crossing tolerance.
         private static decimal RevertPCT = 1.0015m;     // Percentage tolerance before revert position.
 
         private static decimal maxLeverage = 1m;        // Maximum Leverage.
-        private decimal leverageBuffer = 0.00m;         // Percentage of Leverage left unused.
+        private decimal leverageBuffer = 0.40m;         // Percentage of Leverage left unused.
         private int maxOperationQuantity = 500;         // Maximum shares per operation.
 
         private decimal RngFac = 0.35m;                 // Percentage of the bar range used to estimate limit prices.
@@ -38,19 +40,16 @@ namespace QuantConnect.Algorithm.CSharp
     /* +-------------------------------------------------+*/
 
         private static string[] Symbols = { "AAPL" };
-        //private static string[] Symbols = { "AIG", "BAC", "IBM", "SPY" };
 
         // Dictionary used to store the ITrendStrategy object for each symbol.
         private Dictionary<string, ITrendStrategy> Strategy = new Dictionary<string, ITrendStrategy>();
-
-        // Dictionary used to store the Lists of OrderTickets object for each symbol.
-        private Dictionary<string, List<OrderTicket>> Tickets = new Dictionary<string, List<OrderTicket>>();
 
         // Dictionary used to store the portfolio sharesize for each symbol.
         private Dictionary<string, decimal> ShareSize = new Dictionary<string, decimal>();
 
         // Dictionary used to store the last operation for each symbol.
-        private Dictionary<string, OrderSignal> LastOrderSent = new Dictionary<string, OrderSignal>();
+        //private Dictionary<string, OrderSignal> LastOrderSent = new Dictionary<string, OrderSignal>();
+
 
         private EquityExchange theMarket = new EquityExchange();
 
@@ -82,11 +81,13 @@ namespace QuantConnect.Algorithm.CSharp
             foreach (string symbol in Symbols)
             {
                 AddSecurity(SecurityType.Equity, symbol, Resolution.Minute);
-                Strategy.Add(symbol, new ITrendStrategy(ITrendPeriod, Tolerance, RevertPCT));
-                Tickets.Add(symbol, new List<OrderTicket>());
-                // Equal portfolio shares for every stock.
+                var priceIdentity = Identity(symbol, selector: Field.Close);
+
+                Strategy.Add(symbol, new ITrendStrategy(priceIdentity, ITrendPeriod,
+                    Tolerance, RevertPCT, RevertPositionCheck.vsTrigger));
+                // Equally weighted portfolio.
                 ShareSize.Add(symbol, (maxLeverage * (1 - leverageBuffer)) / Symbols.Count());
-                LastOrderSent.Add(symbol, OrderSignal.doNothing);
+
 
                 #region Logging stuff - Initializing Stock Logging
 
@@ -103,24 +104,19 @@ namespace QuantConnect.Algorithm.CSharp
 
         public void OnData(TradeBars data)
         {
-            bool isMarketAboutToClose;
+            bool isMarketAboutToClose = !theMarket.DateTimeIsOpen(Time.AddMinutes(10));
             OrderSignal actualOrder = OrderSignal.doNothing;
 
             int i = 0;
             foreach (string symbol in Symbols)
             {
-                // Update the ITrend indicator in the strategy object.
-                Strategy[symbol].ITrend.Update(new IndicatorDataPoint(Time, (data[symbol].Close + data[symbol].Open) / 2));
-
-                isMarketAboutToClose = !theMarket.DateTimeIsOpen(Time.AddMinutes(10));
-
                 // Operate only if the market is open
                 if (theMarket.DateTimeIsOpen(Time))
                 {
                     // First check if there are some limit orders not filled yet.
-                    if (LastOrderSent[symbol] == OrderSignal.goLong || LastOrderSent[symbol] == OrderSignal.goShort)
+                    if (Transactions.LastOrderId > 0)
                     {
-                        CheckOrderStatus(symbol, LastOrderSent[symbol]);
+                        CheckOrderStatus(symbol);
                     }
                     // Check if the market is about to close and noOvernight is true.
                     if (noOvernight && isMarketAboutToClose)
@@ -132,9 +128,9 @@ namespace QuantConnect.Algorithm.CSharp
                     else
                     {
                         // Now check if there is some signal and execute the strategy.
-                        actualOrder = Strategy[symbol].CheckSignal(data[symbol].Close);
+                        actualOrder = Strategy[symbol].ActualSignal;
                     }
-                    ExecuteStrategy(symbol, actualOrder, data);
+                    ExecuteStrategy(symbol, actualOrder);
                 }
 
                 #region Logging stuff - Filling the data StockLogging
@@ -166,6 +162,47 @@ namespace QuantConnect.Algorithm.CSharp
                 #endregion Logging stuff - Filling the data StockLogging
             }
             barCounter++; // just for debug
+        }
+
+        public override void OnOrderEvent(OrderEvent orderEvent)
+        {
+            string symbol = orderEvent.Symbol;
+            int portfolioPosition = Portfolio[symbol].Quantity;
+            var actualTicket = Transactions.GetOrderTickets(t => t.OrderId == orderEvent.OrderId).Single();
+            var actualOrder = Transactions.GetOrderById(orderEvent.OrderId);
+
+            switch (orderEvent.Status)
+            {
+                case OrderStatus.Submitted:
+                    Strategy[symbol].Position = StockState.orderSent;
+                    Log("New order submitted: " + actualOrder.ToString());
+                    break;
+
+                case OrderStatus.PartiallyFilled:
+                    Log("Order partially filled: " + actualOrder.ToString());
+                    Log("Canceling order");
+                    actualTicket.Cancel();
+                    //do { }
+                    //while (actualTicket.GetMostRecentOrderResponse().IsSuccess);
+                    goto case OrderStatus.Filled;
+
+                case OrderStatus.Filled:
+                    if (portfolioPosition > 0) Strategy[symbol].Position = StockState.longPosition;
+                    else if (portfolioPosition < 0) Strategy[symbol].Position = StockState.shortPosition;
+                    else Strategy[symbol].Position = StockState.noInvested;
+
+                    Strategy[symbol].EntryPrice = actualTicket.AverageFillPrice;
+
+                    Log("Order filled: " + actualOrder.ToString());
+                    break;
+
+                case OrderStatus.Canceled:
+                    Log("Order successfully canceled: " + actualOrder.ToString());
+                    break;
+
+                default:
+                    break;
+            }
         }
 
         public override void OnEndOfDay()
@@ -214,32 +251,26 @@ namespace QuantConnect.Algorithm.CSharp
         /// </summary>
         /// <param name="symbol">The symbol.</param>
         /// <param name="lastOrder">The last order.</param>
-        private void CheckOrderStatus(string symbol, OrderSignal lastOrder)
+        private void CheckOrderStatus(string symbol)
         {
-            int shares;
+            // Pick the submitted limit tickets for the symbol.
+            var actualSubmittedTicket = Transactions.GetOrderTickets(t => t.Symbol == symbol
+                                                              && t.OrderType == OrderType.Limit
+                                                              && t.Status == OrderStatus.Submitted);
+            // If there is none, return.
+            if (actualSubmittedTicket.Count() == 0) return;
+            // if there is more than one, stop the algorithm, something is wrong.
+            else if (actualSubmittedTicket.Count() != 1) throw new ApplicationException("More than one submitted limit order");
 
-            // If the ticket isn't filled...
-            if (Tickets[symbol].Last().Status != OrderStatus.Filled)
-            {
-                shares = Tickets[symbol].Last().Quantity;
-                // cancel the limit order and send a new market order.
-                Tickets[symbol].Last().Cancel();
-                Tickets[symbol].Add(MarketOrder(symbol, shares));
-            }
-            // Once the ticket is filled, update the ITrenStrategy object for the symbol.
-            if (lastOrder == OrderSignal.goLong)
-            {
-                Strategy[symbol].Position = StockState.longPosition;
-            }
-            else if (lastOrder == OrderSignal.goShort)
-            {
-                Strategy[symbol].Position = StockState.shortPosition;
-            }
-            Strategy[symbol].EntryPrice = Tickets[symbol].Last().AverageFillPrice;
-            // Update the LastOrderSent dictionary, to avoid check filled orders many times.
-            LastOrderSent[symbol] = OrderSignal.doNothing;
-
-            // TODO: If the ticket is partially filled.
+            Log("||| Cancel Limit order and send a market order");
+            // Now, define the ticket to handle the actual OrderTicket.
+            var actualTicket = actualSubmittedTicket.Single();
+            // Retrieve the operation quantity. 
+            int shares = actualTicket.Quantity;
+            // Cancel the order.
+            actualTicket.Cancel();
+            // Send a market order.
+            MarketOrder(symbol, shares);
         }
 
         /// <summary>
@@ -256,13 +287,15 @@ namespace QuantConnect.Algorithm.CSharp
             switch (order)
             {
                 case OrderSignal.goLong:
+                case OrderSignal.goLongLimit:
                     operationQuantity = CalculateOrderQuantity(symbol, ShareSize[symbol]);
                     quantity = Math.Min(maxOperationQuantity, operationQuantity);
                     break;
 
                 case OrderSignal.goShort:
-                    operationQuantity = CalculateOrderQuantity(symbol, ShareSize[symbol]);
-                    quantity = -Math.Min(maxOperationQuantity, operationQuantity);
+                case OrderSignal.goShortLimit:
+                    operationQuantity = CalculateOrderQuantity(symbol, -ShareSize[symbol]);
+                    quantity = Math.Max(-maxOperationQuantity, operationQuantity);
                     break;
 
                 case OrderSignal.closeLong:
@@ -286,71 +319,60 @@ namespace QuantConnect.Algorithm.CSharp
         /// Executes the ITrend strategy orders.
         /// </summary>
         /// <param name="symbol">The symbol to be traded.</param>
-        /// <param name="actualOrder">The actual arder to be execute.</param>
+        /// <param name="actualOrder">The actual order to be execute.</param>
         /// <param name="data">The actual TradeBar data.</param>
-        private void ExecuteStrategy(string symbol, OrderSignal actualOrder, TradeBars data)
+        private void ExecuteStrategy(string symbol, OrderSignal actualOrder)
         {
             int shares;
-            decimal limitPrice = 0m;
 
             switch (actualOrder)
             {
-                case OrderSignal.goLong:
-                case OrderSignal.goShort:
+                case OrderSignal.goLongLimit:
+                case OrderSignal.goShortLimit:
+                    Log("===> Entry to Market");
+                    decimal limitPrice; 
                     // Define the operation size.
                     shares = PositionShares(symbol, actualOrder);
+                    var barPrices = Securities[symbol];
+   
                     // Define the limit price.
                     if (actualOrder == OrderSignal.goLong)
                     {
-                        limitPrice = Math.Max(data[symbol].Low,
-                                    (data[symbol].Close - (data[symbol].High - data[symbol].Low) * RngFac));
+                        limitPrice = Math.Max(barPrices.Low,
+                                    (barPrices.Close - (barPrices.High - barPrices.Low) * RngFac));
                     }
-                    else if (actualOrder == OrderSignal.goShort)
+                    else
                     {
-                        limitPrice = Math.Min(data[symbol].High,
-                                    (data[symbol].Close + (data[symbol].High - data[symbol].Low) * RngFac));
+                        limitPrice = Math.Min(barPrices.High,
+                                    (barPrices.Close + (barPrices.High - barPrices.Low) * RngFac));
                     }
                     // Send the order.
-                    Tickets[symbol].Add(LimitOrder(symbol, shares, limitPrice));
-                    // Update the LastOrderSent dictionary.
-                    LastOrderSent[symbol] = actualOrder;
+                    LimitOrder(symbol, shares, limitPrice);
                     break;
 
                 case OrderSignal.closeLong:
                 case OrderSignal.closeShort:
+                    Log("<=== Closing Position");
                     // Define the operation size.
                     shares = PositionShares(symbol, actualOrder);
                     // Send the order.
-                    Tickets[symbol].Add(MarketOrder(symbol, shares));
-                    // Because the order is an synchronously market order, they'll fill
-                    // inmediatelly. So, update the ITrend strategy and the LastOrder Dictionary.
-                    Strategy[symbol].Position = StockState.noInvested;
-                    Strategy[symbol].EntryPrice = null;
-                    LastOrderSent[symbol] = OrderSignal.doNothing;
+                    MarketOrder(symbol, shares);
                     break;
 
                 case OrderSignal.revertToLong:
                 case OrderSignal.revertToShort:
+                    Log("<===> Reverting Position");
                     // Define the operation size.
                     shares = PositionShares(symbol, actualOrder);
                     // Send the order.
-                    Tickets[symbol].Add(MarketOrder(symbol, shares));
-                    // Beacuse the order is an synchronously market order, they'll fill
-                    // inmediatlly. So, update the ITrend strategy and the LastOrder Dictionary.
-                    if (actualOrder == OrderSignal.revertToLong) Strategy[symbol].Position = StockState.longPosition;
-                    else if (actualOrder == OrderSignal.revertToShort) Strategy[symbol].Position = StockState.shortPosition;
-                    Strategy[symbol].EntryPrice = Tickets[symbol].Last().AverageFillPrice;
-                    LastOrderSent[symbol] = actualOrder;
+                    MarketOrder(symbol, shares);
                     break;
 
                 default: break;
             }
         }
 
-        public override void OnOrderEvent(OrderEvent orderEvent)
-        {
-            base.OnOrderEvent(orderEvent);
-        }
+        
 
         #endregion Algorithm Methods
     }

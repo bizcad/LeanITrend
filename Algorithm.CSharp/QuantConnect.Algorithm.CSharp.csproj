@@ -56,7 +56,6 @@
     <Compile Include="BizcadAlgorithm\InstataneousTrendAlgorithm\IBetSizer.cs" />
     <Compile Include="BizcadAlgorithm\InstataneousTrendAlgorithm\ILimitPriceCalculator.cs" />
     <Compile Include="BizcadAlgorithm\InstataneousTrendAlgorithm\InstantaneousTrendAlgorithm.cs" />
-    <Compile Include="BizcadAlgorithm\InstataneousTrendAlgorithm\InstantaneousTrendAlgorithmQC.cs" />
     <Compile Include="BizcadAlgorithm\InstataneousTrendAlgorithm\InstantTrendAlgorithmOriginal.cs" />
     <Compile Include="BizcadAlgorithm\InstataneousTrendAlgorithm\InstantTrendBetSizer.cs" />
     <Compile Include="BizcadAlgorithm\InstataneousTrendAlgorithm\InstantTrendLimitPriceCalculator.cs" />
@@ -112,15 +111,12 @@
     <Compile Include="ITrendAlgorithm\ITrendStrategy.cs">
       <SubType>Code</SubType>
     </Compile>
-    <Compile Include="ITrendAlgorithm\LoggingITrendAlgorithm.cs" />
     <Compile Include="JJAlgorithms\DecycleInverseFisher\DecycleInverseFisherAlgorithm.cs" />
     <Compile Include="JJAlgorithms\DecycleInverseFisher\DecycleInverseFisherStrategy.cs" />
     <Compile Include="JJAlgorithms\IntradayBuyLow\AdaptativeSizing.cs" />
     <Compile Include="JJAlgorithms\IntradayBuyLow\BuyLowStrategy.cs" />
     <Compile Include="JJAlgorithms\IntradayBuyLow\IntradayBuyLow1_3.cs" />
     <Compile Include="JJAlgorithms\IntradayBuyLow\WarmUp.cs" />
-    <Compile Include="JJAlgorithms\ITrendAlgorithmJJ.cs" />
-    <Compile Include="JJAlgorithms\ITrendStrategyJJ.cs" />
     <Compile Include="JJAlgorithms\Laguerre.cs" />
     <Compile Include="JJAlgorithms\LaguerreBasic.cs" />
     <Compile Include="JJAlgorithms\LaguerreEMA.cs" />

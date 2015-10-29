@@ -13,7 +13,7 @@
     //"algorithm-type-name": "LoggingITrendAlgorithm",
     //"algorithm-type-name": "InstantTrendAlgorithmOriginal",
     //"algorithm-type-name": "InstantaneousTrendAlgorithm",
-    //"algorithm-type-name": "ITrendAlgorithm",
+    "algorithm-type-name": "ITrendAlgorithm",
     //"algorithm-type-name": "SigTestAlgorithm",
     //"algorithm-type-name": "RollingWindowTestAlgorithm",
     //"algorithm-type-name": "QCLive",
@@ -22,7 +22,7 @@
     //"algorithm-type-name": "MultiSigDailyAlgorithmQc",
     //"algorithm-type-name": "InstantaneousTrendAlgorithmQC",
     //"algorithm-type-name": "ITrendAlgorithmJJ",
-    "algorithm-type-name": "MultiSignalAlgorithm",
+    //"algorithm-type-name": "MultiSignalAlgorithm",
     //"algorithm-type-name": "MultiSignalAlgorithmQC",
 
 
@@ -38,8 +38,8 @@
     //"algorithm-location": "QuantConnect.Algorithm.Java.dll",
 
     // engine
-    //"data-folder": "../../../Data/",
-    "data-folder": "H:\\GoogleFinanceData\\",
+    "data-folder": "../../../Data/",
+    //"data-folder": "H:\\GoogleFinanceData\\",
 
     // handlers
     "log-handler": "QuantConnect.Logging.CompositeLogHandler",
