@@ -19,9 +19,12 @@ namespace QuantConnect.Algorithm.CSharp.JJAlgorithms.DecycleInverseFisher
     public class DecycleInverseFisherAlgorithm : QCAlgorithm
     {
         #region Algorithm Globals
+        DateTime startTime = DateTime.Now;
         private DateTime _startDate = new DateTime(2015, 08, 07);
         private DateTime _endDate = new DateTime(2015, 09, 04);
         private decimal _portfolioAmount = 25000;
+        private decimal _transactionSize = 15000;
+
         #endregion
 
         #region Fields
@@ -39,9 +42,11 @@ namespace QuantConnect.Algorithm.CSharp.JJAlgorithms.DecycleInverseFisher
 
         private bool resetAtEndOfDay = false;            // Reset the strategies at EOD.
         private bool noOvernight = true;                // Close all positions before market close.
+        private decimal lossThreshhold = 0;
+        
     /* +-------------------------------------------------+*/
 
-        private static string[] Symbols = { "SBUX" };
+        private static string[] Symbols = { "AAPL" };
 
         // Dictionary used to store the ITrendStrategy object for each symbol.
         private Dictionary<string, DIFStrategy> Strategy = new Dictionary<string, DIFStrategy>();
@@ -166,24 +171,38 @@ namespace QuantConnect.Algorithm.CSharp.JJAlgorithms.DecycleInverseFisher
 
         public override void OnEndOfAlgorithm()
         {
-            #region Logging stuff - Saving the logs
-
-            int i = 0;
-            foreach (string symbol in Symbols)
+            StringBuilder sb = new StringBuilder();
+            //sb.Append(" Symbols: ");
+            foreach (var s in Symbols)
             {
-                string filename = string.Format("LittleWing_{0}.csv", symbol);
-                string filePath = AssemblyLocator.ExecutingDirectory() + filename;
 
-                if (File.Exists(filePath)) File.Delete(filePath);
-                File.AppendAllText(filePath, stockLogging[i].ToString());
-                Debug(string.Format("\nSymbol Name: {0}, Ending Value: {1} ", symbol, Portfolio[symbol].Profit));
-                i++;
+                sb.Append(s.ToString());
+                sb.Append(",");
             }
+            string symbolsstring = sb.ToString();
+            symbolsstring = symbolsstring.Substring(0, symbolsstring.LastIndexOf(",", System.StringComparison.Ordinal));
+            string debugstring =
+                string.Format(
+                    "\nAlgorithm Name: {0}\n Symbol: {1}\n Ending Portfolio Value: {2} \n lossThreshhold = {3}\n Start Time: {4}\n End Time: {5}",
+                    this.GetType().Name, symbolsstring, Portfolio.TotalPortfolioValue, lossThreshhold, startTime,
+                    DateTime.Now);
+            Logging.Log.Trace(debugstring);
+            #region logging
 
-            Debug(string.Format("\nAlgorithm Name: {0}\n Ending Portfolio Value: {1} ", this.GetType().Name, Portfolio.TotalPortfolioValue));
+            //NotifyUser();
+            //using (
+            //    StreamWriter sw =
+            //        new StreamWriter(string.Format(@"{0}Logs\{1}.csv", AssemblyLocator.ExecutingDirectory(), symbol)))
+            //{
+            //    sw.Write(minuteHeader.ToString());
+            //    sw.Write(minuteReturns.ToString());
+            //    sw.Flush();
+            //    sw.Close();
+            //}
 
-            #endregion Logging stuff - Saving the logs
+            #endregion
         }
+
 
         #endregion
 

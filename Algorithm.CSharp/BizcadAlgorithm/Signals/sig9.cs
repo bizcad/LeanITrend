@@ -55,6 +55,7 @@ namespace QuantConnect.Algorithm.CSharp
 
         private bool bReverseTrade = false;
         private decimal RevPct = 1.0015m;
+        private decimal lossThreshhold = -50;
         private int period = 4;     // used to size the length of the trendArray
 
         #endregion
@@ -120,7 +121,6 @@ namespace QuantConnect.Algorithm.CSharp
         public SigC sigC { get; set; }
 
         public decimal UnrealizedProfit { get; set; }
-        public decimal lossThreshhold { get; set; }
 
         private bool BarcountLT4 { get; set; }
         private bool NTrigLTEP { get; set; }
@@ -152,8 +152,6 @@ namespace QuantConnect.Algorithm.CSharp
             //maketrade = true;
             trendArray = new decimal[period + 1];       // initialized to 0.  Add a period for Deserialize to make IsReady true
             Id = 9;
-
-
         }
         #region "Binary Serialization"
         /// <summary>
@@ -555,24 +553,24 @@ namespace QuantConnect.Algorithm.CSharp
                                     retval = OrderSignal.goLong;
                                     comment =
                                         string.Format(
-                                            "nTrig {0} > trend {1} xOver {2} !IsLong {3} !orderFilled {4}",
+                                            "nTrig {0} > trend {1} xOver {2} !IsLong {3} orderFilled {4}",
                                             Math.Round(nTrig, 4),
                                             Math.Round(trendArray[0], 4),
                                             xOver,
                                             !IsLong,
-                                            !orderFilled);
+                                            orderFilled);
                                 }
                                 else
                                 {
                                     retval = OrderSignal.goLongLimit;
                                     comment =
                                         string.Format(
-                                            "nTrig {0} > trend {1} xOver {2} !IsLong {3} !orderFilled {4}",
+                                            "nTrig {0} > trend {1} xOver {2} !IsLong {3} orderFilled {4}",
                                             Math.Round(nTrig, 4),
                                             Math.Round(trendArray[0], 4),
                                             xOver,
                                             !IsLong,
-                                            !orderFilled);
+                                            orderFilled);
 
                                 }
                             }
@@ -646,6 +644,8 @@ namespace QuantConnect.Algorithm.CSharp
 
         private OrderSignal CheckLossThreshhold(ref string comment, OrderSignal retval)
         {
+            //if (Barcount >= 376)
+            //    System.Diagnostics.Debug.WriteLine("Barcount: " + Barcount);
             if (UnrealizedProfit < lossThreshhold)
             {
                 if (IsLong)

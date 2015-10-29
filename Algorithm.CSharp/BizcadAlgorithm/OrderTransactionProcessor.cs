@@ -22,7 +22,6 @@ namespace QuantConnect.Algorithm.CSharp
         public decimal TotalCommission { get; set; }
         public decimal TotalFees { get; set; }
         public decimal TotalProfit { get; set; }
-        //public SimpleMovingAverage smaWins { get; set; }
         private int tradeId = 0;
 
 
@@ -33,8 +32,6 @@ namespace QuantConnect.Algorithm.CSharp
 
             OpenPositions = new List<IPositionInventory>();
             Trades = new List<MatchedTrade>();
-            //smaWins = new SimpleMovingAverage(50);
-
         }
 
         public void ProcessTransaction(OrderTransaction trans)
@@ -196,7 +193,7 @@ namespace QuantConnect.Algorithm.CSharp
             }
             return l;
 
-            throw new Exception("my bad");
+            
         }
 
         private OrderTransaction CreateTrade(OrderTransaction buytrans, OrderTransaction selltrans)
@@ -253,17 +250,8 @@ namespace QuantConnect.Algorithm.CSharp
                 trade.CumulativeProfit = TotalProfit;
                 Trades.Add(trade);
 
-                //if (trade.GainOrLoss > 0)
-                //{
-                //    smaWins.Update(new IndicatorDataPoint(trade.DateSoldOrDisposed, trade.GainOrLoss));
-                //}
-
-                return l;
             }
-
-
-            throw new InvalidDataException("buy qty not equal to sell qty");
-
+            return l;
         }
 
 
@@ -348,15 +336,7 @@ namespace QuantConnect.Algorithm.CSharp
 
         public decimal CalculateLastTradePandL(Symbol symbol)
         {
-            try
-            {
-                return Trades.LastOrDefault(p => p.Symbol == symbol).GainOrLoss;
-            }
-            catch (Exception e)
-            {
-                Debug.WriteLine(e);
-            }
-            return 0;
+            return Trades.LastOrDefault(p => p.Symbol == symbol).GainOrLoss;
         }
 
     }

@@ -22,8 +22,11 @@
     //"algorithm-type-name": "MultiSigDailyAlgorithmQc",
     //"algorithm-type-name": "InstantaneousTrendAlgorithmQC",
     //"algorithm-type-name": "ITrendAlgorithmJJ",
-    "algorithm-type-name": "MultiSignalAlgorithm",
+    //"algorithm-type-name": "MultiSignalAlgorithm",
     //"algorithm-type-name": "MultiSignalAlgorithmQC",
+    //"algorithm-type-name": "MultiSignalAlgorithmTicketQueue2",
+    //"algorithm-type-name": "Test2Algorithm",
+    "algorithm-type-name": "CyberCycleAlgorithm",
 
 
 
@@ -71,7 +74,6 @@
         // defines the 'backtesting' environment
         "backtesting": {
             "live-mode": false,
-
             "setup-handler": "QuantConnect.Lean.Engine.Setup.ConsoleSetupHandler",
             "result-handler": "QuantConnect.Lean.Engine.Results.ConsoleResultHandler",
             "data-feed-handler": "QuantConnect.Lean.Engine.DataFeeds.FileSystemDataFeed",

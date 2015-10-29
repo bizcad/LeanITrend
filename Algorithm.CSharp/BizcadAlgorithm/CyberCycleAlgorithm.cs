@@ -15,10 +15,12 @@ namespace QuantConnect.Algorithm.MyAlgorithms
 {
     internal class CyberCycleAlgorithm : QCAlgorithm
     {
+        DateTime startTime = DateTime.Now;
         private DateTime _startDate = new DateTime(2015, 5, 19);
         private DateTime _endDate = new DateTime(2015, 5, 20);
-        private decimal _portfolioAmount = 22000;
-        private decimal _transactionSize = 22000;
+        private decimal _portfolioAmount = 26000;
+        private decimal _transactionSize = 15000;
+        private decimal lossThreshhold = 0;           // When unrealized losses fall below, revert position
 
         private string symbol = "AAPL";
 
@@ -224,5 +226,40 @@ namespace QuantConnect.Algorithm.MyAlgorithms
                 }
             }
         }
+
+        public override void OnEndOfAlgorithm()
+        {
+            StringBuilder sb = new StringBuilder();
+            //sb.Append(" Symbols: ");
+            //foreach (var s in Symbols)
+            //{
+
+            //    sb.Append(s.ToString());
+            //    sb.Append(",");
+            //}
+            //string symbolsstring = sb.ToString();
+            string symbolsstring = symbol;
+            string debugstring =
+                string.Format(
+                    "\nAlgorithm Name: {0}\n Symbol: {1}\n Ending Portfolio Value: {2} \n lossThreshhold = {3}\n Start Time: {4}\n End Time: {5}",
+                    this.GetType().Name, symbolsstring, Portfolio.TotalPortfolioValue, lossThreshhold, startTime,
+                    DateTime.Now);
+            Logging.Log.Trace(debugstring);
+            #region logging
+
+            //NotifyUser();
+            //using (
+            //    StreamWriter sw =
+            //        new StreamWriter(string.Format(@"{0}Logs\{1}.csv", AssemblyLocator.ExecutingDirectory(), symbol)))
+            //{
+            //    sw.Write(minuteHeader.ToString());
+            //    sw.Write(minuteReturns.ToString());
+            //    sw.Flush();
+            //    sw.Close();
+            //}
+
+            #endregion
+        }
+
     }
 }

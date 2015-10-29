@@ -30,6 +30,10 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="MathNet.Numerics, Version=3.8.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\packages\MathNet.Numerics.3.8.0\lib\net40\MathNet.Numerics.dll</HintPath>
+    </Reference>
     <Reference Include="Newtonsoft.Json, Version=7.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
       <HintPath>..\packages\Newtonsoft.Json.7.0.1\lib\net45\Newtonsoft.Json.dll</HintPath>
@@ -40,6 +44,7 @@
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
+    <Reference Include="System.Numerics" />
     <Reference Include="System.Xml.Linq" />
     <Reference Include="System.Data.DataSetExtensions" />
     <Reference Include="Microsoft.CSharp" />
@@ -64,6 +69,8 @@
     <Compile Include="BizcadAlgorithm\IPositionInventory.cs" />
     <Compile Include="BizcadAlgorithm\MatchedTrade.cs" />
     <Compile Include="BizcadAlgorithm\MeanReversionAlgorithm.cs" />
+    <Compile Include="BizcadAlgorithm\MultiSignal\MultiSignalAlgorithmTicketQueue2.cs" />
+    <Compile Include="BizcadAlgorithm\MultiSignal\MultiSignalAlgorithmTicketQueue.cs" />
     <Compile Include="BizcadAlgorithm\MultiSignal\MultiSignalAlgorithm.cs" />
     <Compile Include="BizcadAlgorithm\MultiSignal\MultiSignalAlgorithmQC.cs" />
     <Compile Include="BizcadAlgorithm\MultiSignal\MultiSignalConsolidatorAlgorithm.cs" />
@@ -103,6 +110,7 @@
     <Compile Include="BizcadAlgorithm\TradeBarReporter.cs" />
     <Compile Include="Common\CsvSerializer.cs" />
     <Compile Include="Common\Global.cs" />
+    <Compile Include="CustomAlgorithms\Test2Algorithm.cs" />
     <Compile Include="CustomAlgorithms\UpdateOrderDemoAlgorithm.cs" />
     <Compile Include="CustomBenchmarkAlgorithm.cs" />
     <Compile Include="DelistingEventsAlgorithm.cs" />
