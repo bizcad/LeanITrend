@@ -44,7 +44,7 @@ namespace QuantConnect.Algorithm.CSharp
         #endregion
         #region "logging P&L"
         // *****************  P & L ************/
-        private ILogHandler mylog;
+        //private ILogHandler mylog;
         private string ondataheader =
             @"Time,BarCount,Volume, Open,High,Low,Close,EndTime,Period,DataType,IsFillForward,Time,Symbol,Price,,,Time,Price,Trend, Trigger, orderSignal, Comment,, EntryPrice, Exit Price,Unrealized,Order Id, Owned, TradeNet, Portfolio";
 
@@ -90,10 +90,10 @@ namespace QuantConnect.Algorithm.CSharp
             }
             #endregion
             #region logging
-            mylog = Composer.Instance.GetExportedValueByTypeName<ILogHandler>("CustomFileLogHandler");
-            var algoname = this.GetType().Name;
-            mylog.Debug(algoname);
-            mylog.Debug(ondataheader);
+            //mylog = Composer.Instance.GetExportedValueByTypeName<ILogHandler>("CustomFileLogHandler");
+            //var algoname = this.GetType().Name;
+            //mylog.Debug(algoname);
+            //mylog.Debug(ondataheader);
             #endregion
 
             //Add as many securities as you like. All the data will be passed into the event handler:
@@ -189,7 +189,7 @@ namespace QuantConnect.Algorithm.CSharp
             }
             var sharesOwned = Portfolio[data.Key].Quantity;
             
-            #region "biglog"
+            #region "logging"
 
             string logmsg =
                 string.Format(
@@ -236,7 +236,7 @@ namespace QuantConnect.Algorithm.CSharp
                     "",
                     ""
                     );
-            mylog.Debug(logmsg);
+            //mylog.Debug(logmsg);
             #endregion
             tradeprofit = 0;
             tradefees = 0;
