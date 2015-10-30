@@ -336,8 +336,10 @@ namespace QuantConnect.Algorithm.CSharp
 
         public decimal CalculateLastTradePandL(Symbol symbol)
         {
-            return Trades.LastOrDefault(p => p.Symbol == symbol).GainOrLoss;
+            var matchedTrade = Trades.LastOrDefault(p => p.Symbol == symbol);
+            if (matchedTrade != null)
+                return matchedTrade.GainOrLoss;
+            return 0;
         }
-
     }
 }

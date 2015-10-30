@@ -18,10 +18,10 @@ namespace QuantConnect.Algorithm.CSharp
 
         #region "Variables"
         DateTime startTime = DateTime.Now;
-        private DateTime _startDate = new DateTime(2015, 8, 10);
-        private DateTime _endDate = new DateTime(2015, 8, 14);
-        //private DateTime _startDate = new DateTime(2015, 6, 2);
-        //private DateTime _endDate = new DateTime(2015, 10, 16);
+        //private DateTime _startDate = new DateTime(2015, 8, 10);
+        //private DateTime _endDate = new DateTime(2015, 8, 14);
+        private DateTime _startDate = new DateTime(2015, 10, 19);
+        private DateTime _endDate = new DateTime(2015, 10, 28);
         private decimal _portfolioAmount = 26000;
         private decimal _transactionSize = 15000;
         //+----------------------------------------------------------------------------------------+
@@ -51,7 +51,6 @@ namespace QuantConnect.Algorithm.CSharp
         private InstantaneousTrend trend;
 
         #region ITrend
-        private ITrendSignal iTrendSignal;
         private Dictionary<string, OrderSignal> LastOrderSent = new Dictionary<string, OrderSignal>();
         #endregion
 
@@ -63,9 +62,9 @@ namespace QuantConnect.Algorithm.CSharp
 
         // P & L
         private int sharesOwned = 0;
-        decimal tradeprofit = 0m;
-        decimal tradefees = 0m;
-        decimal tradenet = 0m;
+        private decimal tradeprofit = 0m;
+        private decimal tradefees = 0m;
+        private decimal tradenet = 0m;
         private decimal lasttradefees = 0;
         decimal profit = 0m;
         decimal fees = 0m;
@@ -122,19 +121,6 @@ namespace QuantConnect.Algorithm.CSharp
         private StringBuilder minuteHeader = new StringBuilder();
         private bool minuteHeaderFlag = true;
 
-
-        // for simulated orders
-        private List<ProformaOrderTicket> _ticketsSubmitted = new List<ProformaOrderTicket>();
-
-
-        //private string sig7comment;
-
-        //private TradeBarConsolidator fifteenMinuteConsolidator = new TradeBarConsolidator(TimeSpan.FromMinutes(15));
-        //private InstantaneousTrend trend15Min;
-
-        //private bool CanMakeTrade = true;
-        //private bool MinuteDataActivated = false;
-
         #endregion
 
         /// <summary>
@@ -163,27 +149,27 @@ namespace QuantConnect.Algorithm.CSharp
             SetEndDate(_endDate);
             SetCash(_portfolioAmount);
 
-            symbol = new Symbol("AAPL");
+            symbol = new Symbol("NFLX");
             #region "Read Symbols from File"
             /**********************************************
              THIS SECTION IS FOR READING SYMBOLS FROM A FILE
             ************************************************/
             //string symbols;
             Symbols = new List<Symbol>();
-            var filename = AssemblyLocator.ExecutingDirectory() + "symbols.txt";
-            using (StreamReader sr = new StreamReader(filename))
-            {
-                string[] symbols = { };
-                var readLine = sr.ReadLine();
-                if (readLine != null) symbols = readLine.Split(',');
+            //var filename = AssemblyLocator.ExecutingDirectory() + "symbols.txt";
+            //using (StreamReader sr = new StreamReader(filename))
+            //{
+            //    string[] symbols = { };
+            //    var readLine = sr.ReadLine();
+            //    if (readLine != null) symbols = readLine.Split(',');
 
-                foreach (string t in symbols)
-                {
-                    Symbols.Add(new Symbol(t));
-                }
+            //    foreach (string t in symbols)
+            //    {
+            //        Symbols.Add(new Symbol(t));
+            //    }
 
-                sr.Close();
-            }
+            //    sr.Close();
+            //}
             // Make sure the list contains the static symbol
             if (!Symbols.Contains(symbol))
             {
@@ -229,45 +215,10 @@ namespace QuantConnect.Algorithm.CSharp
             //_ticketsQueue = new List<OrderTicket>();
 
             #region ITrend
-            iTrendSignal = new ITrendSignal(7);
             LastOrderSent.Add(symbol, OrderSignal.doNothing);
             #endregion
 
-            #region lists
-
-            //signalInfos.Add(new SignalInfo
-            //{
-            //    Id = 0,
-            //    Name = "Minutes_001",
-            //    IsActive = true,
-            //    SignalJson = string.Empty,
-            //    Value = OrderSignal.doNothing,
-            //    InternalState = string.Empty,
-            //    SignalType = typeof(Sig9)
-            //});
-            //signalInfos.Add(new SignalInfo
-            //{
-            //    Id = 1,
-            //    Name = "ITrend",
-            //    IsActive = true,
-            //    SignalJson = string.Empty,
-            //    Value = OrderSignal.doNothing,
-            //    InternalState = string.Empty,
-            //    SignalType = typeof(ITrendSignal)
-            //});
-
-
-            //foreach (SignalInfo s in signalInfos)
-            //{
-            //    s.IsActive = false;
-            //    if (s.Id == LiveSignalIndex)
-            //    {
-            //        s.IsActive = true;
-            //    }
-            //}
-
-            #endregion
-
+            SetBenchmark(symbol);
             // for use with Tradier. Default is IB.
             //var security = Securities[symbol];
             //security.TransactionModel = new ConstantFeeTransactionModel(1.0m);
@@ -403,7 +354,6 @@ namespace QuantConnect.Algorithm.CSharp
                     minuteHeaderFlag = false;
                 }
                 barcount = 0;
-                iTrendSignal.Reset();
             }
         }
 
@@ -425,10 +375,6 @@ namespace QuantConnect.Algorithm.CSharp
                     {
                         AlterShortLimit(data, liveticket, currentSignalInfo);
                     }
-
-
-                    //liveticket.Cancel();
-                    //currentSignalInfo.TradeAttempts = 0;
                 }
             }
         }
@@ -451,10 +397,6 @@ namespace QuantConnect.Algorithm.CSharp
                     {
                         AlterShortLimit(data, liveticket, currentSignalInfo);
                     }
-
-
-                    //liveticket.Cancel();
-                    //currentSignalInfo.TradeAttempts = 0;
                 }
             }
         }
@@ -462,7 +404,7 @@ namespace QuantConnect.Algorithm.CSharp
         private void AlterShortLimit(KeyValuePair<Symbol, TradeBar> data, OrderTicket liveticket, SignalInfo currentSignalInfo)
         {
             var limit = liveticket.Get(OrderField.LimitPrice);
-            decimal newLimit = limit; 
+            decimal newLimit = limit;
             currentSignalInfo.TradeAttempts++;
             if (limit > data.Value.High)
             {
@@ -530,65 +472,41 @@ namespace QuantConnect.Algorithm.CSharp
         public void GetOrderSignals(KeyValuePair<Symbol, TradeBar> data, List<SignalInfo> signalInfos)
         {
             #region "GetOrderSignals Execution"
-            //nEntryPrice = 0;
-            //nExitPrice = 0;
-            //List<ProformaOrderTicket> handledTickets = null;
 
-            #region lists
             foreach (SignalInfo info in signalInfos)
             {
-                if (info.Id == 0)   // Minutes_001
+                info.Value = OrderSignal.doNothing;
+
+                Type t = info.SignalType;
+                var sig = Activator.CreateInstance(t) as ISigSerializable;
+                if (sig != null)
                 {
-                    var id = info.Id;
-                    info.Value = OrderSignal.doNothing;
-
-                    Type t = info.SignalType;
-                    var sig = Activator.CreateInstance(t) as ISigSerializable;
-                    if (sig != null)
+                    //handledTickets = HandleTickets();
+                    sig.symbol = data.Key;
+                    sig.Deserialize(info.SignalJson);
+                    sig.Barcount = barcount; // for debugging
+                    switch (info.Status)
                     {
-                        //handledTickets = HandleTickets();
-                        sig.symbol = data.Key;
-                        sig.Deserialize(info.SignalJson);
-                        sig.Barcount = barcount; // for debugging
+                        case OrderStatus.None:
+                        case OrderStatus.New:
+                        case OrderStatus.Submitted:
+                            sig.orderFilled = false;
+                            break;
+                        case OrderStatus.Filled:
+                            info.TradeAttempts = 0;
+                            sig.orderFilled = true;
+                            break;
+                        case OrderStatus.PartiallyFilled:
+                            sig.orderFilled = true;
+                            break;
+                        case OrderStatus.Canceled:
+                        case OrderStatus.Invalid:
+                            info.TradeAttempts = 0;
+                            sig.orderFilled = false;
+                            break;
+                    }
 
-                        //decimal entryPrice = sig.nEntryPrice;
-                        // set the properties from the handled ticket.
-
-
-                        //var handledTicket = handledTickets.FirstOrDefault();
-                        if (barcount >= 31)
-                        {
-                            comment = "";
-                        }
-                        switch (info.Status)
-                        {
-                            case OrderStatus.Submitted:
-                                sig.orderFilled = false;
-                                break;
-
-                            case OrderStatus.Filled:
-                                info.TradeAttempts = 0;
-                                sig.orderFilled = true;
-                                break;
-                            case OrderStatus.PartiallyFilled:
-                                sig.orderFilled = true;
-                                break;
-                            case OrderStatus.Canceled:
-                            case OrderStatus.Invalid:
-                                info.TradeAttempts = 0;
-                                sig.orderFilled = false;
-                                break;
-                        }
-                        //}
-                        //else
-                        //{
-                        //    info.Comment = string.Format("Handled Ticket for barcount {0} is null.", barcount);
-                        //}
-                        sig.IsLong = Portfolio[symbol].IsLong;
-                        sig.IsShort = Portfolio[symbol].IsShort;
-
-
-                        Dictionary<string, string> paramlist = new Dictionary<string, string>
+                    Dictionary<string, string> paramlist = new Dictionary<string, string>
                             {
                                 {"symbol", data.Key.ToString()},
                                 {"Barcount", barcount.ToString(CultureInfo.InvariantCulture)},
@@ -601,61 +519,23 @@ namespace QuantConnect.Algorithm.CSharp
                             };
 
 
-                        info.Value = sig.CheckSignal(data, paramlist, out comment);
-                        info.nTrig = sig.nTrig;
-                        info.Comment = comment;
+                    info.Value = sig.CheckSignal(data, paramlist, out comment);
+                    info.nTrig = sig.nTrig;
+                    info.Comment = comment;
 
-                        if (Time.Hour == 16)
-                        {
-                            sig.Reset();
-                        }
-                        info.SignalJson = sig.Serialize();
-                        info.InternalState = sig.GetInternalStateFields().ToString();
-
-                        //handledTickets = null;
-
+                    if (Time.Hour == 16)
+                    {
+                        sig.Reset();
                     }
+                    info.SignalJson = sig.Serialize();
+                    info.InternalState = sig.GetInternalStateFields().ToString();
                 }
             }
-            #endregion  // lists
+
 
             #endregion  // execution
         }
 
-        /// <summary>
-        /// Checks if the limits order are filled, and updates the ITrenStrategy object and the
-        /// LastOrderSent dictionary.
-        /// If the limit order aren't filled, then cancels the order and send a market order.
-        /// </summary>
-        /// <param name="symbol">The symbol.</param>
-        /// <param name="lastOrder">The last order.</param>
-        //private void CheckOrderStatus(string symbol, OrderSignal lastOrder)
-        //{
-        //    int shares;
-
-        //    // If the ticket isn't filled...
-        //    if (_ticketsQueue.Last().Status != OrderStatus.Filled)
-        //    {
-        //        shares = _ticketsQueue.Last().Quantity;
-        //        // cancel the limit order and send a new market order.
-        //        _ticketsQueue.Last().Cancel();
-        //        _ticketsQueue.Add(MarketOrder(symbol, shares));
-        //    }
-        //    // Once the ticket is filled, update the ITrenStrategy object for the symbol.
-        //    if (lastOrder == OrderSignal.goLong)
-        //    {
-        //        iTrendSignal.Position = StockState.longPosition;
-        //    }
-        //    else if (lastOrder == OrderSignal.goShort)
-        //    {
-        //        iTrendSignal.Position = StockState.shortPosition;
-        //    }
-        //    iTrendSignal.EntryPrice = _ticketsQueue.Last().AverageFillPrice;
-        //    // Update the LastOrderSent dictionary, to avoid check filled orders many times.
-        //    LastOrderSent[symbol] = OrderSignal.doNothing;
-
-        //    // TODO: If the ticket is partially filled.
-        //}
 
         #region "Event Processiong"
         /// <summary>
@@ -704,7 +584,7 @@ namespace QuantConnect.Algorithm.CSharp
                 case OrderStatus.PartiallyFilled:
                     if (currentSignalInfo != null)
                     {
-                        
+
                         if (Portfolio[symbol].HoldStock)
                         {
                             nEntryPrice = Portfolio[symbol].AveragePrice;
@@ -762,7 +642,7 @@ namespace QuantConnect.Algorithm.CSharp
                             _tradecount++;
                             if (_orderTransactionProcessor.TotalProfit != totalProfit)
                             {
-                                CalculateTradeProfit(t.Symbol);
+                                tradenet = CalculateTradeProfit(t.Symbol);
                             }
                             totalProfit = _orderTransactionProcessor.TotalProfit;
                             #endregion
@@ -776,9 +656,9 @@ namespace QuantConnect.Algorithm.CSharp
         #endregion
 
         #region "Profit Calculations for logging"
-        private void CalculateTradeProfit(Symbol symbol)
+        private decimal CalculateTradeProfit(Symbol symbol)
         {
-            tradenet = _orderTransactionProcessor.CalculateLastTradePandL(symbol);
+            return _orderTransactionProcessor.CalculateLastTradePandL(symbol);
         }
         private decimal CalculateDailyProfits()
         {
@@ -823,7 +703,7 @@ namespace QuantConnect.Algorithm.CSharp
         private void ExecuteStrategy(Symbol symbol, SignalInfo signalInfo, KeyValuePair<Symbol, TradeBar> data)
         {
             decimal limitPrice = 0m;
-            int shares = PositionShares(symbol, signalInfo);
+            int shares = Convert.ToInt32(PositionShares(symbol, signalInfo));
             if (shares == 0)
             {
                 return;
@@ -951,8 +831,6 @@ namespace QuantConnect.Algorithm.CSharp
             //    and just refactors it out to a class.
             // *********************************
             IBetSizer allocator = new InstantTrendBetSizer(this);
-            //if (!signalInfo.IsActive)
-            //    return allocator.BetSize(symbol, Price[0].Value, _transactionSize, signalInfo, _proformaProcessor);
             return allocator.BetSize(symbol, signalInfo.Price[0].Value, _transactionSize, signalInfo);
         }
 
@@ -962,47 +840,38 @@ namespace QuantConnect.Algorithm.CSharp
         /// <param name="symbol">The symbol to operate.</param>
         /// <param name="order">The kind of order.</param>
         /// <returns>The signed number of shares given the operation.</returns>
-        public int PositionShares(Symbol symbol, SignalInfo signalInfo)
+        public decimal PositionShares(Symbol symbol, SignalInfo signalInfo)
         {
-            int quantity = 0;
+            decimal quantity = 0;
             int operationQuantity;
-            decimal targetSize;
-
-
-            targetSize = GetBetSize(symbol, signalInfo);
+            decimal targetSize = GetBetSize(symbol, signalInfo);
 
             switch (signalInfo.Value)
             {
                 case OrderSignal.goLongLimit:
                 case OrderSignal.goLong:
                     //operationQuantity = CalculateOrderQuantity(symbol, targetSize);     // let the algo decide on order quantity
-                    operationQuantity = (int)targetSize;
-                    quantity = Math.Min(maxOperationQuantity, operationQuantity);
+                    //operationQuantity = (int)targetSize;
+                    quantity = Math.Min(maxOperationQuantity, targetSize);
                     break;
 
                 case OrderSignal.goShortLimit:
                 case OrderSignal.goShort:
                     //operationQuantity = CalculateOrderQuantity(symbol, targetSize);     // let the algo decide on order quantity
                     operationQuantity = (int)targetSize;
-                    quantity = -Math.Min(maxOperationQuantity, operationQuantity);
+                    quantity = -Math.Min(maxOperationQuantity, targetSize);
                     break;
 
                 case OrderSignal.closeLong:
                 case OrderSignal.closeShort:
-                    quantity = -Portfolio[symbol].Quantity;
-                    //else
-                    //{
-                    //    quantity = -_proformaProcessor.GetPosition(symbol);
-                    //}
+                    if (Portfolio[symbol].Quantity != 0)
+                        quantity = -Portfolio[symbol].Quantity;
                     break;
 
                 case OrderSignal.revertToLong:
                 case OrderSignal.revertToShort:
-                    quantity = -2 * Portfolio[symbol].Quantity;
-                    //else
-                    //{
-                    //    quantity = -2 * _proformaProcessor.GetPosition(symbol);
-                    //}
+                    if (Portfolio[symbol].Quantity != 0)
+                        quantity = -2 * Portfolio[symbol].Quantity;
                     break;
 
                 default:

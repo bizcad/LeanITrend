@@ -22,11 +22,12 @@
     //"algorithm-type-name": "MultiSigDailyAlgorithmQc",
     //"algorithm-type-name": "InstantaneousTrendAlgorithmQC",
     //"algorithm-type-name": "ITrendAlgorithmJJ",
-    //"algorithm-type-name": "MultiSignalAlgorithm",
+    "algorithm-type-name": "MultiSignalAlgorithm",
     //"algorithm-type-name": "MultiSignalAlgorithmQC",
     //"algorithm-type-name": "MultiSignalAlgorithmTicketQueue2",
     //"algorithm-type-name": "Test2Algorithm",
-    "algorithm-type-name": "CyberCycleAlgorithm",
+    //"algorithm-type-name": "CyberCycleAlgorithm",
+    //"algorithm-type-name": "DecycleInverseFisherAlgorithm",
 
 
 

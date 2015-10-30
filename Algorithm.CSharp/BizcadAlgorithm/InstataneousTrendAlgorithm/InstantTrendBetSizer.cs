@@ -33,14 +33,10 @@ namespace QuantConnect.Algorithm.CSharp
 
         public decimal BetSize(Symbol symbol, decimal currentPrice, decimal transactionSize, SignalInfo signalInfo)
         {
-            //if (signalInfo.IsActive)
-            //{
-                if (_algorithm.Portfolio[symbol].Invested)
-                {
-                    return Math.Abs(_algorithm.Portfolio[symbol].Quantity);
-                }
-            //}
-            return (int)(transactionSize / currentPrice);
+            decimal betsize = _algorithm.Portfolio[symbol].Invested ? Math.Abs(_algorithm.Portfolio[symbol].Quantity) : Math.Abs(transactionSize / currentPrice);
+            if (betsize <= 10)
+                betsize = 100;
+            return betsize;
         }
 
         /// <summary>
@@ -54,22 +50,10 @@ namespace QuantConnect.Algorithm.CSharp
         /// <returns></returns>
         public decimal BetSize(Symbol symbol, decimal currentPrice, decimal transactionSize, SignalInfo signalInfo, OrderTransactionProcessor proformaProcessor)
         {
-            //if (signalInfo.IsActive)
-            //{
-            int positionSize;
-            if (_algorithm.Portfolio[symbol].Invested)
-                {
-                    return Math.Abs(_algorithm.Portfolio[symbol].Quantity);
-                }
-            //}
-            //else
-            //{
-                //positionSize = proformaProcessor.GetPosition(symbol);
-
-                //if (positionSize != 0)
-                //    return Math.Abs(positionSize);
-            //}
-            return (int)(transactionSize / currentPrice);
+            decimal betsize = _algorithm.Portfolio[symbol].Invested ? Math.Abs(_algorithm.Portfolio[symbol].Quantity) : Math.Abs(transactionSize / currentPrice);
+            if (betsize <= 10)
+                betsize = 100;
+            return betsize;
         }
     }
 }

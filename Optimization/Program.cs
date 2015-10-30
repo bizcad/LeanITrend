@@ -1,8 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.IO;
 using System.Threading;
 using System.Reflection;
+using QuantConnect.Algorithm.CSharp;
 using QuantConnect.Lean.Engine;
 using QuantConnect.Lean.Engine.Results;
 using QuantConnect.Logging;
@@ -149,15 +151,17 @@ namespace Optimization
             const double mutationProbability = 0.08;
             const int elitismPercentage = 5;
 
+            
+
             List<string > algos = new List<string>();
             //algos.Add("DecycleInverseFisherAlgorithm");
-            algos.Add("CyberCycleAlgorithm");
-            algos.Add("InstantTrendAlgorithmOriginal");
-            algos.Add("InstantaneousTrendAlgorithmQC");
-            algos.Add("InstantaneousTrendAlgorithm");
+            //algos.Add("CyberCycleAlgorithm");
+            //algos.Add("InstantTrendAlgorithmOriginal");
+            //algos.Add("InstantaneousTrendAlgorithmQC");
+            //algos.Add("InstantaneousTrendAlgorithm");
             algos.Add("MultiSignalAlgorithm");
             algos.Add("MultiSignalAlgorithmQC");
-            algos.Add("MultiSignalAlgorithmTicketQueue2");
+            //algos.Add("MultiSignalAlgorithmTicketQueue2");
             
             RunAlgorithm(algos);
 
@@ -264,9 +268,9 @@ namespace Optimization
 
         private static double RunAlgorithm(List<string> algos )
         {
-
+            string f = AssemblyLocator.ExecutingDirectory();
             var sum_sharpe = 0.0;
-            foreach (var s in algos)
+            foreach (string s in algos)
             {
                 var val = s;
                 AppDomain ad = null;
@@ -283,6 +287,17 @@ namespace Optimization
                     Log.Error(e.Message + e.StackTrace);
                 }
                 AppDomain.Unload(ad);
+                try
+                {
+                    string destfile = f + string.Format(@"mylog{0}.csv",s);
+                    if (File.Exists(destfile))
+                        File.Delete(destfile);
+                    File.Move(f + @"mylog.csv", destfile);
+                }
+                catch (Exception e)
+                {
+                    Console.WriteLine(e);
+                }
                 runnumber++;
             }
 
