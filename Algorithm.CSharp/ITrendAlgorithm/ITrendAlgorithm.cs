@@ -235,7 +235,7 @@ namespace QuantConnect.Algorithm.CSharp
                 if (File.Exists(filePath)) File.Delete(filePath);
                 File.AppendAllText(filePath, stockLogging[i].ToString());
                 Debug(string.Format("\nSymbol Name: {0}, Ending Value: {1} ", symbol, Portfolio[symbol].Profit));
-
+                i++;
             }
 
             Debug(string.Format("\nAlgorithm Name: {0}\n Ending Portfolio Value: {1} ", this.GetType().Name, Portfolio.TotalPortfolioValue));

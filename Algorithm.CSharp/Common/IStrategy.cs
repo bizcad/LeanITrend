@@ -29,7 +29,7 @@ namespace QuantConnect.Algorithm.CSharp
         public OrderSignal ActualSignal;
 
         /// <summary>
-        /// Checks the for signals.
+        /// Checks the strategy status and updates the ActualSignal property if needed.
         /// </summary>
         public abstract void CheckSignal();
     }

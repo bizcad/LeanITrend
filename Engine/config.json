@@ -13,7 +13,7 @@
     //"algorithm-type-name": "LoggingITrendAlgorithm",
     //"algorithm-type-name": "InstantTrendAlgorithmOriginal",
     //"algorithm-type-name": "InstantaneousTrendAlgorithm",
-    "algorithm-type-name": "ITrendAlgorithm",
+    //"algorithm-type-name": "ITrendAlgorithm",
     //"algorithm-type-name": "SigTestAlgorithm",
     //"algorithm-type-name": "RollingWindowTestAlgorithm",
     //"algorithm-type-name": "QCLive",
@@ -21,7 +21,7 @@
     //"algorithm-type-name": "MultiSignalConsolidatorAlgorithm",
     //"algorithm-type-name": "MultiSigDailyAlgorithmQc",
     //"algorithm-type-name": "InstantaneousTrendAlgorithmQC",
-    //"algorithm-type-name": "ITrendAlgorithmJJ",
+    "algorithm-type-name": "TestingMSA",
     //"algorithm-type-name": "MultiSignalAlgorithm",
     //"algorithm-type-name": "MultiSignalAlgorithmQC",
 

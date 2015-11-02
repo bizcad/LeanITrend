@@ -54,7 +54,7 @@ namespace QuantConnect.Indicators
                 return input - window[window.Count - 1];
             }
 
-            return input - window.MostRecentlyRemoved;
+            return (input - window.MostRecentlyRemoved) / window.MostRecentlyRemoved;
         }
     }
 }
