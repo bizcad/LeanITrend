@@ -14,7 +14,7 @@ namespace QuantConnect.Algorithm.CSharp
 {
     public class MultiSigDailyAlgorithm : QCAlgorithm
     {
-        private int LiveSignalIndex = 0;
+        
 
         #region "Variables"
 
@@ -136,7 +136,7 @@ namespace QuantConnect.Algorithm.CSharp
         public override void Initialize()
         {
             #region logging
-            var algoname = this.GetType().Name + " UseSig=" + LiveSignalIndex;
+            var algoname = this.GetType().Name;
             mylog.Debug(algoname);
             ondataheader += _scig5C.GetNames();
             mylog.Debug(ondataheader);
@@ -163,7 +163,7 @@ namespace QuantConnect.Algorithm.CSharp
             trend = new InstantaneousTrend(7);
             trendHistory = new RollingWindow<IndicatorDataPoint>(14);
             _ticketsQueue = new List<OrderTicket>();
-            
+
 
             #region lists
             sigDictionary = new Dictionary<int, ISigSerializable>();
@@ -301,7 +301,7 @@ namespace QuantConnect.Algorithm.CSharp
             if (time.Hour == 16)
             {
                 barcount = 0;
-                
+
             }
         }
 

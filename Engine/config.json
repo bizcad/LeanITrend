@@ -14,6 +14,7 @@
     //"algorithm-type-name": "InstantTrendAlgorithmOriginal",
     //"algorithm-type-name": "InstantaneousTrendAlgorithm",
     //"algorithm-type-name": "ITrendAlgorithm",
+    //"algorithm-type-name": "ITrendAlgorithmNickVariation",
     //"algorithm-type-name": "SigTestAlgorithm",
     //"algorithm-type-name": "RollingWindowTestAlgorithm",
     //"algorithm-type-name": "QCLive",

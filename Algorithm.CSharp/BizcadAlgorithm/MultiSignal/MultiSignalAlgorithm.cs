@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Configuration;
 using System.Globalization;
 using System.IO;
 using System.Linq;
@@ -9,19 +10,19 @@ using QuantConnect.Indicators;
 using QuantConnect.Logging;
 using QuantConnect.Orders;
 using QuantConnect.Util;
+using QuantConnect.Configuration;
 
 namespace QuantConnect.Algorithm.CSharp
 {
     public class MultiSignalAlgorithm : QCAlgorithm
     {
-        private int LiveSignalIndex = 0;
 
         #region "Variables"
         DateTime startTime = DateTime.Now;
         //private DateTime _startDate = new DateTime(2015, 8, 10);
         //private DateTime _endDate = new DateTime(2015, 8, 14);
-        private DateTime _startDate = new DateTime(2015, 10, 19);
-        private DateTime _endDate = new DateTime(2015, 10, 28);
+        private DateTime _startDate = new DateTime(2015, 5, 19);
+        private DateTime _endDate = new DateTime(2015, 11, 3);
         private decimal _portfolioAmount = 26000;
         private decimal _transactionSize = 15000;
         //+----------------------------------------------------------------------------------------+
@@ -90,7 +91,7 @@ namespace QuantConnect.Algorithm.CSharp
         private readonly OrderTransactionFactory _orderTransactionFactory;
 
         private string ondataheader =
-            @"Time,BarCount,Volume, Open,High,Low,Close,EndTime,Period,DataType,IsFillForward,Time,Symbol,Price,,,Time,Price,Trend, Trigger, orderSignal, Comment,, EntryPrice, Exit Price,Unrealized,Order Id, Owned, TradeNet, Portfolio";
+            @"Symbol, Time,BarCount,Volume, Open,High,Low,Close,,,Time,Price,Trend, Trigger, orderSignal, Comment,, EntryPrice, Exit Price,Unrealized,Order Id, Owned, TradeNet, Portfolio";
 
         private SigC _scig5C = new SigC();
 
@@ -121,6 +122,9 @@ namespace QuantConnect.Algorithm.CSharp
         private StringBuilder minuteHeader = new StringBuilder();
         private bool minuteHeaderFlag = true;
 
+        private string sd;
+        private string ed;
+
         #endregion
 
         /// <summary>
@@ -131,12 +135,43 @@ namespace QuantConnect.Algorithm.CSharp
         /// <seealso cref="QCAlgorithm.SetCash(decimal)"/>
         public override void Initialize()
         {
-            #region logging
-            var algoname = this.GetType().Name + " UseSig=" + LiveSignalIndex;
-            mylog.Debug(algoname);
+            symbol = new Symbol("NFLX");
+            #region "Read Symbols from File"
+            /**********************************************
+             THIS SECTION IS FOR READING SYMBOLS FROM A FILE
+            ************************************************/
+            //string symbols;
+            Symbols = new List<Symbol>();
 
+            var filename = AssemblyLocator.ExecutingDirectory() + "symbols.txt";
+            using (StreamReader sr = new StreamReader(filename))
+            {
+                string[] symbols = { };
+                var readLine = sr.ReadLine();
+                if (readLine != null) symbols = readLine.Split(',');
+
+                foreach (string t in symbols)
+                {
+                    Symbols.Add(new Symbol(t));
+                }
+
+                sr.Close();
+            }
+            // Make sure the list contains the static symbol
+            //if (!Symbols.Contains(symbol))
+            //{
+            //    Symbols.Add(symbol);
+            //}
+            #endregion
+
+            #region logging
+            var algoname = this.GetType().Name;
+            mylog.Debug(algoname);
+            StringBuilder sb = new StringBuilder();
+            foreach (var s in Symbols)
+                sb.Append(s.Value + ",");
             mylog.Debug(ondataheader);
-            dailylog.Debug(algoname);
+            dailylog.Debug(algoname + " " + sb.ToString());
             dailylog.Debug(dailyheader);
             _proformatransactions = new List<OrderTransaction>();
             string filepath = AssemblyLocator.ExecutingDirectory() + "transactions.csv";
@@ -145,37 +180,18 @@ namespace QuantConnect.Algorithm.CSharp
 
 
             //Initialize dates
+            sd = Config.Get("start-date");
+            ed = Config.Get("end-date");
+
+            _startDate = new DateTime(Convert.ToInt32(sd.Substring(0, 4)), Convert.ToInt32(sd.Substring(4, 2)), Convert.ToInt32(sd.Substring(6, 2)));
+            _endDate = new DateTime(Convert.ToInt32(ed.Substring(0, 4)), Convert.ToInt32(ed.Substring(4, 2)), Convert.ToInt32(ed.Substring(6, 2)));
+
+
             SetStartDate(_startDate);
             SetEndDate(_endDate);
             SetCash(_portfolioAmount);
 
-            symbol = new Symbol("NFLX");
-            #region "Read Symbols from File"
-            /**********************************************
-             THIS SECTION IS FOR READING SYMBOLS FROM A FILE
-            ************************************************/
-            //string symbols;
-            Symbols = new List<Symbol>();
-            //var filename = AssemblyLocator.ExecutingDirectory() + "symbols.txt";
-            //using (StreamReader sr = new StreamReader(filename))
-            //{
-            //    string[] symbols = { };
-            //    var readLine = sr.ReadLine();
-            //    if (readLine != null) symbols = readLine.Split(',');
-
-            //    foreach (string t in symbols)
-            //    {
-            //        Symbols.Add(new Symbol(t));
-            //    }
-
-            //    sr.Close();
-            //}
-            // Make sure the list contains the static symbol
-            if (!Symbols.Contains(symbol))
-            {
-                Symbols.Add(symbol);
-            }
-            #endregion
+           
 
             minuteReturns.AppendFormat("{0},{1}", symbol, _startDate.ToShortDateString());
             minuteHeader.AppendFormat("Symbol,Date");
@@ -204,15 +220,9 @@ namespace QuantConnect.Algorithm.CSharp
                 });
             }
 
-            // Indicators
-            //Price = new RollingWindow<IndicatorDataPoint>(14);      // The price history
-
-            // ITrend
-            //trend = new InstantaneousTrend("Main", 7, .24m);
-
             _orderTransactionProcessor = new OrderTransactionProcessor();
             _transactions = new List<OrderTransaction>();
-            //_ticketsQueue = new List<OrderTicket>();
+            
 
             #region ITrend
             LastOrderSent.Add(symbol, OrderSignal.doNothing);
@@ -289,7 +299,8 @@ namespace QuantConnect.Algorithm.CSharp
             string logmsg =
                 string.Format(
                     "{0},{1},{2},{3},{4},{5},{6},{7},{8},{9},{10},{11},{12},{13},{14},{15},{16},{17},{18},{19},{20}" +
-                    ",{21},{22},{23},{24},{25},{26},{27},{28},{29},{30},{31},{32},{33},{34},{35},{36},{37},{38},{39}",
+                    ",{21},{22},{23},{24},{25},{26},{27},{28},{29},{30},{31},{32}",
+                    symbol,
                     time,
                     barcount,
                     data.Value.Volume,
@@ -297,13 +308,6 @@ namespace QuantConnect.Algorithm.CSharp
                     data.Value.High,
                     data.Value.Low,
                     data.Value.Close,
-                    data.Value.EndTime,
-                    data.Value.Period,
-                    data.Value.DataType,
-                    data.Value.IsFillForward,
-                    data.Value.Time,
-                    data.Value.Symbol,
-                    data.Value.Value,
                     "",
                     "",
                     time.ToShortTimeString(),
@@ -320,7 +324,6 @@ namespace QuantConnect.Algorithm.CSharp
                     sharesOwned,
                     tradenet,
                     Portfolio.TotalPortfolioValue,
-                    "",
                     "",
                     "",
                     "",
@@ -417,7 +420,7 @@ namespace QuantConnect.Algorithm.CSharp
             });
             if (response.IsSuccess)
             {
-                Log(string.Format("Short Order {0}. Status: {1} Updated {2} to new price {3}. Trade Attempts: {4}", liveticket.OrderId, liveticket.Status, limit, newLimit, currentSignalInfo.TradeAttempts));
+                //Log(string.Format("Short Order {0}. Status: {1} Updated {2} to new price {3}. Trade Attempts: {4}", liveticket.OrderId, liveticket.Status, limit, newLimit, currentSignalInfo.TradeAttempts));
             }
             else
             {
@@ -448,7 +451,7 @@ namespace QuantConnect.Algorithm.CSharp
             });
             if (response.IsSuccess)
             {
-                Log(string.Format("Long Order {0}. Status: {1} Updated {2} to new price {3}. Trade Attempts: {4}", liveticket.OrderId, liveticket.Status, limit, newLimit, currentSignalInfo.TradeAttempts));
+                //Log(string.Format("Long Order {0}. Status: {1} Updated {2} to new price {3}. Trade Attempts: {4}", liveticket.OrderId, liveticket.Status, limit, newLimit, currentSignalInfo.TradeAttempts));
             }
             else
             {
@@ -710,18 +713,24 @@ namespace QuantConnect.Algorithm.CSharp
             }
             ILimitPriceCalculator priceCalculator = new InstantTrendLimitPriceCalculator();
             OrderTicket ticket;
+
+            if (shares == 0)
+                signalInfo.Value = OrderSignal.doNothing;
+
             switch (signalInfo.Value)
             {
                 case OrderSignal.goLongLimit:
                     // Define the limit price.
                     limitPrice = priceCalculator.Calculate(data.Value, signalInfo, RngFac);
+                    //ticket = MarketOrder(symbol, shares, false, signalInfo.Id.ToString(CultureInfo.InvariantCulture));
                     ticket = LimitOrder(symbol, shares, limitPrice, signalInfo.Id.ToString(CultureInfo.InvariantCulture));
                     //_ticketsQueue.Add(ticket);
                     break;
 
                 case OrderSignal.goShortLimit:
                     limitPrice = priceCalculator.Calculate(data.Value, signalInfo, RngFac);
-                    ticket = LimitOrder(symbol, shares, limitPrice, signalInfo.Id.ToString(CultureInfo.InvariantCulture));
+                    ticket = MarketOrder(symbol, shares, false, signalInfo.Id.ToString(CultureInfo.InvariantCulture));
+                    //ticket = LimitOrder(symbol, shares, limitPrice, signalInfo.Id.ToString(CultureInfo.InvariantCulture));
                     //_ticketsQueue.Add(ticket);
                     break;
 
@@ -900,7 +909,7 @@ namespace QuantConnect.Algorithm.CSharp
 
                     #region logging
 
-                    SendTransactionsToFile();
+                    SendTransactionsToFile(data.Key + "transactions.csv");
                     #endregion
 
                     NotifyUser();
@@ -986,15 +995,19 @@ namespace QuantConnect.Algorithm.CSharp
             #region logging
 
             NotifyUser();
+
+//            string filepath = @"I:\MyQuantConnect\Logs\" + symbol + "dailyreturns" + sd + ".csv";
+            string filepath = @"I:\MyQuantConnect\Logs\" + symbol + "dailyreturns.csv";
             using (
-                StreamWriter sw =
-                    new StreamWriter(string.Format(@"{0}Logs\{1}.csv", AssemblyLocator.ExecutingDirectory(), symbol)))
+                StreamWriter sw = new StreamWriter(filepath))
             {
                 sw.Write(minuteHeader.ToString());
                 sw.Write(minuteReturns.ToString());
                 sw.Flush();
                 sw.Close();
             }
+
+            SendTradesToFile(symbolsstring + "trades.csv", _orderTransactionProcessor.Trades);
 
             #endregion
         }
@@ -1019,7 +1032,8 @@ namespace QuantConnect.Algorithm.CSharp
         #region "Logging Methods"
         private void SendTradesToFile(string filename, IList<MatchedTrade> tradelist)
         {
-            string filepath = AssemblyLocator.ExecutingDirectory() + filename;
+            string filepath = @"I:\MyQuantConnect\Logs\" + filename;
+            //string filepath = AssemblyLocator.ExecutingDirectory() + filename;
             if (File.Exists(filepath)) File.Delete(filepath);
             var liststring = CsvSerializer.Serialize<MatchedTrade>(",", tradelist);
             using (StreamWriter fs = new StreamWriter(filepath, true))
@@ -1031,9 +1045,10 @@ namespace QuantConnect.Algorithm.CSharp
             }
         }
 
-        private void SendTransactionsToFile()
+        private void SendTransactionsToFile(string filename)
         {
-            string filepath = AssemblyLocator.ExecutingDirectory() + "transactions.csv";
+            string filepath = @"I:\MyQuantConnect\Logs\" + filename;
+            //string filepath = AssemblyLocator.ExecutingDirectory() + "transactions.csv";
             //if (File.Exists(filepath)) File.Delete(filepath);
             var liststring = CsvSerializer.Serialize<OrderTransaction>(",", _transactions, true);
             using (StreamWriter fs = new StreamWriter(filepath, true))

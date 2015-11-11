@@ -18,8 +18,10 @@ namespace QuantConnect.Algorithm.CSharp
     {
         #region "Variables"
         DateTime startTime = DateTime.Now;
-        private DateTime _startDate = new DateTime(2015, 8, 11);
-        private DateTime _endDate = new DateTime(2015, 8, 14);
+        //private DateTime _startDate = new DateTime(2015, 8, 10);
+        //private DateTime _endDate = new DateTime(2015, 8, 14);
+        private DateTime _startDate = new DateTime(2015, 10, 19);
+        private DateTime _endDate = new DateTime(2015, 10, 28);
         private decimal _portfolioAmount = 26000;
         private decimal _transactionSize = 15000;
         private decimal lossThreshhold = 0;           // When unrealized losses fall below, revert position
@@ -64,7 +66,8 @@ namespace QuantConnect.Algorithm.CSharp
         //private ILogHandler transactionlog = Composer.Instance.GetExportedValueByTypeName<ILogHandler>("TransactionFileLogHandler");
         private readonly OrderTransactionFactory _orderTransactionFactory;
 
-        private string ondataheader = @"Time,BarCount,trade size,Volume,Open,High,Low,Close,EndTime,Period,DataType,IsFillForward,Time,Symbol,Value,Price,,Time,Price,Trend,comment,signal, Entry Price, Exit Price,Trade Result,orderId, unrealized, shares owned,trade profit, trade fees, trade net,last trade fees, profit, fees, net, day profit, day fees, day net, Portfolio Value";
+        private string ondataheader =
+            @"Time,BarCount,Volume, Open,High,Low,Close,,,Time,Price,Trend, Trigger, orderSignal, Comment,, EntryPrice, Exit Price,Unrealized,Order Id, Owned, TradeNet, Portfolio";
         private string dailyheader = @"Trading Date,Daily Profit, Daily Fees, Daily Net, Cum profit, Cum Fees, Cum Net, Trades/day, Portfolio Value, Shares Owned";
         private string transactionheader = @"Symbol,Quantity,Price,Direction,Order Date,Settlement Date, Amount,Commission,Net,Nothing,Description,Action Id,Order Id,RecordType,TaxLotNumber";
         private List<OrderTransaction> _transactions;
@@ -163,54 +166,55 @@ namespace QuantConnect.Algorithm.CSharp
 
             Strategy(data);
 
-            #region logging
             sharesOwned = Portfolio[symbol].Quantity;
+            #region "biglog"
+
             string logmsg =
                 string.Format(
-                    "{0},{1},{2},{3},{4},{5},{6},{7},{8},{9},{10},{11},{12},{13},{14},{15},{16},{17},{18},{19},{20},{21},{22},{23},{24},{25},{26},{27},{28},{29},{30},{31},{32},{33}",
+                    "{0},{1},{2},{3},{4},{5},{6},{7},{8},{9},{10},{11},{12},{13},{14},{15},{16},{17},{18},{19},{20}" +
+                    ",{21},{22},{23},{24},{25},{26},{27},{28},{29},{30},{31},{32}",
                     time,
                     barcount,
-                    tradesize,
                     data[symbol].Volume,
                     data[symbol].Open,
                     data[symbol].High,
                     data[symbol].Low,
                     data[symbol].Close,
-                    data[symbol].EndTime,
-                    data[symbol].Period,
-                    data[symbol].DataType,
-                    data[symbol].IsFillForward,
-                    data[symbol].Time,
-                    data[symbol].Symbol,
-                    data[symbol].Value,
-                    data[symbol].Price,
+                    "",
                     "",
                     time.ToShortTimeString(),
                     Price[0].Value,
                     trend.Current.Value,
+                    "",
+                    "",
                     comment,
-                    signal,
+                    "",
                     nEntryPrice,
-                    nExitPrice,
-                    tradeResult,
-                    orderId,
+                    "",
                     Portfolio.TotalUnrealisedProfit,
+                    orderId,
                     sharesOwned,
-                    tradeprofit,
-                    tradefees,
                     tradenet,
                     Portfolio.TotalPortfolioValue,
+                    "",
+                    "",
+                    "",
+                    "",
+                    "",
+                    "",
+                    "",
                     "",
                     "",
                     ""
                     );
             mylog.Debug(logmsg);
 
-            // reset the trade profit
             tradeprofit = 0;
             tradefees = 0;
             tradenet = 0;
             #endregion
+
+            // reset the trade profit
 
             if (time.Hour == 16)
             {

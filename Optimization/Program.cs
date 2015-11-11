@@ -41,17 +41,30 @@ namespace Optimization
         {
 
         }
-        public decimal Run(string val)
+
+        /// <summary>
+        /// Runs a Lean Engine
+        /// </summary>
+        /// <param name="val">A parameter for the Lean Engine.</param>
+        /// <param name="startDate"></param>
+        /// <param name="endDate"></param>
+        /// <returns></returns>
+        public decimal Run(string val, string startDate, string endDate)
         {
-            //Config.Set("algorithm-type-name", val);
-            //Log.LogHandler = Composer.Instance.GetExportedValueByTypeName<ILogHandler>(Config.Get("log-handler", "CompositeLogHandler"));
+
+            Config.Set("start-date", startDate);
+            Config.Set("end-date", endDate);
 
             LaunchLean(val);
-            
+
             if (_resultshandler != null)
             {
+                /************  Comment one of the two following lines to select which ResultHandler to use ***********/
                 var dsktophandler = (OptimizationResultHandler)_resultshandler;
                 //var dsktophandler = (ConsoleResultHandler)_resultshandler;
+
+                // Return the Sharpe Ratio from Statistics to gauge the performance of the run
+                //  Of course it could be any statistic.
                 var sharpe_ratio = 0.0m;
                 string ratio = "0";
                 if (dsktophandler.FinalStatistics.Count > 0)
@@ -59,39 +72,49 @@ namespace Optimization
                     ratio = dsktophandler.FinalStatistics["Sharpe Ratio"];
                     Decimal.TryParse(ratio, out sharpe_ratio);
                 }
-                //_engine = null;
                 return sharpe_ratio;
             }
             return -1.0m;
         }
+        /// <summary>
+        /// Launches a Lean Engine using a parameter
+        /// </summary>
+        /// <param name="val">The paramater to use when launching lean. </param>
         private void LaunchLean(string val)
         {
 
             Config.Set("environment", "backtesting");
             string algorithm = val;
 
+            // Set the algorithm in Config.  Here is where you can customize Config settings
             Config.Set("algorithm-type-name", algorithm);
-            //string datapath = Config.Get("data-folder");
+
             _jobQueue = new JobQueue();
             _notify = new Messaging();
             _api = new Api();
+
+            /************  Comment one of the two following lines to select which ResultHandler to use ***********/
             _resultshandler = new OptimizationResultHandler();
             //_resultshandler = new ConsoleResultHandler();
+
             _dataFeed = new FileSystemDataFeed();
             _setup = new ConsoleSetupHandler();
             _realTime = new BacktestingRealTimeHandler();
             _historyProvider = new SubscriptionDataReaderHistoryProvider();
             _transactions = new BacktestingTransactionHandler();
+
+            // Set the Log.LogHandler to only write to the log.txt file.
+            //  This setting avoids writing Log messages to the console.
             Log.LogHandler = (ILogHandler)new FileLogHandler();
-            Log.DebuggingEnabled = false;
-            Log.DebuggingLevel = 1;
+            Log.DebuggingEnabled = false;                           // Set this property to true for lots of messages
+            Log.DebuggingLevel = 1;                                 // A reminder that the default level for Log.Debug message is 1
 
             var systemHandlers = new LeanEngineSystemHandlers(_jobQueue, _api, _notify);
             systemHandlers.Initialize();
 
             var algorithmHandlers = new LeanEngineAlgorithmHandlers(_resultshandler, _setup, _dataFeed, _transactions, _realTime, _historyProvider);
             string algorithmPath;
-            
+
             AlgorithmNodePacket job = systemHandlers.JobQueue.NextJob(out algorithmPath);
             try
             {
@@ -100,7 +123,11 @@ namespace Optimization
             }
             finally
             {
-                //Delete the message from the job queue:
+                /* The JobQueue.AcknowledgeJob only asks for any key to close the window. 
+                 * We do not want that behavior, so we comment out this line so that multiple Leans will run
+                 * 
+                 * The alternative is to comment out Console.Read(); the line in JobQueue class.
+                 */
                 //systemHandlers.JobQueue.AcknowledgeJob(job);
                 Log.Trace("Engine.Main(): Packet removed from queue: " + job.AlgorithmId);
 
@@ -115,97 +142,124 @@ namespace Optimization
     }
     class MainClass
     {
-        //private static RunClass rc;
         private static int runnumber = 0;
         private static AppDomainSetup _ads;
         private static string _callingDomainName;
         private static string _exeAssembly;
         public static void Main(string[] args)
         {
-
-
             //Initialize:
             string mode = "RELEASE";
             var liveMode = Config.GetBool("live-mode");
-            
+
 
 #if DEBUG
             mode = "DEBUG";
 #endif
 
-
-            //			Console.WriteLine("Running " + algorithm + "...");
             Config.Set("live-mode", "false");
             Config.Set("messaging-handler", "QuantConnect.Messaging.Messaging");
             Config.Set("job-queue-handler", "QuantConnect.Queues.JobQueue");
             Config.Set("api-handler", "QuantConnect.Api.Api");
+
+            /************  Comment one of the two following lines to select which ResultHandler to use ***********/
             //Config.Set("result-handler", "QuantConnect.Lean.Engine.Results.OptimizationResultHandler");
             Config.Set("result-handler", "QuantConnect.Lean.Engine.Results.ConsoleResultHandler");
-            //Config.Set("EMA_VAR1", "10");
 
+            // Set up an AppDomain
             _ads = SetupAppDomain();
 
-
-            //rc = new RunClass();
-            const double crossoverProbability = 0.65;
-            const double mutationProbability = 0.08;
-            const int elitismPercentage = 5;
-
-            
-
-            List<string > algos = new List<string>();
-            //algos.Add("DecycleInverseFisherAlgorithm");
-            //algos.Add("CyberCycleAlgorithm");
+            // Set up a list of algorithms to run
+            List<string> algos = new List<string>();
             //algos.Add("InstantTrendAlgorithmOriginal");
             //algos.Add("InstantaneousTrendAlgorithmQC");
             //algos.Add("InstantaneousTrendAlgorithm");
+            //algos.Add("MultiSignalAlgorithm");
+            //algos.Add("MultiSignalAlgorithmQC");
+            //algos.Add("ITrendAlgorithm");
+            //algos.Add("ITrendAlgorithmNickVariation");
             algos.Add("MultiSignalAlgorithm");
-            algos.Add("MultiSignalAlgorithmQC");
             //algos.Add("MultiSignalAlgorithmTicketQueue2");
-            
-            RunAlgorithm(algos);
 
-            //create the population
-            //var population = new Population(100, 44, false, false);
+            var DaysToRun = GenerateDaysToRun();
 
-            //var population = new Population();
+            string startDate = "20150519";
+            string endDate = "20151106";
 
-            ////create the chromosomes
-            //for (var p = 0; p < 100; p++)
-            //{
-            //    var chromosome = new Chromosome();
-            //    for (int i = 0; i < 100; i++)
-            //        chromosome.Genes.Add(new Gene(i));
-            //    chromosome.Genes.ShuffleFast();
-            //    population.Solutions.Add(chromosome);
-            //}
-
-
-
-            ////create the genetic operators 
-            //var elite = new Elite(elitismPercentage);
-
-            //var crossover = new Crossover(crossoverProbability, true)
-            //{
-            //    CrossoverType = CrossoverType.SinglePoint
-            //};
-
-            //var mutation = new BinaryMutate(mutationProbability, true);
-
-            ////create the GA itself 
-            //var ga = new GeneticAlgorithm(population, CalculateFitness);
-
-            ////subscribe to the GAs Generation Complete event 
-            //ga.OnGenerationComplete += ga_OnGenerationComplete;
-
-            ////add the operators to the ga process pipeline 
-            //ga.Operators.Add(elite);
-            //ga.Operators.Add(crossover);
-            //ga.Operators.Add(mutation);
-
-            ////run the GA 
-            //ga.Run(Terminate);
+            RunAlgorithm(algos, DaysToRun);
         }
+
+        private static Dictionary<string, DateRange> GenerateDaysToRun()
+        {
+            Dictionary<string, DateRange> daysToRun = new Dictionary<string, DateRange>();
+            List<DayOfWeek> days = new List<DayOfWeek> { DayOfWeek.Monday, DayOfWeek.Tuesday, DayOfWeek.Wednesday, DayOfWeek.Thursday, DayOfWeek.Friday };
+
+            DateTime sDate = new DateTime(2015, 5, 19);
+            DateTime eDate = new DateTime(2015, 11, 6);
+
+            daysToRun.Add("All", new DateRange(dateToString(sDate), dateToString(eDate)));
+
+            // Do each month
+            // move sDate to first of next month
+            var som = sDate;
+            som = new DateTime(som.Year, som.Month + 1, 1);
+
+            var ed = new DateTime(eDate.Year, eDate.Month, 1);
+            while (som < ed)
+            {
+                var eom = new DateTime(som.Year, som.Month + 1, 1);
+                eom = eom.AddDays(-1);  //last day of month
+                while (!days.Contains(eom.DayOfWeek))
+                {
+                    eom = eom.AddDays(-1);
+                }
+                daysToRun.Add("m" + dateToString(som), new DateRange(dateToString(som), dateToString(eom)));
+                som = new DateTime(som.Year, som.Month + 1, 1);
+                while (!days.Contains(som.DayOfWeek))
+                {
+                    som = som.AddDays(1);
+                }
+            }
+
+            som = new DateTime(sDate.Year, sDate.Month + 1, 1);
+            while (som.DayOfWeek != DayOfWeek.Monday)
+                som = som.AddDays(-1);
+            while (som < eDate)
+            {
+                var eow = som.AddDays(4);
+                while (eow.DayOfWeek != DayOfWeek.Friday)
+                {
+                    eow = eow.AddDays(-1);
+                }
+                daysToRun.Add("w" + dateToString(som), new DateRange(dateToString(som), dateToString(eow)));
+
+                som = som.AddDays(8);
+                while (som.DayOfWeek != DayOfWeek.Monday)
+                    som = som.AddDays(-1);
+            }
+
+
+            return daysToRun;
+        }
+
+        private static string dateToString(DateTime d)
+        {
+            string year;
+            string month;
+            string day;
+
+            year = d.Year.ToString(CultureInfo.InvariantCulture);
+            month = d.Month.ToString(CultureInfo.InvariantCulture);
+            if (d.Month < 10)
+                month = "0" + month;
+
+            day = d.Day.ToString(CultureInfo.InvariantCulture);
+            if (d.Day < 10)
+                day = "0" + day;
+            string strdate = year + month + day;
+            return strdate;
+        }
+
         static AppDomainSetup SetupAppDomain()
         {
             _callingDomainName = Thread.GetDomain().FriendlyName;
@@ -228,89 +282,78 @@ namespace Optimization
 
         static RunClass CreateRunClassInAppDomain(ref AppDomain ad)
         {
-
             // Create the second AppDomain.
             var name = Guid.NewGuid().ToString("x");
             ad = AppDomain.CreateDomain(name, null, _ads);
 
             // Create an instance of MarshalbyRefType in the second AppDomain. 
             // A proxy to the object is returned.
-            RunClass rc =
-                (RunClass)ad.CreateInstanceAndUnwrap(
-                    _exeAssembly,
-                    typeof(RunClass).FullName
-                );
-
+            RunClass rc = (RunClass)ad.CreateInstanceAndUnwrap(_exeAssembly, typeof(RunClass).FullName);
             return rc;
         }
 
-        //static void ga_OnRunComplete(object sender, GaEventArgs e)
-        //{
-        //    var fittest = e.Population.GetTop(1)[0];
-        //    foreach (var gene in fittest.Genes)
-        //    {
-        //        Log.Trace(System.Convert.ToString((int) gene.RealValue));
-        //    }
-        //}
-
-        //private static void ga_OnGenerationComplete(object sender, GaEventArgs e)
-        //{
-        //    var fittest = e.Population.GetTop(1)[0];
-        //    var sharpe = RunAlgorithm(fittest);
-        //    Log.Trace("Generation: {0}, Fitness: {1},Distance: {2}", e.Generation, fittest.Fitness, sharpe);
-        //}
-
-        //public static double CalculateFitness(Chromosome chromosome)
-        //{
-        //    var sharpe = RunAlgorithm(chromosome);
-        //    return sharpe;
-        //}
-
-        private static double RunAlgorithm(List<string> algos )
+        private static double RunAlgorithm(List<string> algos, Dictionary<string, DateRange> daysDictionary)
         {
-            string f = AssemblyLocator.ExecutingDirectory();
+
             var sum_sharpe = 0.0;
             foreach (string s in algos)
             {
-                var val = s;
-                AppDomain ad = null;
-                RunClass rc = CreateRunClassInAppDomain(ref ad);
-                Console.WriteLine("Running algorithm {0} with value: {1}", runnumber, val);
-                
-                try
+                foreach (string key in daysDictionary.Keys)
                 {
-                    sum_sharpe += (double)rc.Run(val);
-                    
+                    var val = s;
+                    var startDate = daysDictionary[key].startDate;
+                    var endDate = daysDictionary[key].endDate;
+                    AppDomain ad = null;
+                    RunClass rc = CreateRunClassInAppDomain(ref ad);
+                    Console.WriteLine("Running algorithm {0} for: {1} to {2}", val, startDate, endDate);
+
+                    try
+                    {
+                        sum_sharpe += (double)rc.Run(val, startDate, endDate);
+                    }
+                    catch (Exception e)
+                    {
+                        Log.Error(e.Message + e.StackTrace);
+                    }
+                    AppDomain.Unload(ad);
+
+                    // After the Lean Engine has run and is deallocated,
+                    // rename my custom mylog.csv file to include the algorithm name.
+                    //  mylog.csv is written in the algorithm.  Replace with your custom logs.
+                    try
+                    {
+                        string f = AssemblyLocator.ExecutingDirectory();
+                        string sourcefile = f + @"mylog.csv";
+                        if (File.Exists(sourcefile))
+                        {
+                            string destfile = f + string.Format(@"mylog{0}.csv", s);
+                            if (File.Exists(destfile))
+                                File.Delete(destfile);
+                            File.Move(sourcefile, destfile);
+                        }
+                    }
+                    catch (Exception e)
+                    {
+                        Console.WriteLine(e);
+                    }
+                    runnumber++;
                 }
-                catch (Exception e)
-                {
-                    Log.Error(e.Message + e.StackTrace);
-                }
-                AppDomain.Unload(ad);
-                try
-                {
-                    string destfile = f + string.Format(@"mylog{0}.csv",s);
-                    if (File.Exists(destfile))
-                        File.Delete(destfile);
-                    File.Move(f + @"mylog.csv", destfile);
-                }
-                catch (Exception e)
-                {
-                    Console.WriteLine(e);
-                }
-                runnumber++;
             }
 
             return sum_sharpe;
         }
-
-        //public static bool Terminate(Population population,
-        //    int currentGeneration, long currentEvaluation)
-        //{
-        //    return currentGeneration > 400;
-        //}
-
-
     }
+
+    class DateRange
+    {
+        public DateRange(string s, string e)
+        {
+            startDate = s;
+            endDate = e;
+        }
+        public string startDate;
+        public string endDate;
+    }
+
 }
 

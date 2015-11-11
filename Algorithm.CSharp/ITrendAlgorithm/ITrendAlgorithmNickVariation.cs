@@ -1,5 +1,6 @@
 ﻿using QuantConnect.Data.Market;
 using QuantConnect.Indicators;
+using QuantConnect.Logging;
 using QuantConnect.Orders;
 using QuantConnect.Securities.Equity;
 using System;
@@ -7,15 +8,18 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
+using QuantConnect.Util;
 
 namespace QuantConnect.Algorithm.CSharp
 {
-    public class ITrendAlgorithm : QCAlgorithm
+    public class ITrendAlgorithmNickVariation : QCAlgorithm
     {
         #region "Algorithm Globals"
         DateTime startTime = DateTime.Now;
-        private DateTime _startDate = new DateTime(2015, 10, 26);
-        private DateTime _endDate = new DateTime(2015, 10, 30);
+        //private DateTime _startDate = new DateTime(2015, 8, 10);
+        //private DateTime _endDate = new DateTime(2015, 8, 14);
+        private DateTime _startDate = new DateTime(2015, 5, 19);
+        private DateTime _endDate = new DateTime(2015, 11, 3);
         private decimal _portfolioAmount = 26000;
 
         #endregion
@@ -40,8 +44,8 @@ namespace QuantConnect.Algorithm.CSharp
         private decimal lossThreshhold = -55;           // When unrealized losses fall below, revert position
         /* +-------------------------------------------------+*/
 
-        private static string[] Symbols = { "NFLX" };
-
+        //private static string[] Symbols = { "NFLX" };
+        private List<Symbol> Symbols = new List<Symbol>();
         // Dictionary used to store the ITrendStrategy object for each symbol.
         private Dictionary<string, ITrendStrategy> Strategy = new Dictionary<string, ITrendStrategy>();
 
@@ -49,6 +53,36 @@ namespace QuantConnect.Algorithm.CSharp
         private Dictionary<string, decimal> ShareSize = new Dictionary<string, decimal>();
 
         private EquityExchange theMarket = new EquityExchange();
+        #region "Custom Logging"
+        private ILogHandler mylog = Composer.Instance.GetExportedValueByTypeName<ILogHandler>("CustomFileLogHandler");
+        private ILogHandler dailylog = Composer.Instance.GetExportedValueByTypeName<ILogHandler>("DailyFileLogHandler");
+        //private ILogHandler transactionlog = Composer.Instance.GetExportedValueByTypeName<ILogHandler>("TransactionFileLogHandler");
+        private readonly OrderTransactionFactory _orderTransactionFactory;
+
+        private string ondataheader =
+            @"Symbol,Time,BarCount,Volume, Open,High,Low,Close,,,Time,Price,Trend, Trigger, orderSignal, Comment,, EntryPrice, Exit Price,Unrealized,Order Id, Owned, TradeNet, Portfolio";
+
+        private SigC _scig5C = new SigC();
+
+        private string json;
+
+
+        private string dailyheader = @"Trading Date,Daily Profit, Portfolio Value";
+        private string transactionheader = @"Symbol,Quantity,Price,Direction,Order Date,Settlement Date, Amount,Commission,Net,Nothing,Description,Action Id,Order Id,RecordType,TaxLotNumber";
+        private List<OrderTransaction> _transactions;
+        private OrderTransactionProcessor _orderTransactionProcessor = new OrderTransactionProcessor();
+        //private List<OrderTicket> _ticketsQueue;
+
+        private List<OrderTransaction> _proformatransactions;
+
+
+        private List<OrderEvent> _orderEvents = new List<OrderEvent>();
+        private int _tradecount = 0;
+        private string comment;
+        private DateTime tradingDate;
+        private int sharesOwned = 0;
+
+        #endregion
 
         #endregion Fields
 
@@ -67,13 +101,52 @@ namespace QuantConnect.Algorithm.CSharp
             SetStartDate(_startDate);               //Set Start Date
             SetEndDate(_endDate);                   //Set End Date
             SetCash(_portfolioAmount);              //Set Strategy Cash
+            #region Nick logging
+            var algoname = this.GetType().Name;
+            mylog.Debug(algoname);
 
+            mylog.Debug(ondataheader);
+            dailylog.Debug(algoname);
+            dailylog.Debug(dailyheader);
+            _proformatransactions = new List<OrderTransaction>();
+            string filepath = AssemblyLocator.ExecutingDirectory() + "transactions.csv";
+            if (File.Exists(filepath)) File.Delete(filepath);
+            #endregion
             #region Logging stuff - Initializing Portfolio Logging
 
             portfolioLogging.AppendLine("Counter, Time, Portfolio Value");
             int i = 0;  // Only used for logging.
 
             #endregion Logging stuff - Initializing Portfolio Logging
+
+            #region "Read Symbols from File"
+            /**********************************************
+             THIS SECTION IS FOR READING SYMBOLS FROM A FILE
+            ************************************************/
+            //string symbols;
+            
+
+            var filename = AssemblyLocator.ExecutingDirectory() + "symbols.txt";
+            using (StreamReader sr = new StreamReader(filename))
+            {
+                string[] symbols = { };
+                var readLine = sr.ReadLine();
+                if (readLine != null) symbols = readLine.Split(',');
+
+                foreach (string t in symbols)
+                {
+                    Symbols.Add(new Symbol(t));
+                }
+
+                sr.Close();
+            }
+            // Make sure the list contains the static symbol
+            //if (!Symbols.Contains(symbol))
+            //{
+            //    Symbols.Add(symbol);
+            //}
+            #endregion
+            
 
             foreach (string symbol in Symbols)
             {
@@ -85,6 +158,7 @@ namespace QuantConnect.Algorithm.CSharp
                 // Equally weighted portfolio.
                 //ShareSize.Add(symbol, (maxLeverage * (1 - leverageBuffer)) / Symbols.Count());
                 ShareSize.Add(symbol, .58m);
+
 
                 #region Logging stuff - Initializing Stock Logging
 
@@ -101,6 +175,14 @@ namespace QuantConnect.Algorithm.CSharp
 
         public void OnData(TradeBars data)
         {
+            barCounter++; // just for debug
+
+            #region logging
+
+            comment = string.Empty;
+            tradingDate = this.Time;
+
+            #endregion
             bool isMarketAboutToClose = !theMarket.DateTimeIsOpen(Time.AddMinutes(10));
             OrderSignal actualOrder = OrderSignal.doNothing;
 
@@ -113,7 +195,7 @@ namespace QuantConnect.Algorithm.CSharp
                     // First check if there are some limit orders not filled yet.
                     if (Transactions.LastOrderId > 0)
                     {
-                        CheckLimitOrderStatus(symbol);
+                        CheckLimitOrderStatus(symbol, data);
                     }
                     // Check if the market is about to close and noOvernight is true.
                     if (noOvernight && isMarketAboutToClose)
@@ -126,6 +208,9 @@ namespace QuantConnect.Algorithm.CSharp
                         actualOrder = Strategy[symbol].ActualSignal;
                     }
                     ExecuteStrategy(symbol, actualOrder);
+
+                    sharesOwned = Portfolio[symbol].Quantity;
+
                 }
 
                 #region Logging stuff - Filling the data StockLogging
@@ -155,8 +240,59 @@ namespace QuantConnect.Algorithm.CSharp
                 i++;
 
                 #endregion Logging stuff - Filling the data StockLogging
+                #region "biglog"
+
+                string logmsg =
+                    string.Format(
+                        "{0},{1},{2},{3},{4},{5},{6},{7},{8},{9},{10},{11},{12},{13},{14},{15},{16},{17},{18},{19},{20}" +
+                        ",{21},{22},{23},{24},{25},{26},{27},{28},{29},{30},{31},{32}",
+                        symbol,
+                        data[symbol].EndTime,
+                        barCounter,
+                        data[symbol].Volume,
+                        data[symbol].Open,
+                        data[symbol].High,
+                        data[symbol].Low,
+                        data[symbol].Close,
+                        "",
+                        "",
+                        data[symbol].EndTime.ToShortTimeString(),
+                        data[symbol].Close,
+                        Strategy[symbol].ITrend.Current.Value,
+                        "",
+                        Strategy[symbol].ActualSignal,
+                        comment,
+                        "",
+                        Strategy[symbol].EntryPrice ?? 0,
+                        "",
+                        Portfolio.TotalUnrealisedProfit,
+                        "",
+                        sharesOwned,
+                        "",
+                        Portfolio.TotalPortfolioValue,
+                        "",
+                        "",
+                        "",
+                        "",
+                        "",
+                        "",
+                        "",
+                        "",
+                        ""
+                        );
+                mylog.Debug(logmsg);
+
+
+                //tradeprofit = 0;
+                //tradefees = 0;
+                //tradenet = 0;
+                #endregion
+
             }
-            barCounter++; // just for debug
+            if (tradingDate.Hour == 16)
+            {
+                barCounter = 0;
+            }
         }
 
         private OrderSignal ClosePositions(string symbol)
@@ -179,12 +315,12 @@ namespace QuantConnect.Algorithm.CSharp
             {
                 case OrderStatus.Submitted:
                     Strategy[symbol].Position = StockState.orderSent;
-                    Log("New order submitted: " + actualOrder.ToString());
+                    //Log("New order submitted: " + actualOrder.ToString());
                     break;
 
                 case OrderStatus.PartiallyFilled:
-                    Log("Order partially filled: " + actualOrder.ToString());
-                    Log("Canceling order");
+                    //Log("Order partially filled: " + actualOrder.ToString());
+                    //Log("Canceling order");
                     actualTicket.Cancel();
                     //do { }
                     //while (actualTicket.GetMostRecentOrderResponse().IsSuccess);
@@ -197,11 +333,11 @@ namespace QuantConnect.Algorithm.CSharp
 
                     Strategy[symbol].EntryPrice = actualTicket.AverageFillPrice;
 
-                    Log("Order filled: " + actualOrder.ToString());
+                    //Log("Order filled: " + actualOrder.ToString());
                     break;
 
                 case OrderStatus.Canceled:
-                    Log("Order successfully canceled: " + actualOrder.ToString());
+                    //Log("Order successfully canceled: " + actualOrder.ToString());
                     break;
 
                 default:
@@ -254,7 +390,7 @@ namespace QuantConnect.Algorithm.CSharp
                     "\nAlgorithm Name: {0}\n Symbol: {1}\n Ending Portfolio Value: {2} \n lossThreshhold = {3}\n Start Time: {4}\n End Time: {5}",
                     this.GetType().Name, symbolsstring, Portfolio.TotalPortfolioValue, lossThreshhold, startTime,
                     DateTime.Now);
-            Logging.Log.Trace(debugstring);
+            Log(debugstring);
             #endregion Logging stuff - Saving the logs
         }
 
@@ -269,7 +405,7 @@ namespace QuantConnect.Algorithm.CSharp
         /// </summary>
         /// <param name="symbol">The symbol.</param>
         /// <param name="lastOrder">The last order.</param>
-        private void CheckLimitOrderStatus(string symbol)
+        private void CheckLimitOrderStatus(string symbol, TradeBars data)
         {
             // Pick the submitted limit tickets for the symbol.
             var actualSubmittedTicket = Transactions.GetOrderTickets(t => t.Symbol == symbol
@@ -280,16 +416,99 @@ namespace QuantConnect.Algorithm.CSharp
             // if there is more than one, stop the algorithm, something is wrong.
             else if (actualSubmittedTicket.Count() != 1) throw new ApplicationException("More than one submitted limit order");
 
-            Log("||| Cancel Limit order and send a market order");
+            //Log("||| Cancel Limit order and send a market order");
             // Now, define the ticket to handle the actual OrderTicket.
             var actualTicket = actualSubmittedTicket.Single();
+
+            //foreach (KeyValuePair<Symbol, TradeBar> kvp in data)
+            //{
+            //    if (kvp.Key == symbol)
+            //    {
+            //        if (actualTicket.Quantity > 0)
+            //        {
+            //            AlterLongLimit(kvp, actualTicket);
+            //        }
+            //        else
+            //        {
+            //            AlterShortLimit(kvp, actualTicket);
+            //        }
+            //    }
+            //}
+            /* Removed by Nick */
             // Retrieve the operation quantity. 
             int shares = actualTicket.Quantity;
             // Cancel the order.
             actualTicket.Cancel();
             // Send a market order.
             MarketOrder(symbol, shares);
+            /* End Removed by Nick */
+
+            // We just altered the price, so we do not do anything in this bar.
+            Strategy[symbol].ActualSignal = OrderSignal.doNothing;
         }
+
+        private void AlterLongLimit(KeyValuePair<Symbol, TradeBar> data, OrderTicket liveticket)
+        {
+            var limit = liveticket.Get(OrderField.LimitPrice);
+            decimal newLimit = limit;
+            //currentSignalInfo.TradeAttempts++;
+            if (newLimit < data.Value.Low)
+            {
+                newLimit = data.Value.Close + 0.01m;
+            }
+            OrderResponse response = liveticket.Update(new UpdateOrderFields
+            {
+                LimitPrice = newLimit,
+                Tag = "Update #" + (liveticket.UpdateRequests.Count + 1)
+            });
+            if (response.IsSuccess)
+            {
+                Log(string.Format("Long Order {0}. Status: {1} Updated {2} to new price {3}.", liveticket.OrderId, liveticket.Status, limit, newLimit));
+            }
+            else
+            {
+                if (!response.IsProcessed)
+                {
+                    Log(string.Format("Order {0} not yet processed to new price {1}", liveticket.OrderId, limit));
+                }
+                if (response.IsError)
+                {
+                    Log(response.ToString());
+                }
+            }
+        }
+
+        private void AlterShortLimit(KeyValuePair<Symbol, TradeBar> data, OrderTicket liveticket)
+        {
+            var limit = liveticket.Get(OrderField.LimitPrice);
+            decimal newLimit = limit;
+            //currentSignalInfo.TradeAttempts++;
+            if (newLimit < data.Value.Low)
+            {
+                newLimit = data.Value.Close - 0.01m;
+            }
+            OrderResponse response = liveticket.Update(new UpdateOrderFields
+            {
+                LimitPrice = newLimit,
+                Tag = "Update #" + (liveticket.UpdateRequests.Count + 1)
+            });
+            if (response.IsSuccess)
+            {
+                Log(string.Format("Long Order {0}. Status: {1} Updated {2} to new price {3}.", liveticket.OrderId, liveticket.Status, limit, newLimit));
+            }
+            else
+            {
+                if (!response.IsProcessed)
+                {
+                    Log(string.Format("Order {0} not yet processed to new price {1}", liveticket.OrderId, limit));
+                }
+                if (response.IsError)
+                {
+                    Log(response.ToString());
+                }
+            }
+        }
+
 
         /// <summary>
         /// Estimate number of shares, given a kind of operation.
@@ -301,7 +520,7 @@ namespace QuantConnect.Algorithm.CSharp
         {
             int quantity;
             int operationQuantity;
-
+            
             switch (order)
             {
                 case OrderSignal.goLong:
@@ -341,8 +560,13 @@ namespace QuantConnect.Algorithm.CSharp
         /// <param name="data">The actual TradeBar data.</param>
         private void ExecuteStrategy(string symbol, OrderSignal actualOrder)
         {
+            if (barCounter >= 21)
+                comment = "";
             // Define the operation size.
             int shares = PositionShares(symbol, actualOrder);
+
+            if (shares == 0)
+                actualOrder = OrderSignal.doNothing;
 
             switch (actualOrder)
             {
@@ -350,7 +574,7 @@ namespace QuantConnect.Algorithm.CSharp
                 case OrderSignal.goShort:
                 case OrderSignal.goLongLimit:
                 case OrderSignal.goShortLimit:
-                    Log("===> Entry to Market");
+                    //Log("===> Entry to Market");
                     decimal limitPrice;
                     var barPrices = Securities[symbol];
 
@@ -372,14 +596,14 @@ namespace QuantConnect.Algorithm.CSharp
 
                 case OrderSignal.closeLong:
                 case OrderSignal.closeShort:
-                    Log("<=== Closing Position");
+                    //Log("<=== Closing Position");
                     // Send the order.
                     MarketOrder(symbol, shares);
                     break;
 
                 case OrderSignal.revertToLong:
                 case OrderSignal.revertToShort:
-                    Log("<===> Reverting Position");
+                    //Log("<===> Reverting Position");
                     // Send the order.
                     MarketOrder(symbol, shares);
                     break;

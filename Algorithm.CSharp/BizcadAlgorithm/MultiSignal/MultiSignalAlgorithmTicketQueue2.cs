@@ -90,7 +90,7 @@ namespace QuantConnect.Algorithm.CSharp
         private readonly OrderTransactionFactory _orderTransactionFactory;
 
         private string ondataheader =
-            @"Time,BarCount,Volume, Open,High,Low,Close,EndTime,Period,DataType,IsFillForward,Time,Symbol,Price,,,Time,Price,Trend, Trigger, orderSignal, Comment,, EntryPrice, Exit Price,Unrealized,Order Id, Owned, TradeNet, Portfolio";
+            @"Time,BarCount,Volume, Open,High,Low,Close,,,Time,Price,Trend, Trigger, orderSignal, Comment,, EntryPrice, Exit Price,Unrealized,Order Id, Owned, TradeNet, Portfolio";
 
         private SigC _scig5C = new SigC();
 
@@ -398,7 +398,7 @@ namespace QuantConnect.Algorithm.CSharp
             string logmsg =
                 string.Format(
                     "{0},{1},{2},{3},{4},{5},{6},{7},{8},{9},{10},{11},{12},{13},{14},{15},{16},{17},{18},{19},{20}" +
-                    ",{21},{22},{23},{24},{25},{26},{27},{28},{29},{30},{31},{32},{33},{34},{35},{36},{37},{38},{39}",
+                    ",{21},{22},{23},{24},{25},{26},{27},{28},{29},{30},{31},{32}",
                     time,
                     barcount,
                     data.Value.Volume,
@@ -406,24 +406,17 @@ namespace QuantConnect.Algorithm.CSharp
                     data.Value.High,
                     data.Value.Low,
                     data.Value.Close,
-                    data.Value.EndTime,
-                    data.Value.Period,
-                    data.Value.DataType,
-                    data.Value.IsFillForward,
-                    data.Value.Time,
-                    data.Value.Symbol,
-                    data.Value.Value,
                     "",
                     "",
                     time.ToShortTimeString(),
-                    Price[0].Value,
-                    trend.Current.Value,
+                    signalInfos[0].Price[0].Value,
+                    signalInfos[0].trend.Current.Value,
                     signalInfos[0].nTrig,
                     signalInfos[0].Value,
                     comment,
                     "",
                     nEntryPrice,
-                    nExitPrice,
+                    signalInfos[0].IsActive,
                     Portfolio.TotalUnrealisedProfit,
                     orderId,
                     sharesOwned,
@@ -451,7 +444,6 @@ namespace QuantConnect.Algorithm.CSharp
             tradefees = 0;
             tradenet = 0;
             #endregion
-
             // At the end of day, reset the trend and trendHistory
             if (time.Hour == 16)
             {

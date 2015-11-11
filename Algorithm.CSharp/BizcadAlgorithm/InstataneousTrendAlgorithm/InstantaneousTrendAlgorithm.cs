@@ -85,7 +85,8 @@ namespace QuantConnect.Algorithm.CSharp
         //private ILogHandler transactionlog = Composer.Instance.GetExportedValueByTypeName<ILogHandler>("TransactionFileLogHandler");
         private readonly OrderTransactionFactory _orderTransactionFactory;
 
-        private string ondataheader = @"Time,BarCount,Volume,Open,High,Low,Close,EndTime,Period,DataType,IsFillForward,Time,Symbol,Value,Price,,Time,Price,Trend,sig.Signal, sig.nTrig,sig.orderFilled, sig.Entry,sig.comment,orderSignal,nTrig,orderFilled, Entry Price,comment, Exit Price,Strategy Entry Price, Trade Result,orderId, unrealized, shares owned,trade profit, trade fees, trade net,last trade fees, profit, fees, net, day profit, day fees, day net, Portfolio Value";
+        private string ondataheader =
+            @"Time,BarCount,Volume, Open,High,Low,Close,,,Time,Price,Trend, Trigger, orderSignal, Comment,, EntryPrice, Exit Price,Unrealized,Order Id, Owned, TradeNet, Portfolio";
         private string dailyheader = @"Trading Date,Daily Profit, Portfolio Value";
         private string transactionheader = @"Symbol,Quantity,Price,Direction,Order Date,Settlement Date, Amount,Commission,Net,Nothing,Description,Action Id,Order Id,RecordType,TaxLotNumber";
         private List<OrderTransaction> _transactions;

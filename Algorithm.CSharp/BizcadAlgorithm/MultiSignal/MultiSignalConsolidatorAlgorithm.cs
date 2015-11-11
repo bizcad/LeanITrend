@@ -90,7 +90,7 @@ namespace QuantConnect.Algorithm.CSharp
         private readonly OrderTransactionFactory _orderTransactionFactory;
 
         private string ondataheader =
-            @"Time,BarCount,Open,High,Low,Close,EndTime,Period,DataType,IsFillForward,Time,Symbol,Price,,Time,Price,Trend,Trend15,orderSignal,Comment,Owned,Unrealized, TradeProfit, TradeFees, TradeNet, Portf Val";
+             @"Time,BarCount,Volume, Open,High,Low,Close,,,Time,Price,Trend, Trigger, orderSignal, Comment,, EntryPrice, Exit Price,Unrealized,Order Id, Owned, TradeNet, Portfolio";
 
         private SigC _scig5C = new SigC();
 
@@ -253,7 +253,7 @@ namespace QuantConnect.Algorithm.CSharp
         //15 minute events here:
         public void OnFiftenMinuteAAPL(object sender, TradeBar data)
         {
-
+            var time = data.EndTime;
             if (barcount == 375)
                 comment = "";
             if (!trend15Min.IsReady)
@@ -288,41 +288,30 @@ namespace QuantConnect.Algorithm.CSharp
             string logmsg =
                 string.Format(
                     "{0},{1},{2},{3},{4},{5},{6},{7},{8},{9},{10},{11},{12},{13},{14},{15},{16},{17},{18},{19},{20}" +
-                    ",{21},{22},{23},{24},{25},{26},{27},{28},{29},{30},{31},{32},{33},{34},{35},{36},{37},{38},{39},{40}" +
-                    ",{41}",
-                    Time,
+                    ",{21},{22},{23},{24},{25},{26},{27},{28},{29},{30},{31},{32}",
+                    time,
                     barcount,
+                    data.Volume,
                     data.Open,
                     data.High,
                     data.Low,
                     data.Close,
-                    data.EndTime,
-                    data.Period,
-                    data.DataType,
-                    data.IsFillForward,
-                    data.Time,
-                    data.Symbol,
-                    data.Price,
                     "",
-                    Time.ToShortTimeString(),
-                    Price[0].Value,
-                    trend.Current.Value,
-                    trend15Min.Current.Value,
+                    "",
+                    time.ToShortTimeString(),
+                    signalInfos[0].Price[0].Value,
+                    signalInfos[0].trend.Current.Value,
+                    signalInfos[0].nTrig,
                     signalInfos[0].Value,
                     comment,
-                    sharesOwned,
+                    "",
+                    nEntryPrice,
+                    signalInfos[0].IsActive,
                     Portfolio.TotalUnrealisedProfit,
-                    tradeprofit,
-                    tradefees,
+                    orderId,
+                    sharesOwned,
                     tradenet,
                     Portfolio.TotalPortfolioValue,
-                    "15 minute",
-                    "",
-                    "",
-                    "",
-                    "",
-                    "",
-                    "",
                     "",
                     "",
                     "",
@@ -336,6 +325,10 @@ namespace QuantConnect.Algorithm.CSharp
                     );
             mylog.Debug(logmsg);
 
+
+            tradeprofit = 0;
+            tradefees = 0;
+            tradenet = 0;
             #endregion
         }
 
@@ -378,28 +371,6 @@ namespace QuantConnect.Algorithm.CSharp
                         foreach (var signalInfo001 in signalInfos001)
                         {
                             ExecuteStrategy(symbol, signalInfo001, data);
-                            //List<SignalInfo> signalInfos15 =
-                            //    new List<SignalInfo>(signalInfos.Where(s => s.Name == "Minutes_015"));
-                            //if (signalInfos15.Any())
-                            //{
-                            //    if (CanMakeTrade)
-                            //    {
-                            //        foreach (var signalInfo15 in signalInfos15)
-                            //        {
-                            //            _revertWindow.Add(signalInfo001.Value);
-                            //            if (signalInfo001.Value != OrderSignal.doNothing)
-                            //            {
-                            //                if (_revertWindow[0] == _revertWindow[1] &&
-                            //                    _revertWindow[2] == _revertWindow[1])
-                            //                {
-                            //                    ExecuteStrategy(symbol, signalInfo001, data);
-                            //                }
-
-                            //            }
-
-                            //        }
-                            //    }
-                            //}
                         }
                     }
                 }
@@ -410,55 +381,50 @@ namespace QuantConnect.Algorithm.CSharp
             sharesOwned = Portfolio[symbol].Quantity;
 
             #region "biglog"
-            string logmsg =
-            string.Format(
-                "{0},{1},{2},{3},{4},{5},{6},{7},{8},{9},{10},{11},{12},{13},{14},{15},{16},{17},{18},{19},{20}" +
-                ",{21},{22},{23},{24},{25},{26},{27},{28},{29},{30},{31},{32},{33},{34},{35},{36},{37},{38},{39},{40}" +
-                ",{41}",
-                Time,
-                barcount,
-                data.Value.Open,
-                data.Value.High,
-                data.Value.Low,
-                data.Value.Close,
-                data.Value.EndTime,
-                data.Value.Period,
-                data.Value.DataType,
-                data.Value.IsFillForward,
-                data.Value.Time,
-                data.Value.Symbol,
-                data.Value.Price,
-                "",
-                Time.ToShortTimeString(),
-                Price[0].Value,
-                trend.Current.Value,
-                trend15Min.Current.Value,
-                signalInfos[1].Value,
-                comment,
-                sharesOwned,
-                Portfolio.TotalUnrealisedProfit,
-                tradeprofit,
-                tradefees,
-                tradenet,
-                Portfolio.TotalPortfolioValue,
-                "1 minute",
-                "",
-                "",
-                "",
-                "",
-                "",
-                "",
-                "",
-                "",
-                "",
-                "",
-                "",
-                "",
-                "",
-                "",
-                ""
-                );
 
+            string logmsg =
+                string.Format(
+                    "{0},{1},{2},{3},{4},{5},{6},{7},{8},{9},{10},{11},{12},{13},{14},{15},{16},{17},{18},{19},{20}" +
+                    ",{21},{22},{23},{24},{25},{26},{27},{28},{29},{30},{31},{32}",
+                    time,
+                    barcount,
+                    data.Value.Volume,
+                    data.Value.Open,
+                    data.Value.High,
+                    data.Value.Low,
+                    data.Value.Close,
+                    "",
+                    "",
+                    time.ToShortTimeString(),
+                    signalInfos[0].Price[0].Value,
+                    signalInfos[0].trend.Current.Value,
+                    signalInfos[0].nTrig,
+                    signalInfos[0].Value,
+                    comment,
+                    "",
+                    nEntryPrice,
+                    signalInfos[0].IsActive,
+                    Portfolio.TotalUnrealisedProfit,
+                    orderId,
+                    sharesOwned,
+                    tradenet,
+                    Portfolio.TotalPortfolioValue,
+                    "",
+                    "",
+                    "",
+                    "",
+                    "",
+                    "",
+                    "",
+                    "",
+                    "",
+                    ""
+                    );
+            mylog.Debug(logmsg);
+
+            tradeprofit = 0;
+            tradefees = 0;
+            tradenet = 0;
             #endregion
 
             mylog.Debug(logmsg);

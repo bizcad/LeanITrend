@@ -79,7 +79,7 @@ namespace QuantConnect.Algorithm.CSharp
             SetEndDate(_endDate);
             SetCash(_portfolioAmount);
 
-            symbol = new Symbol("NFLX");
+            symbol = new Symbol("AAPL");
             #region "Symbols"
             Symbols = new List<Symbol>();
 
