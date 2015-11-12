@@ -29,6 +29,9 @@ namespace QuantConnect.Algorithm.CSharp
         // The downward threshold equal to the mean of the N previous daily means.
         private decimal _downwardRunThreshold;
 
+        // The minimum change needed in order to consider a run.
+        private decimal _minRunThreshold;
+
         // Today upward and downward runs
         private List<decimal> _todayRuns;
 
@@ -39,7 +42,7 @@ namespace QuantConnect.Algorithm.CSharp
         private RollingWindow<decimal> _previousDaysDownwardRuns;
 
         // The smoothed prices series used to estimate the runs.
-        private Indicator _smoothedSeries;
+        private IndicatorBase<IndicatorDataPoint> _smoothedSeries;
 
         // Smoothed prices rate of change.
         private RateOfChange _smoothedSeriesROC;
@@ -58,14 +61,24 @@ namespace QuantConnect.Algorithm.CSharp
             get { return _previousDaysDownwardRuns.IsReady && _previousDaysUpwardRuns.IsReady; }
         }
 
+        public IndicatorBase<IndicatorDataPoint> SmoothedSeries
+        {
+            get { return _smoothedSeries; }
+        }
+
         /// <summary>
         /// Initializes a new instance of the <see cref="MSAStrategy"/> class.
         /// </summary>
         /// <param name="smoothedSeries">The smoothed series.</param>
         /// <param name="previousDaysN">How many daily means will be used to estimate the thresholds.</param>
         /// <param name="runsPerDay">How many runs will be used to estimate the daily mean.</param>
-        public MSAStrategy(Indicator smoothedSeries, int previousDaysN, int runsPerDay)
+        public MSAStrategy(IndicatorBase<IndicatorDataPoint> smoothedSeries, int previousDaysN=3, int runsPerDay=5, decimal minRunThreshold = 0.005m)
         {
+            _runsPerDay = runsPerDay;
+            _actualRun = 1m;
+            _turnAround = false;
+            _minRunThreshold = minRunThreshold;
+            
             _smoothedSeries = smoothedSeries;
             _smoothedSeriesROC = new RateOfChange(1).Of(_smoothedSeries);
             _SSROCRW = new RollingWindow<IndicatorDataPoint>(2);
@@ -73,10 +86,6 @@ namespace QuantConnect.Algorithm.CSharp
             _todayRuns = new List<decimal>();
             _previousDaysDownwardRuns = new RollingWindow<decimal>(previousDaysN);
             _previousDaysUpwardRuns = new RollingWindow<decimal>(previousDaysN);
-
-            _runsPerDay = runsPerDay;
-            _actualRun = 1m;
-            _turnAround = false;
 
             ActualSignal = OrderSignal.doNothing;
             Position = StockState.noInvested;
@@ -138,12 +147,12 @@ namespace QuantConnect.Algorithm.CSharp
 
             // Estimate the daily upward and downward mean.
             var todayMeanDownwardRun = (from run in _todayRuns
-                                        where run < 1
+                                        where run < 1 //- _minRunThreshold
                                         orderby run ascending
                                         select run).Take(_runsPerDay).Average();
 
             var todayMeanUpwardRun = (from run in _todayRuns
-                                      where run > 1
+                                      where run > 1 //+ _minRunThreshold
                                       orderby run descending
                                       select run).Take(_runsPerDay).Average();
 
@@ -172,10 +181,34 @@ namespace QuantConnect.Algorithm.CSharp
             {
                 // Pick the last run.
                 var lastRun = _todayRuns.Last();
-                // Determine the signal.
-                if (lastRun > 1 && lastRun > _upwardRunThreshold) actualSignal = OrderSignal.goShort;
-                else if (lastRun < 1 && lastRun < _downwardRunThreshold) actualSignal = OrderSignal.goLong;
-                // Once processed, unflag the turnaround.
+                // If the last broken run is an upward run.
+                if (lastRun > 1)
+                {
+                    // And is bigger than the threshold and we're out of the market, entry short.
+                    if (lastRun > _upwardRunThreshold &&
+                        Position == StockState.noInvested)
+                    {
+                        actualSignal = OrderSignal.goShort;
+                    }
+                    // And we are long, close the position. 
+                    else if (Position == StockState.longPosition)
+                    {
+                        actualSignal = OrderSignal.closeLong;
+                    }
+                }
+
+                if (lastRun < 1)
+                {
+                    if (lastRun < _downwardRunThreshold &&
+                        Position == StockState.noInvested)
+                    {
+                        actualSignal = OrderSignal.goLong;
+                    }
+                    else if (Position == StockState.shortPosition)
+                    {
+                        actualSignal = OrderSignal.closeShort;
+                    }
+                }
                 _turnAround = false;
             }
             ActualSignal = actualSignal;

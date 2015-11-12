@@ -20,16 +20,16 @@ namespace QuantConnect.Algorithm.CSharp.JJAlgorithms.DecycleInverseFisher
     {
         #region Algorithm Globals
 
-        private DateTime _startDate = new DateTime(2013, 10, 07);
-        private DateTime _endDate = new DateTime(2013, 10, 11);
+        private DateTime _startDate = new DateTime(2015, 05, 19);
+        private DateTime _endDate = new DateTime(2015, 10, 16);
         private decimal _portfolioAmount = 25000;
-        private static string[] Symbols = { "AIG", "BAC", "IBM", "SPY" };
+        private static string[] Symbols = { "AMZN", "AAPL" };
 
         #endregion Algorithm Globals
 
         #region Fields
 
-    /* +-------------------------------------------------+
+        /* +-------------------------------------------------+
      * |Algorithm Control Panel                          |
      * +-------------------------------------------------+*/
         private const int DecyclePeriod = 10;
@@ -45,7 +45,7 @@ namespace QuantConnect.Algorithm.CSharp.JJAlgorithms.DecycleInverseFisher
 
         private bool resetAtEndOfDay = false;            // Reset the strategies at EOD.
         private bool noOvernight = true;                 // Close all positions before market close.
-    /* +-------------------------------------------------+*/
+        /* +-------------------------------------------------+*/
 
         // Flags the first minutes after market open.
         private bool isMarketJustOpen;
@@ -102,15 +102,16 @@ namespace QuantConnect.Algorithm.CSharp.JJAlgorithms.DecycleInverseFisher
             transactionLogging.AppendLine("Time,Symbol,Order");
             int i = 0;  // Only used for logging.
 
-            #endregion Logging stuff - Initializing Portfolio Logging
+            #endregion Logging stuff - Initializing Operations Logging
 
             foreach (string symbol in Symbols)
             {
                 AddSecurity(SecurityType.Equity, symbol, Resolution.Minute);
                 // Define and register an Identity indicator with the price, this indicator will be
                 // injected in the Strategy.
-                Identity PriceIdentity = new Identity("Price" + symbol);
-                RegisterIndicator(symbol, PriceIdentity, Resolution.Minute, Field.Close);
+                var PriceIdentity = Identity(symbol);
+                //Identity PriceIdentity = new Identity("Price" + symbol);
+                //RegisterIndicator(symbol, PriceIdentity, Resolution.Minute, Field.Close);
                 // Define the Strategy
                 Strategy.Add(symbol, new DIFStrategy(PriceIdentity, DecyclePeriod, InvFisherPeriod, Threshold, Tolerance));
                 // Define the PSAR for each symbol
@@ -127,7 +128,7 @@ namespace QuantConnect.Algorithm.CSharp.JJAlgorithms.DecycleInverseFisher
                 Schedule.Event("CheckEarlyEntry")
                 .EveryDay()
                 .AfterMarketOpen(symbol, minutesAfterOpen: 15)
-                .Run(() => CheckEarlyEntry(symbol));    
+                .Run(() => CheckEarlyEntry(symbol));
 
                 #region Logging stuff - Initializing Stock Logging
 
@@ -459,10 +460,8 @@ namespace QuantConnect.Algorithm.CSharp.JJAlgorithms.DecycleInverseFisher
                 .Where(o => o.ExitTime.Date == Time.Date)
                 .Sum(o => o.ProfitLoss);
             Log("Today profit/loss was $" + todayProfit);
-        
 
             Log(string.Format("---------- {0} Market Close ----------", Time.DayOfWeek));
-
 
             foreach (string symbol in Symbols)
             {
