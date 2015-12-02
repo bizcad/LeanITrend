@@ -58,6 +58,7 @@
     <Compile Include="Custom Indicators\LeastSquaredMovingAverage.cs" />
     <Compile Include="Custom Indicators\Momersion.cs" />
     <Compile Include="Custom Indicators\SuperSmoother.cs" />
+    <Compile Include="Custom Indicators\WilliamsVixFix.cs" />
     <Compile Include="DonchianChannel.cs" />
     <Compile Include="IchimokuKinkoHyo.cs" />
     <Compile Include="KeltnerChannels.cs" />

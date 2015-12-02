@@ -57,7 +57,7 @@ namespace QuantConnect.Tests.Indicators
         /// <param name="epsilon">The maximum delta between expected and actual</param>
         public static void TestIndicator(IndicatorBase<IndicatorDataPoint> indicator, string targetColumn, double epsilon = 1e-3)
         {
-            TestIndicator(indicator, "spy_with_indicators.txt", targetColumn, (i, expected) => Assert.AreEqual(expected, (double) i.Current.Value, epsilon));
+            TestIndicator(indicator, "spy_with_indicators.txt", targetColumn, (i, expected) => Assert.AreEqual(expected, (double)i.Current.Value, epsilon));
         }
 
         /// <summary>
@@ -77,7 +77,7 @@ namespace QuantConnect.Tests.Indicators
             int targetIndex = -1;
             foreach (var line in File.ReadLines(Path.Combine("TestData", externalDataFilename)))
             {
-                string[] parts = line.Split(new[] {','}, StringSplitOptions.None);
+                string[] parts = line.Split(new[] { ',' }, StringSplitOptions.None);
 
                 if (first)
                 {
@@ -93,7 +93,7 @@ namespace QuantConnect.Tests.Indicators
                             targetIndex = i;
                         }
                     }
-                    if (closeIndex*targetIndex < 0)
+                    if (closeIndex * targetIndex < 0)
                     {
                         Assert.Fail("Didn't find one of 'Close' or '{0}' in the header: " + line, targetColumn);
                     }
@@ -177,17 +177,29 @@ namespace QuantConnect.Tests.Indicators
                     continue;
                 }
 
-                var tradebar = new TradeBar
+                try
                 {
-                    Time = Time.ParseDate(parts[0]),
-                    Open = parts[1].ToDecimal(),
-                    High = parts[2].ToDecimal(),
-                    Low = parts[3].ToDecimal(),
-                    Close = parts[4].ToDecimal(),
-                    Volume = fileHasVolume ? long.Parse(parts[5], NumberStyles.AllowExponent | NumberStyles.AllowDecimalPoint, CultureInfo.InvariantCulture) : 0
-                };
+                    System.Diagnostics.Debug.WriteLine(parts[0]);
+                    var tradebar = new TradeBar
+                    {
+                        EndTime = Time.ParseDate(parts[0]),
+                        Open = parts[1].ToDecimal(),
+                        High = parts[2].ToDecimal(),
+                        Low = parts[3].ToDecimal(),
+                        Close = parts[4].ToDecimal(),
+                        Volume = fileHasVolume
+                            ? long.Parse(parts[5], NumberStyles.AllowExponent | NumberStyles.AllowDecimalPoint,
+                                CultureInfo.InvariantCulture)
+                            : 0
+                    };
 
-                indicator.Update(tradebar);
+
+                    indicator.Update(tradebar);
+                }
+                catch (Exception e)
+                {
+                    Console.WriteLine(e);
+                }
 
                 if (!indicator.IsReady || parts[targetIndex].Trim() == string.Empty)
                 {
@@ -211,7 +223,7 @@ namespace QuantConnect.Tests.Indicators
             while (enumerator.MoveNext())
             {
                 var values = enumerator.Current.Split(',');
-                var headerAndValues = header.Zip(values, (h, v) => new {h, v});
+                var headerAndValues = header.Zip(values, (h, v) => new { h, v });
                 var dictionary = headerAndValues.ToDictionary(x => x.h.Trim(), x => x.v.Trim(), StringComparer.OrdinalIgnoreCase);
                 yield return new ReadOnlyDictionary<string, string>(dictionary);
             }
@@ -259,7 +271,7 @@ namespace QuantConnect.Tests.Indicators
             return (indicator, expected) =>
             {
                 // the delta should be forever decreasing
-                var currentDelta = Math.Abs((double) indicator.Current.Value - expected);
+                var currentDelta = Math.Abs((double)indicator.Current.Value - expected);
                 if (currentDelta - delta > epsilon)
                 {
                     Assert.Fail("The delta increased!");

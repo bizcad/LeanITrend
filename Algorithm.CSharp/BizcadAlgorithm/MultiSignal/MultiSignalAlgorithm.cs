@@ -1,10 +1,16 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Configuration;
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Net;
+using System.Net.Http;
+using System.Net.Http.Headers;
 using System.Text;
+using System.Threading.Tasks;
+using Newtonsoft.Json;
 using QuantConnect.Data.Market;
 using QuantConnect.Indicators;
 using QuantConnect.Logging;
@@ -19,10 +25,10 @@ namespace QuantConnect.Algorithm.CSharp
 
         #region "Variables"
         DateTime startTime = DateTime.Now;
-        //private DateTime _startDate = new DateTime(2015, 8, 10);
-        //private DateTime _endDate = new DateTime(2015, 8, 14);
-        private DateTime _startDate = new DateTime(2015, 5, 19);
-        private DateTime _endDate = new DateTime(2015, 11, 3);
+        private DateTime _startDate = new DateTime(2015, 8, 14);
+        private DateTime _endDate = new DateTime(2015, 8, 14);
+        //private DateTime _startDate = new DateTime(2015, 5, 19);
+        //private DateTime _endDate = new DateTime(2015, 11, 3);
         private decimal _portfolioAmount = 26000;
         private decimal _transactionSize = 15000;
         //+----------------------------------------------------------------------------------------+
@@ -111,6 +117,7 @@ namespace QuantConnect.Algorithm.CSharp
         private int _tradecount = 0;
         #endregion
 
+        private bool WebSiteAvailable = true;
 
         private bool shouldSellOutAtEod = true;
         private int orderId = 0;
@@ -180,18 +187,18 @@ namespace QuantConnect.Algorithm.CSharp
 
 
             //Initialize dates
-            sd = Config.Get("start-date");
-            ed = Config.Get("end-date");
+            //sd = Config.Get("start-date");
+            //ed = Config.Get("end-date");
 
-            _startDate = new DateTime(Convert.ToInt32(sd.Substring(0, 4)), Convert.ToInt32(sd.Substring(4, 2)), Convert.ToInt32(sd.Substring(6, 2)));
-            _endDate = new DateTime(Convert.ToInt32(ed.Substring(0, 4)), Convert.ToInt32(ed.Substring(4, 2)), Convert.ToInt32(ed.Substring(6, 2)));
+            //_startDate = new DateTime(Convert.ToInt32(sd.Substring(0, 4)), Convert.ToInt32(sd.Substring(4, 2)), Convert.ToInt32(sd.Substring(6, 2)));
+            //_endDate = new DateTime(Convert.ToInt32(ed.Substring(0, 4)), Convert.ToInt32(ed.Substring(4, 2)), Convert.ToInt32(ed.Substring(6, 2)));
 
 
             SetStartDate(_startDate);
             SetEndDate(_endDate);
             SetCash(_portfolioAmount);
 
-           
+
 
             minuteReturns.AppendFormat("{0},{1}", symbol, _startDate.ToShortDateString());
             minuteHeader.AppendFormat("Symbol,Date");
@@ -222,7 +229,7 @@ namespace QuantConnect.Algorithm.CSharp
 
             _orderTransactionProcessor = new OrderTransactionProcessor();
             _transactions = new List<OrderTransaction>();
-            
+
 
             #region ITrend
             LastOrderSent.Add(symbol, OrderSignal.doNothing);
@@ -255,6 +262,20 @@ namespace QuantConnect.Algorithm.CSharp
 
             #endregion
 
+            string m = JsonConvert.SerializeObject(data);
+            //string quote = GetQuotes(data.Key);
+            string msg = string.Format("{0},{1},{2},{3},{4},{5},{6},{7},{8}",
+                "TradeBar",
+                data.Key,
+                data.Value.EndTime,
+                data.Value.Period,
+                data.Value.Open,
+                data.Value.High,
+                data.Value.Low,
+                data.Value.Close,
+                data.Value.Volume);
+
+            SendMessage(typeof(TradeBar), msg);
             barcount++;
             var time = this.Time;
 
@@ -263,7 +284,8 @@ namespace QuantConnect.Algorithm.CSharp
             {
                 foreach (var signalInfo in minuteSignalInfos)
                 {
-                    signalInfo.Price.Add(idp(time, (data.Value.Close + data.Value.Open) / 2));
+                    //                    signalInfo.Price.Add(idp(time, (data.Value.Close + data.Value.Open) / 2));
+                    signalInfo.Price.Add(idp(time, data.Value.Close));
                     // Update the indicators
                     signalInfo.trend.Update(idp(time, signalInfo.Price[0].Value));
                 }
@@ -643,6 +665,8 @@ namespace QuantConnect.Algorithm.CSharp
                             _transactions.Add(t);
                             _orderTransactionProcessor.ProcessTransaction(t);
                             _tradecount++;
+                            if (WebSiteAvailable)
+                                SendTransaction(t);
                             if (_orderTransactionProcessor.TotalProfit != totalProfit)
                             {
                                 tradenet = CalculateTradeProfit(t.Symbol);
@@ -653,6 +677,171 @@ namespace QuantConnect.Algorithm.CSharp
                         }
                     }
                     break;
+            }
+        }
+
+        private string GetQuotes(string symbol)
+        {
+            string ret = string.Empty;
+            try
+            {
+                HttpRequestMessage request = CreateGetRequest(symbol);
+                request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+                request.Headers.Add("Authorization", String.Format("Bearer {0}", Config.Get("tradier-access-token")));
+
+                //using (var client = new HttpClient())
+                //{
+                //    HttpResponseMessage response = client.SendAsync(request).Result;
+                //    if (!response.IsSuccessStatusCode)
+                //    {
+                //        string r = "Error Code" + response.StatusCode + " : Message - " + response.ReasonPhrase;
+                //    }
+                //    ret = response.Content.ReadAsStringAsync().Result;
+                //}
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex.Message);
+            }
+            return ret;
+        }
+        private HttpRequestMessage CreateGetRequest(string symbol)
+        {
+            var request = new HttpRequestMessage();
+            request.Method = HttpMethod.Get;
+            string _apiHost = @"https://sandbox.tradier.com/";
+            string uriStem = @"v1/markets/quotes";
+            StringBuilder sb = new StringBuilder();
+            sb.Append("symbols=");
+            sb.Append(symbol);
+
+            request.RequestUri = new Uri(String.Format("{0}{1}?{2}", _apiHost, uriStem, sb.ToString()));
+            return request;
+        }
+
+        private void SendMessage(Type type, string message)
+        {
+            QCMessage msg = new QCMessage();
+            msg.TypeName = type.Name;
+            msg.Contents = message;
+            msg.TimeSent = DateTime.Now;
+            msg.TimeRecv = DateTime.Now;
+
+            var request = new HttpRequestMessage();
+            request.Method = HttpMethod.Post;
+            string _apiHost = @"http://localhost:63144/";
+            string uriStem = @"api/QCMessage";
+
+            request.RequestUri = new Uri(String.Format("{0}{1}", _apiHost, uriStem));
+            request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+
+            using (var client = new HttpClient())
+            {
+                HttpResponseMessage response = client.PostAsJsonAsync(request.RequestUri, msg).Result;
+                if (!response.IsSuccessStatusCode)
+                {
+                    string r = "Error Code" + response.StatusCode + " : Message - " + response.ReasonPhrase;
+                    Log(r);
+                }
+                else
+                {
+                    using (HttpContent content = response.Content)
+                    {
+                        // ... Read the string.
+                        string result = content.ReadAsStringAsync().Result;
+                        QCMessage resultMessage = JsonConvert.DeserializeObject<QCMessage>(result);
+                        int id = resultMessage.Id;
+
+                        // ... Display the result.
+                        //if (result != null &&
+                        //result.Length >= 50)
+                        //{
+                        //    Console.WriteLine(result.Substring(0, 50) + "...");
+                        //}
+                    }
+
+                }
+
+                //var uri = new Uri(@"http://localhost:63144/");
+                //client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+                //client.BaseAddress = uri;
+                //HttpResponseMessage q = client.GetAsync("api/GetQCMessage/1").Result;
+                //if (!q.IsSuccessStatusCode)
+                //{
+                //    string r = "Error Code" + q.StatusCode + " : Message - " + q.ReasonPhrase;
+                //    Log(r);
+                //}
+                //HttpResponseMessage response = client.PostAsJsonAsync("api/Message", msg).Result;
+                //if (!response.IsSuccessStatusCode)
+                //{
+                //    string r = "Error Code" + response.StatusCode + " : Message - " + response.ReasonPhrase;
+                //    Log(r);
+                //}
+            }
+            
+        }
+        private void SendTransaction(OrderTransaction t)
+        {
+            string j = JsonConvert.SerializeObject(t);
+            try
+            {
+                using (var client = new HttpClient())
+                {
+
+                    var uri = new Uri(@"http://localhost:55293/");
+                    client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+                    client.BaseAddress = uri;
+
+                    //HttpResponseMessage response = client.PostAsJsonAsync("api/OrderTransaction", t).Result;
+                    //if (!response.IsSuccessStatusCode)
+                    //{
+                    //    string r = "Error Code" + response.StatusCode + " : Message - " + response.ReasonPhrase;
+                    //    Log(r);
+                    //}
+                }
+            }
+            catch (AggregateException aggregateException)
+            {
+                WebSiteAvailable = false;
+                StringBuilder sb = new StringBuilder();
+                sb.AppendLine();
+                SummarizeExceptions(sb, aggregateException);
+                sb.AppendLine(aggregateException.StackTrace);
+                Log(sb.ToString());
+            }
+        }
+
+        private static void SummarizeExceptions(StringBuilder sb, Exception ex)
+        {
+            sb.Append(ex.GetType().Name);
+            sb.Append(" threw ");
+            sb.AppendLine(ex.Message);
+            if (ex.InnerException != null)
+            {
+                SummarizeExceptions(sb, ex.InnerException);
+            }
+        }
+
+        private void GetTransasctions()
+        {
+            try
+            {
+                using (var client = new HttpClient())
+                {
+                    var uri = new Uri(@"http://localhost:63144/");
+                    client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+                    client.BaseAddress = uri;
+
+                    HttpResponseMessage response = client.GetAsync("api/QCMessage/1").Result;
+                    if (!response.IsSuccessStatusCode)
+                    {
+                        string r = "Error Code" + response.StatusCode + " : Message - " + response.ReasonPhrase;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex.Message);
             }
         }
 
@@ -903,10 +1092,10 @@ namespace QuantConnect.Algorithm.CSharp
         {
             if (shouldSellOutAtEod)
             {
+                signal = OrderSignal.doNothing;      // Just in case a signal slipped through in the last minute.
                 #region logging
                 if (Time.Hour == 16)
                 {
-
                     #region logging
 
                     SendTransactionsToFile(data.Key + "transactions.csv");
@@ -918,7 +1107,6 @@ namespace QuantConnect.Algorithm.CSharp
 
                 if (Time.Hour == 15 && Time.Minute > 45)
                 {
-                    signal = OrderSignal.doNothing;
                     if (Portfolio[data.Key].IsLong)
                     {
                         signal = OrderSignal.goShort;
@@ -992,11 +1180,12 @@ namespace QuantConnect.Algorithm.CSharp
                     this.GetType().Name, symbolsstring, Portfolio.TotalPortfolioValue, lossThreshhold, startTime,
                     DateTime.Now);
             Logging.Log.Trace(debugstring);
+
             #region logging
 
             NotifyUser();
 
-//            string filepath = @"I:\MyQuantConnect\Logs\" + symbol + "dailyreturns" + sd + ".csv";
+            //            string filepath = @"I:\MyQuantConnect\Logs\" + symbol + "dailyreturns" + sd + ".csv";
             string filepath = @"I:\MyQuantConnect\Logs\" + symbol + "dailyreturns.csv";
             using (
                 StreamWriter sw = new StreamWriter(filepath))

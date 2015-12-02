@@ -129,6 +129,7 @@
     <Compile Include="Indicators\RateOfChangePercentTests.cs" />
     <Compile Include="Indicators\RateOfChangeTests.cs" />
     <Compile Include="Indicators\StochasticTests.cs" />
+    <Compile Include="Indicators\WilliamsVixFixTests.cs" />
     <Compile Include="RegressionTests.cs" />
     <Compile Include="TestExtensions.cs" />
     <Compile Include="Indicators\LinearWeightedMovingAverageTests.cs" />

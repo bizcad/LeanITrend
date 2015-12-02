@@ -1,10 +1,14 @@
-﻿using QuantConnect.Indicators;
-using System;
+﻿using System;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+using QuantConnect.Indicators;
 
 namespace QuantConnect.Algorithm.CSharp
 {
-
-    public class ITrendStrategy : BaseStrategy
+    class MultiSymbolStrategy : BaseStrategy
     {
         #region Fields
 
@@ -20,8 +24,8 @@ namespace QuantConnect.Algorithm.CSharp
         public bool ExitFromShort = false;
 
         Indicator _price;
-        public InstantaneousTrend ITrend;
-        public Momentum ITrendMomentum;
+        public SimpleMovingAverage sma;
+        public Momentum SMAMomentum;
         public RollingWindow<decimal> MomentumWindow;
 
         #endregion made public for debug
@@ -35,12 +39,12 @@ namespace QuantConnect.Algorithm.CSharp
         /// Initializes a new instance of the <see cref="ITrendStrategy"/> class.
         /// </summary>
         /// <param name="period">The period of the Instantaneous trend.</param>
-        public ITrendStrategy(Indicator price, int period, decimal tolerance = 0.001m, decimal revetPct = 1.0015m,
+        public MultiSymbolStrategy(Indicator price, int period, decimal tolerance = 0.001m, decimal revetPct = 1.0015m,
             RevertPositionCheck checkRevertPosition = RevertPositionCheck.vsTrigger)
         {
             _price = price;
-            ITrend = new InstantaneousTrend(period).Of(price);
-            ITrendMomentum = new Momentum(2).Of(ITrend);
+            sma = new SimpleMovingAverage(period).Of(price);
+            SMAMomentum = new Momentum(2).Of(sma);
             MomentumWindow = new RollingWindow<decimal>(2);
 
             Position = StockState.noInvested;
@@ -51,18 +55,17 @@ namespace QuantConnect.Algorithm.CSharp
             _revertPCT = revetPct;
             _checkRevertPosition = checkRevertPosition;
 
-            //Sig9 sig9 = new Sig9();
+            
 
-            ITrendMomentum.Updated += (object sender, IndicatorDataPoint updated) =>
+            SMAMomentum.Updated += (object sender, IndicatorDataPoint updated) =>
             {
-                if (ITrendMomentum.IsReady) MomentumWindow.Add(ITrendMomentum.Current.Value);
+                if (SMAMomentum.IsReady) MomentumWindow.Add(SMAMomentum.Current.Value);
                 if (MomentumWindow.IsReady) CheckSignal();
             };
         }
 
 
         #endregion Constructors
-
         #region Methods
 
         /// <summary>
@@ -81,8 +84,8 @@ namespace QuantConnect.Algorithm.CSharp
 
             if (_checkRevertPosition == RevertPositionCheck.vsTrigger)
             {
-                ExitFromLong = (EntryPrice != null) ? ITrend + ITrendMomentum < EntryPrice / _revertPCT : false;
-                ExitFromShort = (EntryPrice != null) ? ITrend + ITrendMomentum > EntryPrice * _revertPCT : false;
+                ExitFromLong = (EntryPrice != null) ? sma + SMAMomentum < EntryPrice / _revertPCT : false;
+                ExitFromShort = (EntryPrice != null) ? sma + SMAMomentum > EntryPrice * _revertPCT : false;
             }
             else if (_checkRevertPosition == RevertPositionCheck.vsClosePrice)
             {
@@ -91,7 +94,8 @@ namespace QuantConnect.Algorithm.CSharp
             }
 
             OrderSignal actualSignal;
-
+            if(TriggerCrossOverITrend || TriggerCrossUnderITrend)
+                Debug.WriteLine("here");
             switch (Position)
             {
                 case StockState.noInvested:
@@ -121,11 +125,12 @@ namespace QuantConnect.Algorithm.CSharp
         public void Reset()
         {
             // Not resetting the ITrend increases returns
-            ITrend.Reset();
-            ITrendMomentum.Reset();
+            sma.Reset();
+            SMAMomentum.Reset();
             MomentumWindow.Reset();
         }
 
         #endregion Methods
+ 
     }
 }

@@ -23,11 +23,12 @@
     //"algorithm-type-name": "MultiSigDailyAlgorithmQc",
     //"algorithm-type-name": "InstantaneousTrendAlgorithmQC",
     //"algorithm-type-name": "ITrendAlgorithmJJ",
-    "algorithm-type-name": "MultiSignalAlgorithm",
+    //"algorithm-type-name": "MultiSignalAlgorithm",
     //"algorithm-type-name": "MultiSignalAlgorithmQC",
     //"algorithm-type-name": "MultiSignalAlgorithmTicketQueue2",
     //"algorithm-type-name": "Test2Algorithm",
-    //"algorithm-type-name": "CyberCycleAlgorithm",
+    //"algorithm-type-name": "MultisymbolAlgorithm",
+    "algorithm-type-name": "VixWvfAlgorithm",
     //"algorithm-type-name": "DecycleInverseFisherAlgorithm",
 
 
@@ -65,8 +66,8 @@
 
     // tradier configuration
     "qc-user-id": "",
-    "tradier-account-id": "",
-    "tradier-access-token": "",
+    "tradier-account-id": "82939100",
+    "tradier-access-token": "jZr7QV3dRkcNY3IWzOHctmcuTaDF",
     "tradier-refresh-token": "",
     "tradier-issued-at": "",
     "trader-lifespan": "",

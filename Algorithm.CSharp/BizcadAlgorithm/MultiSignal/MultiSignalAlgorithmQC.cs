@@ -625,6 +625,7 @@ namespace QuantConnect.Algorithm.CSharp
                 if (Time.Hour == 16)
                 {
                     NotifyUser();
+                    signal = OrderSignal.doNothing;
                 }
                 #endregion
 
