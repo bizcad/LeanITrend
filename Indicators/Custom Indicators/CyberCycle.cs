@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 
 namespace QuantConnect.Indicators
 {
@@ -9,9 +9,9 @@ namespace QuantConnect.Indicators
     public class CyberCycle : WindowIndicator<IndicatorDataPoint>
     {
         // the alpha for the formula
-        private readonly decimal a = 0.5m;
-        private readonly RollingWindow<IndicatorDataPoint> _smooth;
-        private readonly RollingWindow<IndicatorDataPoint> _cycle;
+        private readonly double a = 0.07;
+        private readonly RollingWindow<double> _smooth;
+        private readonly RollingWindow<double> _cycle;
         private readonly int _period;
         private int barcount;
 
@@ -26,9 +26,9 @@ namespace QuantConnect.Indicators
             : base(name, period)
         {
             // Creates the smoother data set to which the resulting cybercycle is applied
-            _smooth = new RollingWindow<IndicatorDataPoint>(period);
+            _smooth = new RollingWindow<double>(period);
             // CyberCycle history
-            _cycle = new RollingWindow<IndicatorDataPoint>(period);
+            _cycle = new RollingWindow<double>(period);
             _period = period;
             barcount = 0;
         }
@@ -77,27 +77,27 @@ namespace QuantConnect.Indicators
 
             if (barcount > 2)
             {
-                _smooth.Add(idp(time, (window[0].Value + 2 * window[1].Value + window[2].Value / 6)));
+                _smooth.Add((double)(window[0].Value + 2 * window[1].Value + 2 * window[2].Value + window[3].Value / 6));
 
                 if (barcount < _period)
                 {
-                    _cycle.Add(idp(time, (window[0].Value - 2 * window[1].Value + window[2].Value) / 4));
+                    _cycle.Add((double)(window[0].Value - 2 * window[1].Value + window[2].Value) / 4);
                 }
                 else
                 {
                     // Calc the high pass filter _cycle value
-                    var hfp = (1 - a / 2) * (1 - a / 2) * (_smooth[0].Value - 2 * _smooth[1].Value + _smooth[2].Value)
-                             + 2 * (1 - a) * _cycle[0].Value - (1 - a) * (1 - a) * _cycle[1].Value;
-                    _cycle.Add(idp(time, hfp));
+                    var hfp = (1 - 0.5 * a) * (1 - 0.5 * a) * (_smooth[0] - 2 * _smooth[1] + _smooth[2])
+                             + 2 * (1 - a) * _cycle[0] - (1 - a) * (1 - a) * _cycle[1];
+                    _cycle.Add(hfp);
                 }
             }
             else
             {
-                _smooth.Add(idp(time, window[0].Value));
-                _cycle.Add(idp(time, 0));
+                _smooth.Add((double)window[0].Value);
+                _cycle.Add(0);
             }
             barcount++;
-            return _cycle[0].Value;
+            return (decimal)_cycle[0];
         }
         /// <summary>
         /// Factory function which creates an IndicatorDataPoint
