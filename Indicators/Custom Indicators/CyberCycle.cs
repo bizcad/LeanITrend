@@ -77,7 +77,7 @@ namespace QuantConnect.Indicators
 
             if (barcount > 2)
             {
-                _smooth.Add(idp(time, (window[0].Value + 2 * window[1].Value + window[2].Value / 6)));
+                _smooth.Add(idp(time, (window[0].Value + 2 * window[1].Value + 2 * window[2].Value + window[3].Value / 6)));
 
                 if (barcount < _period)
                 {
